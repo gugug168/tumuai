@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 导入字体 */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;500;700&display=swap');
+
+/* 基础样式重置 */
+@layer base {
+  html {
+    font-family: 'Source Han Sans SC', 'Source Han Sans', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  }
+  
+  body {
+    @apply text-white bg-primary-800;
+    line-height: 1.6;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading font-bold text-white;
+    line-height: 1.2;
+  }
+  
+  h1 {
+    @apply text-4xl md:text-5xl lg:text-6xl;
+  }
+  
+  h2 {
+    @apply text-3xl md:text-4xl;
+  }
+  
+  h3 {
+    @apply text-2xl md:text-3xl;
+  }
+  
+  h4 {
+    @apply text-xl md:text-2xl;
+  }
+  
+  p {
+    @apply font-body text-gray-200;
+    line-height: 1.7;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 组件样式 */
+@layer components {
+  /* 按钮样式 */
+  .btn-primary {
+    @apply bg-accent-500 hover:bg-accent-600 text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 shadow-soft hover:shadow-medium;
+  }
+  
+  .btn-secondary {
+    @apply bg-white hover:bg-gray-100 text-primary-800 font-medium px-6 py-3 rounded-xl transition-all duration-200;
+  }
+  
+  .btn-accent {
+    @apply bg-accent-500 hover:bg-accent-600 text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 shadow-soft hover:shadow-medium;
+  }
+  
+  /* 卡片样式 */
+  .card {
+    @apply bg-white rounded-2xl shadow-soft border border-gray-200 hover:shadow-medium transition-all duration-300;
+  }
+  
+  .card-hover {
+    @apply hover:shadow-strong hover:-translate-y-1;
+  }
+  
+  /* 输入框样式 */
+  .input-field {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-accent-500 focus:border-accent-500 transition-colors bg-white text-gray-900 placeholder-gray-500;
+  }
+  
+  /* 标签样式 */
+  .tag-primary {
+    @apply bg-accent-100 text-accent-700 px-3 py-1 rounded-full text-sm font-medium;
+  }
+  
+  .tag-accent {
+    @apply bg-accent-100 text-accent-700 px-3 py-1 rounded-full text-sm font-medium;
+  }
+  
+  .tag-secondary {
+    @apply bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-medium;
+  }
+}
+
+/* 工具类 */
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent;
+  }
+  
+  .bg-gradient-primary {
+    @apply bg-gradient-to-br from-primary-800 via-primary-700 to-primary-900;
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
