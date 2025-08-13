@@ -3,6 +3,15 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+// 检查环境变量是否已设置
+if (!supabaseUrl) {
+  throw new Error('Missing VITE_SUPABASE_URL environment variable. Please check your .env file or Netlify environment variables.')
+}
+
+if (!supabaseAnonKey) {
+  throw new Error('Missing VITE_SUPABASE_ANON_KEY environment variable. Please check your .env file or Netlify environment variables.')
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // 临时禁用RLS的客户端配置
