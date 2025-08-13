@@ -1,0 +1,16 @@
+# Netlify配置文件
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+# 重定向所有页面到index.html以支持客户端路由
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# 环境变量配置
+[template.environment]
+  VITE_SUPABASE_URL = "Your Supabase URL"
+  VITE_SUPABASE_ANON_KEY = "Your Supabase Anon Key"

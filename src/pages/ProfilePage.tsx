@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Heart, Eye, Star, Settings, BookOpen, TrendingUp, Award, Camera } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateUserProfile } from '../lib/auth';
@@ -10,14 +10,29 @@ const ProfilePage = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
-    username: profile?.username || '',
-    full_name: profile?.full_name || '',
-    bio: profile?.bio || '',
-    company: profile?.company || '',
-    position: profile?.position || '',
-    website: profile?.website || '',
-    location: profile?.location || ''
+    username: '',
+    full_name: '',
+    bio: '',
+    company: '',
+    position: '',
+    website: '',
+    location: ''
   });
+
+  // 当profile更新时，更新editForm
+  useEffect(() => {
+    if (profile) {
+      setEditForm({
+        username: profile.username || '',
+        full_name: profile.full_name || '',
+        bio: profile.bio || '',
+        company: profile.company || '',
+        position: profile.position || '',
+        website: profile.website || '',
+        location: profile.location || ''
+      });
+    }
+  }, [profile]);
 
   // 如果用户未登录，显示登录提示
   if (!user) {
@@ -47,14 +62,16 @@ const ProfilePage = () => {
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
+    
     try {
       await updateUserProfile(user.id, editForm);
-      await refreshProfile();
+      await refreshProfile(); // 刷新profile数据
       setIsEditing(false);
-      alert('资料更新成功！');
+      alert('资料更新成功');
     } catch (error) {
       console.error('更新失败:', error);
-      alert('更新失败，请重试');
+      alert('更新失败: ' + (error as Error).message);
     }
   };
 
