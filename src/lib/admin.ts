@@ -41,47 +41,64 @@ export interface ToolSubmission {
   updated_at: string
 }
 
+// 判断是否为临时管理员
+function isTemporaryAdmin(email: string | null | undefined): boolean {
+  return email === 'admin@civilaihub.com' || (email?.includes('admin') ?? false);
+}
+
+// 构建临时管理员对象
+function createTemporaryAdmin(user: { id: string; email: string | null }): AdminUser {
+  const now = new Date().toISOString();
+  return {
+    id: 'temp-admin',
+    user_id: user.id,
+    role: 'super_admin',
+    permissions: {},
+    created_at: now,
+    updated_at: now
+  };
+}
+
 // 检查用户是否为管理员
-export async function checkAdminStatus() {
-  const { data: { user } } = await supabase.auth.getUser()
+export async function checkAdminStatus(): Promise<AdminUser | null> {
+  const { data: { user } } = await supabase.auth.getUser();
   console.log('🔍 检查用户登录状态:', user?.email);
-  
+
   if (!user) {
     console.log('❌ 用户未登录');
     return null;
   }
 
   try {
-    // 临时：如果是特定邮箱，直接返回管理员权限
-    if (user.email === 'admin@civilaihub.com' || user.email?.includes('admin')) {
-      console.log('✅ 管理员邮箱验证通过');
-      return {
-        id: 'temp-admin',
-        user_id: user.id,
-        role: 'super_admin' as const,
-        permissions: {},
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
+    // 临时管理员逻辑
+    if (isTemporaryAdmin(user.email)) {
+      const admin = createTemporaryAdmin(user);
+      console.log('✅ 临时管理员验证通过:', admin);
+      return admin;
     }
-    
+
+    // 正式管理员数据库查询
     console.log('🔍 查询数据库中的管理员权限...');
     const { data, error } = await supabase
       .from('admin_users')
       .select('*')
       .eq('user_id', user.id)
-      .single()
+      .single();
 
-    if (error && error.code !== 'PGRST116') {
-      console.error('❌ 查询管理员权限失败:', error);
-      throw error;
+    if (error) {
+      if (error.code !== 'PGRST116') {
+        console.error('❌ 查询管理员权限失败:', error);
+        throw error;
+      }
+      console.warn('⚠️ 未找到管理员记录');
+      return null;
     }
-    
+
     console.log('📋 管理员权限查询结果:', data);
-    return data as AdminUser | null
+    return data as AdminUser;
   } catch (error) {
     console.error('❌ 管理员权限检查异常:', error);
-    return null
+    return null;
   }
 }
 
