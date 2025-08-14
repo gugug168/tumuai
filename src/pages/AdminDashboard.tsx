@@ -6,15 +6,12 @@ import {
   FileText, 
   Shield, 
   Activity,
-  Eye,
   CheckCircle,
   XCircle,
   Clock,
-  TrendingUp,
   Database,
   UserCheck
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
 import { 
   checkAdminStatus, 
   getSystemStats, 
@@ -23,9 +20,9 @@ import {
   getUsers,
   getToolsAdmin,
   getAdminLogs,
-  initializeAdmin,
   type AdminUser,
-  type ToolSubmission
+  type ToolSubmission,
+  type AdminLog
 } from '../lib/admin';
 
 const AdminDashboard = () => {
@@ -39,9 +36,9 @@ const AdminDashboard = () => {
     totalFavorites: 0
   });
   const [submissions, setSubmissions] = useState<ToolSubmission[]>([]);
-  const [users, setUsers] = useState([]);
-  const [tools, setTools] = useState([]);
-  const [logs, setLogs] = useState([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [tools, setTools] = useState<any[]>([]);
+  const [logs, setLogs] = useState<AdminLog[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -74,7 +71,7 @@ const AdminDashboard = () => {
       await loadLogs();
 
       console.log('🎉 所有管理数据加载完成');
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ 管理数据加载失败:', error);
       setError(`管理数据加载失败: ${error.message || '请检查网络连接或联系技术支持'}`);
     } finally {
@@ -163,8 +160,7 @@ const AdminDashboard = () => {
     { id: 'overview', label: '概览', icon: BarChart3 },
     { id: 'submissions', label: '工具审核', icon: FileText },
     { id: 'tools', label: '工具管理', icon: Settings },
-    { id: 'users', label: '用户管理', icon: Users },
-    { id: 'logs', label: '操作日志', icon: Activity }
+    { id: 'users', label: '用户管理', icon: Users }
   ];
 
   return (
@@ -332,20 +328,30 @@ const AdminDashboard = () => {
                               </div>
                               <div className="flex space-x-2">
                                 <button
-                                  onClick={() => reviewToolSubmission(submission.id, 'approved')}
+                                  onClick={() => handleReviewSubmission(submission.id, 'approved')}
                                   className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none"
                                 >
                                   <CheckCircle className="h-4 w-4 mr-1" />
                                   通过
                                 </button>
                                 <button
-                                  onClick={() => reviewToolSubmission(submission.id, 'rejected')}
+                                  onClick={() => handleReviewSubmission(submission.id, 'rejected')}
                                   className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none"
                                 >
                                   <XCircle className="h-4 w-4 mr-1" />
                                   拒绝
                                 </button>
                               </div>
+                            </div>
+                            {submission.description && (
+                              <p className="text-sm text-gray-600 mt-2">{submission.description}</p>
+                            )}
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {submission.categories.map((category) => (
+                                <span key={category} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  {category}
+                                </span>
+                              ))}
                             </div>
                           </div>
                         ))}
@@ -360,7 +366,7 @@ const AdminDashboard = () => {
                     {users.length === 0 ? (
                       <p className="text-gray-500">暂无用户数据</p>
                     ) : (
-                      <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
+                      <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
                         <table className="min-w-full divide-y divide-gray-300">
                           <thead className="bg-gray-50">
                             <tr>
@@ -368,16 +374,20 @@ const AdminDashboard = () => {
                                 用户
                               </th>
                               <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                                邮箱
+                              </th>
+                              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                                 注册时间
                               </th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200 bg-white">
-                            {users.map((user: any) => (
+                            {users.map((user) => (
                               <tr key={user.id}>
                                 <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                                  {user.email}
+                                  {user.full_name || user.email}
                                 </td>
+                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{user.email}</td>
                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                   {new Date(user.created_at).toLocaleDateString()}
                                 </td>
