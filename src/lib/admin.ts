@@ -131,10 +131,11 @@ export async function getSystemStats() {
   console.log('📊 开始获取系统统计数据...');
   
   try {
+    // 工具总数查询（使用更安全的字段选择）
     console.log('🔧 获取工具总数...');
     const { count: totalTools, error: toolsError } = await supabase
       .from('tools')
-      .select('*', { count: 'exact', head: true });
+      .select('id', { count: 'exact', head: true });
     
     if (toolsError) {
       console.error('❌ 获取工具总数失败:', toolsError);
@@ -142,10 +143,12 @@ export async function getSystemStats() {
       console.log('✅ 工具总数:', totalTools);
     }
     
+    // 用户总数查询（添加查询超时）
     console.log('👥 获取用户总数...');
     const { count: totalUsers, error: usersError } = await supabase
       .from('user_profiles')
-      .select('*', { count: 'exact', head: true });
+      .select('id', { count: 'exact', head: true })
+      .timeout(5000); // 5秒超时
     
     if (usersError) {
       console.error('❌ 获取用户总数失败:', usersError);
@@ -153,11 +156,12 @@ export async function getSystemStats() {
       console.log('✅ 用户总数:', totalUsers);
     }
     
+    // 待审核提交数查询（使用类型安全的枚举）
     console.log('⏳ 获取待审核提交数...');
     const { count: pendingSubmissions, error: pendingError } = await supabase
       .from('tool_submissions')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending');
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending' as const);
     
     if (pendingError) {
       console.error('❌ 获取待审核提交数失败:', pendingError);
@@ -165,26 +169,49 @@ export async function getSystemStats() {
       console.log('✅ 待审核提交数:', pendingSubmissions);
     }
     
+    // 评价总数查询（添加重试机制）
     console.log('⭐ 获取评价总数...');
-    const { count: totalReviews, error: reviewsError } = await supabase
-      .from('tool_reviews')
-      .select('*', { count: 'exact', head: true });
+    let totalReviews = 0;
+    let reviewsError = null;
     
-    if (reviewsError) {
-      console.error('❌ 获取评价总数失败:', reviewsError);
-    } else {
+    try {
+      const { count: reviewsCount, error: reviewsErrorInternal } = await supabase
+        .from('tool_reviews')
+        .select('id', { count: 'exact', head: true })
+        .retry(2); // 最多重试2次
+        
+      if (reviewsErrorInternal) {
+        throw reviewsErrorInternal;
+      }
+      
+      totalReviews = reviewsCount || 0;
       console.log('✅ 评价总数:', totalReviews);
+    } catch (error) {
+      reviewsError = error;
+      console.error('❌ 获取评价总数失败:', error);
     }
     
+    // 收藏总数查询（使用更安全的查询方式）
     console.log('❤️ 获取收藏总数...');
-    const { count: totalFavorites, error: favoritesError } = await supabase
-      .from('tool_favorites')
-      .select('*', { count: 'exact', head: true });
+    let totalFavorites = 0;
+    let favoritesError = null;
     
-    if (favoritesError) {
-      console.error('❌ 获取收藏总数失败:', favoritesError);
-    } else {
+    try {
+      const { count: favoritesCount, error: favoritesErrorInternal } = await supabase
+        .from('tool_favorites')
+        .select('id', { count: 'exact', head: true })
+        .single()
+        .then(({ count, error }) => ({ count, error }));
+      
+      if (favoritesErrorInternal) {
+        throw favoritesErrorInternal;
+      }
+      
+      totalFavorites = favoritesCount || 0;
       console.log('✅ 收藏总数:', totalFavorites);
+    } catch (error) {
+      favoritesError = error;
+      console.error('❌ 获取收藏总数失败:', error);
     }
 
     const stats = {
@@ -217,7 +244,24 @@ export async function getToolSubmissions(status?: string) {
   try {
     let query = supabase
       .from('tool_submissions')
-      .select('*')
+      .select(`
+        id,
+        submitter_email,
+        tool_name,
+        tagline,
+        description,
+        website_url,
+        logo_url,
+        categories,
+        features,
+        pricing,
+        status,
+        admin_notes,
+        reviewed_by,
+        reviewed_at,
+        created_at,
+        updated_at
+      `)
       .order('created_at', { ascending: false })
 
     if (status) {
@@ -304,7 +348,17 @@ export async function getUsers(page = 1, limit = 20) {
   try {
     const { data, error } = await supabase
       .from('user_profiles')
-      .select('*')
+      .select(`
+        id,
+        user_id,
+        email,
+        full_name,
+        avatar_url,
+        bio,
+        website,
+        created_at,
+        updated_at
+      `)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -328,7 +382,25 @@ export async function getToolsAdmin(page = 1, limit = 20) {
   try {
     const { data, error } = await supabase
       .from('tools')
-      .select('*')
+      .select(`
+        id,
+        name,
+        tagline,
+        description,
+        website_url,
+        logo_url,
+        categories,
+        features,
+        pricing,
+        featured,
+        date_added,
+        upvotes,
+        views,
+        rating,
+        review_count,
+        created_at,
+        updated_at
+      `)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -383,7 +455,17 @@ export async function getAdminLogs(page = 1, limit = 50) {
   try {
     const { data, error } = await supabase
       .from('admin_logs')
-      .select('*')
+      .select(`
+        id,
+        admin_id,
+        action,
+        target_type,
+        target_id,
+        details,
+        ip_address,
+        user_agent,
+        created_at
+      `)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
