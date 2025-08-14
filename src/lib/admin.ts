@@ -41,24 +41,6 @@ export interface ToolSubmission {
   updated_at: string
 }
 
-// 判断是否为临时管理员
-function isTemporaryAdmin(email: string | null | undefined): boolean {
-  return email === 'admin@civilaihub.com' || (email?.includes('admin') ?? false);
-}
-
-// 构建临时管理员对象
-function createTemporaryAdmin(user: { id: string; email: string | null | undefined }): AdminUser {
-  const now = new Date().toISOString();
-  return {
-    id: 'temp-admin',
-    user_id: user.id,
-    role: 'super_admin',
-    permissions: {},
-    created_at: now,
-    updated_at: now
-  };
-}
-
 // 检查用户是否为管理员
 export async function checkAdminStatus(): Promise<AdminUser | null> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -70,13 +52,6 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
   }
 
   try {
-    // 临时管理员逻辑
-    if (isTemporaryAdmin(user.email)) {
-      const admin = createTemporaryAdmin(user as { id: string; email: string | null | undefined });
-      console.log('✅ 临时管理员验证通过:', admin);
-      return admin;
-    }
-
     // 正式管理员数据库查询
     console.log('🔍 查询数据库中的管理员权限...');
     const { data, error } = await supabase
@@ -142,11 +117,12 @@ export async function getSystemStats() {
       console.log('✅ 工具总数:', totalTools);
     }
     
-    // 用户总数查询
+    // 用户总数查询（添加查询超时）
     console.log('👥 获取用户总数...');
     const { count: totalUsers, error: usersError } = await supabase
       .from('user_profiles')
-      .select('id', { count: 'exact', head: true });
+      .select('id', { count: 'exact', head: true })
+      .timeout(5000); // 5秒超时
     
     if (usersError) {
       console.error('❌ 获取用户总数失败:', usersError);
@@ -167,14 +143,16 @@ export async function getSystemStats() {
       console.log('✅ 待审核提交数:', pendingSubmissions);
     }
     
-    // 评价总数查询
+    // 评价总数查询（添加重试机制）
     console.log('⭐ 获取评价总数...');
     let totalReviews = 0;
+    let reviewsError = null;
     
     try {
       const { count: reviewsCount, error: reviewsErrorInternal } = await supabase
         .from('tool_reviews')
-        .select('id', { count: 'exact', head: true });
+        .select('id', { count: 'exact', head: true })
+        .maybeSingle();
         
       if (reviewsErrorInternal) {
         throw reviewsErrorInternal;
@@ -183,12 +161,14 @@ export async function getSystemStats() {
       totalReviews = reviewsCount || 0;
       console.log('✅ 评价总数:', totalReviews);
     } catch (error) {
+      reviewsError = error;
       console.error('❌ 获取评价总数失败:', error);
     }
     
-    // 收藏总数查询
+    // 收藏总数查询（使用更安全的查询方式）
     console.log('❤️ 获取收藏总数...');
     let totalFavorites = 0;
+    let favoritesError = null;
     
     try {
       const { count: favoritesCount, error: favoritesErrorInternal } = await supabase
@@ -202,6 +182,7 @@ export async function getSystemStats() {
       totalFavorites = favoritesCount || 0;
       console.log('✅ 收藏总数:', totalFavorites);
     } catch (error) {
+      favoritesError = error;
       console.error('❌ 获取收藏总数失败:', error);
     }
 
@@ -409,7 +390,7 @@ export async function getToolsAdmin(page = 1, limit = 20) {
 }
 
 // 更新工具信息
-export async function updateTool(toolId: string, updates: Record<string, any>) {
+export async function updateTool(toolId: string, updates: Partial<any>) {
   const admin = await checkAdminStatus()
   if (!admin) throw new Error('Unauthorized')
 

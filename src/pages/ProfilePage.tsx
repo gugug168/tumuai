@@ -3,6 +3,7 @@ import { User, Heart, Eye, Star, Settings, BookOpen, TrendingUp, Award, Camera }
 import { useAuth } from '../contexts/AuthContext';
 import { updateUserProfile } from '../lib/auth';
 import AuthModal from '../components/AuthModal';
+import { useNavigate } from 'react-router-dom';
 
 const ProfilePage = () => {
   const { user, profile, refreshProfile } = useAuth();
@@ -18,6 +19,7 @@ const ProfilePage = () => {
     website: '',
     location: ''
   });
+  const navigate = useNavigate();
 
   // 当profile更新时，更新editForm
   useEffect(() => {
@@ -34,30 +36,16 @@ const ProfilePage = () => {
     }
   }, [profile]);
 
-  // 如果用户未登录，显示登录提示
+  // 如果用户未登录，重定向到首页
+  useEffect(() => {
+    if (!user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  // 如果用户未登录，不渲染页面内容
   if (!user) {
-    return (
-      <>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">请先登录</h2>
-            <p className="text-gray-600 mb-6">登录后即可查看和管理您的个人资料</p>
-            <button
-              onClick={() => setShowAuthModal(true)}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-            >
-              立即登录
-            </button>
-          </div>
-        </div>
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          initialMode="login"
-        />
-      </>
-    );
+    return null;
   }
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -263,13 +251,13 @@ const ProfilePage = () => {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">网站</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">个人网站</label>
                         <input
                           type="url"
                           value={editForm.website}
                           onChange={(e) => setEditForm({...editForm, website: e.target.value})}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-                          placeholder="https://"
+                          placeholder="https://example.com"
                         />
                       </div>
                       <div>
@@ -279,22 +267,21 @@ const ProfilePage = () => {
                           value={editForm.location}
                           onChange={(e) => setEditForm({...editForm, location: e.target.value})}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-                          placeholder="城市, 国家"
                         />
                       </div>
                     </div>
                     
                     <div className="flex space-x-4">
-                      <button 
+                      <button
                         type="submit"
                         className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                       >
-                        保存设置
+                        保存更改
                       </button>
-                      <button 
+                      <button
                         type="button"
                         onClick={() => setIsEditing(false)}
-                        className="bg-gray-100 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+                        className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors"
                       >
                         取消
                       </button>
@@ -302,33 +289,51 @@ const ProfilePage = () => {
                   </form>
                 ) : (
                   <div className="max-w-2xl space-y-6">
-                    <div className="bg-gray-50 p-6 rounded-lg">
-                      <h4 className="font-medium text-gray-900 mb-4">基本信息</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-600">邮箱：</span>
-                          <span className="font-medium">{user.email}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">用户名：</span>
-                          <span className="font-medium">{profile?.username || '未设置'}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">公司：</span>
-                          <span className="font-medium">{profile?.company || '未设置'}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">职位：</span>
-                          <span className="font-medium">{profile?.position || '未设置'}</span>
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">用户ID</label>
+                        <p className="text-gray-900">{user.id}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">邮箱</label>
+                        <p className="text-gray-900">{user.email}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">用户名</label>
+                        <p className="text-gray-900">{profile?.username || '未设置'}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">真实姓名</label>
+                        <p className="text-gray-900">{profile?.full_name || '未设置'}</p>
                       </div>
                     </div>
-                    <button 
-                      onClick={() => setIsEditing(true)}
-                      className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      编辑资料
-                    </button>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 mb-1">个人简介</label>
+                      <p className="text-gray-900">{profile?.bio || '未设置'}</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">公司</label>
+                        <p className="text-gray-900">{profile?.company || '未设置'}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">职位</label>
+                        <p className="text-gray-900">{profile?.position || '未设置'}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">个人网站</label>
+                        <p className="text-gray-900">{profile?.website || '未设置'}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">所在地</label>
+                        <p className="text-gray-900">{profile?.location || '未设置'}</p>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

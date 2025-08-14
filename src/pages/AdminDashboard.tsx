@@ -12,6 +12,7 @@ import {
   Database,
   UserCheck
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { 
   checkAdminStatus, 
   getSystemStats, 
@@ -40,6 +41,7 @@ const AdminDashboard = () => {
   const [tools, setTools] = useState<any[]>([]);
   const [logs, setLogs] = useState<AdminLog[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadData();
@@ -58,6 +60,7 @@ const AdminDashboard = () => {
       if (!adminStatus) {
         console.error('❌ 用户不是管理员');
         setError('您没有管理员权限，无法访问此页面');
+        navigate('/');
         return;
       }
       

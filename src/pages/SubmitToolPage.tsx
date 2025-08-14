@@ -164,6 +164,8 @@ const SubmitToolPage = () => {
       // 上传Logo文件到临时URL（实际项目中应该上传到云存储）
       let logoUrl = null;
       if (formData.logoFile) {
+        // 在实际应用中，这里应该上传文件到存储服务
+        // 临时使用文件名作为URL
         logoUrl = URL.createObjectURL(formData.logoFile);
       }
 
