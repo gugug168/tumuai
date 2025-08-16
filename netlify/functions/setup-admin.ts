@@ -36,23 +36,36 @@ const handler: Handler = async (event) => {
       if (!userId) return { statusCode: 500, body: 'Failed to locate admin user' }
     }
 
-    // Ensure admin_users record
-    const { error: upsertErr } = await supabase
+    // Ensure admin_users record (manually handle upsert without unique constraint)
+    const { data: existingAdmin, error: selectErr } = await supabase
       .from('admin_users')
-      .upsert({
-        user_id: userId,
-        role: 'super_admin',
-        permissions: {
-          manage_tools: true,
-          manage_users: true,
-          manage_submissions: true,
-          manage_admins: true,
-          view_analytics: true,
-          system_settings: true
-        }
-      }, { onConflict: 'user_id' })
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle()
 
-    if (upsertErr) return { statusCode: 500, body: upsertErr.message }
+    if (selectErr) return { statusCode: 500, body: selectErr.message }
+
+    const permissions = {
+      manage_tools: true,
+      manage_users: true,
+      manage_submissions: true,
+      manage_admins: true,
+      view_analytics: true,
+      system_settings: true
+    }
+
+    if (existingAdmin?.id) {
+      const { error: updateErr } = await supabase
+        .from('admin_users')
+        .update({ role: 'super_admin', permissions })
+        .eq('id', existingAdmin.id)
+      if (updateErr) return { statusCode: 500, body: updateErr.message }
+    } else {
+      const { error: insertErr } = await supabase
+        .from('admin_users')
+        .insert([{ user_id: userId, role: 'super_admin', permissions }])
+      if (insertErr) return { statusCode: 500, body: insertErr.message }
+    }
 
     return { statusCode: 200, body: 'Admin ready' }
   } catch (err: any) {
