@@ -49,7 +49,7 @@ export interface Tool {
 export async function getTools(limit = 60) {
   try {
     // 优先走 Netlify Functions，降低 RLS/跨域影响
-    const resp = await fetch(`/\.netlify/functions/tools?limit=${limit}`, { cache: 'no-store' })
+    const resp = await fetch(`/.netlify/functions/tools?limit=${limit}`, { cache: 'no-store' })
     if (resp.ok) {
       const json = await resp.json()
       return Array.isArray(json) ? json as Tool[] : []

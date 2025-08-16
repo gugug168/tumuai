@@ -17,12 +17,14 @@ const AdminLoginPage = () => {
       // 允许 admin/admin 快速登录（演示用途）。若是 admin/admin，则尝试以固定管理员邮箱登录
       const loginEmail = email.includes('@') ? email : 'admin@civilaihub.com'
       const loginPassword = email === 'admin' && password === 'admin123' ? 'admin123' : password
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: loginEmail,
         password: loginPassword,
       })
       if (signInError) throw signInError
 
+      // 等待会话稳定后再查管理员表
+      await new Promise(res => setTimeout(res, 300))
       const admin = await checkAdminStatus()
       if (!admin) {
         setError('当前账户不是管理员，无法进入后台')
