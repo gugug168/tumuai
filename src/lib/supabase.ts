@@ -48,6 +48,13 @@ export interface Tool {
 // 获取所有工具
 export async function getTools(limit = 60) {
   try {
+    // 优先走 Netlify Functions，降低 RLS/跨域影响
+    const resp = await fetch(`/\.netlify/functions/tools?limit=${limit}`, { cache: 'no-store' })
+    if (resp.ok) {
+      const json = await resp.json()
+      return Array.isArray(json) ? json as Tool[] : []
+    }
+    // 兜底直连 Supabase
     const { data, error } = await supabase
       .from('tools')
       .select('id,name,tagline,logo_url,categories,features,pricing,rating,views,upvotes,date_added')
