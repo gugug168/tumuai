@@ -47,6 +47,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null)
     setSession(null)
     setProfile(null)
+
+    // 彻底清理本地缓存，避免某些扩展或缓存导致的残留会话
+    try {
+      Object.keys(localStorage)
+        .filter((k) => k.toLowerCase().includes('supabase'))
+        .forEach((k) => localStorage.removeItem(k))
+    } catch {}
   }
 
   useEffect(() => {

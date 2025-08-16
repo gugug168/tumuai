@@ -43,37 +43,46 @@ export interface ToolSubmission {
 
 // 检查用户是否为管理员
 export async function checkAdminStatus(): Promise<AdminUser | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  console.log('🔍 检查用户登录状态:', user?.email);
+  const { data: sessionRes } = await supabase.auth.getSession()
+  const accessToken = sessionRes?.session?.access_token
+  const user = sessionRes?.session?.user
+  console.log('🔍 检查用户登录状态:', user?.email)
 
-  if (!user) {
-    console.log('❌ 用户未登录');
-    return null;
+  if (!user || !accessToken) {
+    console.log('❌ 用户未登录')
+    return null
   }
 
   try {
-    // 正式管理员数据库查询
-    console.log('🔍 查询数据库中的管理员权限...');
+    // 优先通过服务端函数校验管理员，避免前端RLS/网络问题
+    const resp = await fetch('/.netlify/functions/admin-check', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: 'no-store'
+    })
+    if (resp.ok) {
+      const json = await resp.json()
+      if (json && json.user_id === user.id) return json as AdminUser
+      return null
+    }
+
+    // 兜底：直接查询（要求 admin_users 有自读策略）
     const { data, error } = await supabase
       .from('admin_users')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .single()
 
     if (error) {
       if (error.code !== 'PGRST116') {
-        console.error('❌ 查询管理员权限失败:', error);
-        throw error;
+        console.error('❌ 查询管理员权限失败:', error)
+        throw error
       }
-      console.warn('⚠️ 未找到管理员记录');
-      return null;
+      return null
     }
-
-    console.log('📋 管理员权限查询结果:', data);
-    return data as AdminUser;
+    return data as AdminUser
   } catch (error) {
-    console.error('❌ 管理员权限检查异常:', error);
-    return null;
+    console.error('❌ 管理员权限检查异常:', error)
+    return null
   }
 }
 

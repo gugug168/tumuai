@@ -102,9 +102,26 @@ export async function isFavorited(toolId: string) {
 
 // 获取用户收藏的工具
 export async function getUserFavorites(userId?: string) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: sessionRes } = await supabase.auth.getSession()
+  const accessToken = sessionRes?.session?.access_token
+  const user = sessionRes?.session?.user
   const targetUserId = userId || user?.id
   if (!targetUserId) throw new Error('用户未登录')
+
+  try {
+    // 走服务端函数，提升稳定性与速度
+    if (accessToken) {
+      const resp = await fetch('/.netlify/functions/user-favorites', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: 'no-store'
+      })
+      if (resp.ok) {
+        return await resp.json()
+      }
+    }
+  } catch (e) {
+    // 忽略，回退到直连
+  }
 
   const { data, error } = await supabase
     .from('tool_favorites')
