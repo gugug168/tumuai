@@ -22,11 +22,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 })
 
 // 临时禁用RLS的客户端配置
-export const supabaseAdmin = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: false
-  }
-})
+// 注意：前端不再创建额外的 admin 客户端，以避免多 GoTrueClient 警告和不必要的权限暴露。
 
 // 工具数据类型定义
 export interface Tool {

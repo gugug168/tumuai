@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Upload, Link as LinkIcon, Tag, DollarSign, Image, FileText, AlertCircle } from 'lucide-react';
-import { supabase, supabaseAdmin } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 const categories = [
   'AI结构设计',
@@ -185,8 +185,8 @@ const SubmitToolPage = () => {
       
       console.log('提交数据:', submissionData);
 
-      // 使用supabaseAdmin客户端避免RLS策略问题
-      const { data, error } = await supabaseAdmin
+      // 直接使用匿名策略插入（RLS 已允许 public 插入 tool_submissions）
+      const { data, error } = await supabase
         .from('tool_submissions')
         .insert([submissionData]);
       
