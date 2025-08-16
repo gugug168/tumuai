@@ -23,9 +23,15 @@ const AdminLoginPage = () => {
       })
       if (signInError) throw signInError
 
-      // 等待会话稳定后再查管理员表
+      // 等待会话稳定后再查管理员表（增加超时兜底）
       await new Promise(res => setTimeout(res, 300))
-      const admin = await checkAdminStatus()
+      const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000))
+      const admin = await Promise.race([checkAdminStatus(), timeout])
+      if (admin === null) {
+        // 无法在 5s 内确认管理员，先进入后台由控制台页面继续校验
+        window.location.assign('/admin')
+        return
+      }
       if (!admin) {
         setError('当前账户不是管理员，无法进入后台')
         return

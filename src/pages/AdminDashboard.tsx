@@ -53,11 +53,14 @@ const AdminDashboard = () => {
       setError(null);
       console.log('🔄 开始加载管理数据...');
       
-      // 检查管理员权限
-      const adminStatus = await checkAdminStatus();
+      // 检查管理员权限（增加超时兜底，避免卡住）
+      const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
+      const adminStatus = await Promise.race([checkAdminStatus(), timeout]);
       console.log('👤 管理员状态检查:', adminStatus);
       
-      if (!adminStatus) {
+      if (adminStatus === null) {
+        console.warn('⚠️ 管理员校验超时，继续加载数据由后端函数再次鉴权');
+      } else if (!adminStatus) {
         console.error('❌ 用户不是管理员');
         setError('您没有管理员权限，无法访问此页面');
         navigate('/');
@@ -67,11 +70,7 @@ const AdminDashboard = () => {
       console.log('✅ 管理员权限验证通过');
       
       // 分步加载数据，避免阻塞
-      await loadStats();
-      await loadSubmissions();
-      await loadUsers();
-      await loadTools();
-      await loadLogs();
+      await Promise.all([loadStats(), loadSubmissions(), loadUsers(), loadTools(), loadLogs()]);
 
       console.log('🎉 所有管理数据加载完成');
     } catch (error: any) {
