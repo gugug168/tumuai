@@ -52,7 +52,8 @@ const Header = () => {
     try {
       await signOut();
       // 显式跳转，确保用户感知
-      window.location.href = '/';
+      // 使用硬刷新，清理任何残留状态
+      window.location.assign('/');
     } catch (error) {
       console.error('登出失败:', error);
     }

@@ -12,6 +12,7 @@ import ProfilePage from './pages/ProfilePage';
 import FavoritesPage from './pages/FavoritesPage';
 import AdminDashboard from './pages/AdminDashboard';
 import DiagnosticPage from './pages/DiagnosticPage';
+import AdminLoginPage from './pages/AdminLoginPage';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/favorites" element={<FavoritesPage />} />
               <Route path="/admin/*" element={<AdminDashboard />} />
+              <Route path="/admin-login" element={<AdminLoginPage />} />
               <Route path="/diagnostic" element={<DiagnosticPage />} />
             </Routes>
           </main>

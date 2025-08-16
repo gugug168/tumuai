@@ -46,12 +46,13 @@ export interface Tool {
 }
 
 // 获取所有工具
-export async function getTools() {
+export async function getTools(limit = 60) {
   try {
     const { data, error } = await supabase
       .from('tools')
-      .select('*')
+      .select('id,name,tagline,logo_url,categories,features,pricing,rating,views,upvotes,date_added')
       .order('upvotes', { ascending: false })
+      .limit(limit)
 
     if (error) {
       console.error('Error fetching tools:', error)
