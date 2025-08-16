@@ -7,9 +7,10 @@ import AuthModal from '../components/AuthModal';
 
 const FavoritesPage = () => {
   const { user } = useAuth();
-  const [favorites, setFavorites] = useState([]);
+  const [favorites, setFavorites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -20,11 +21,14 @@ const FavoritesPage = () => {
   }, [user]);
 
   const loadFavorites = async () => {
+    setLoadError(null);
+    setLoading(true);
     try {
       const data = await getUserFavorites();
-      setFavorites(data);
-    } catch (error) {
+      setFavorites(Array.isArray(data) ? data : []);
+    } catch (error: any) {
       console.error('加载收藏失败:', error);
+      setLoadError(error?.message || '加载收藏失败，请稍后重试');
     } finally {
       setLoading(false);
     }
@@ -72,6 +76,9 @@ const FavoritesPage = () => {
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-accent-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">加载中...</p>
+          {loadError && (
+            <p className="text-red-500 mt-2">{loadError}</p>
+          )}
         </div>
       </div>
     );

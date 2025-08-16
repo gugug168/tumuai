@@ -51,6 +51,8 @@ const Header = () => {
   const handleSignOut = async () => {
     try {
       await signOut();
+      // 显式跳转，确保用户感知
+      window.location.href = '/';
     } catch (error) {
       console.error('登出失败:', error);
     }

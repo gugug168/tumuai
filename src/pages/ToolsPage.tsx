@@ -55,6 +55,7 @@ const ToolsPage = () => {
   const [tools, setTools] = useState<Tool[]>([]);
   const [filteredTools, setFilteredTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -92,12 +93,25 @@ const ToolsPage = () => {
   }, [user, tools]);
 
   const loadTools = async () => {
+    setLoadError(null);
+    setLoading(true);
     try {
-      setLoading(true);
-      const data = await getTools();
-      setTools(data);
-    } catch (error) {
+      // 增加超时保护，避免网络异常导致一直加载
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        const id = setTimeout(() => {
+          clearTimeout(id);
+          reject(new Error('请求超时，请稍后重试'));
+        }, 10000);
+      });
+
+      const data = await Promise.race([
+        getTools(),
+        timeoutPromise,
+      ]) as Tool[];
+      setTools(Array.isArray(data) ? data : []);
+    } catch (error: any) {
       console.error('加载工具失败:', error);
+      setLoadError(error?.message || '加载失败，请稍后重试');
     } finally {
       setLoading(false);
     }
@@ -237,6 +251,9 @@ const ToolsPage = () => {
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">加载工具中...</p>
+          {loadError && (
+            <p className="text-red-500 mt-2">{loadError}</p>
+          )}
         </div>
       </div>
     );
@@ -251,6 +268,11 @@ const ToolsPage = () => {
           <p className="text-lg text-gray-600">
             发现最适合土木工程师的AI工具和效率工具
           </p>
+          {loadError && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+              {loadError}
+            </div>
+          )}
         </div>
 
         {/* Search and Controls */}
