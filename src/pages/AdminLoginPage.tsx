@@ -5,7 +5,7 @@ import { checkAdminStatus } from '../lib/admin'
 
 const AdminLoginPage = () => {
   const [email, setEmail] = useState('admin')
-  const [password, setPassword] = useState('admin')
+  const [password, setPassword] = useState('admin123')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -16,7 +16,7 @@ const AdminLoginPage = () => {
     try {
       // 允许 admin/admin 快速登录（演示用途）。若是 admin/admin，则尝试以固定管理员邮箱登录
       const loginEmail = email.includes('@') ? email : 'admin@civilaihub.com'
-      const loginPassword = email === 'admin' && password === 'admin' ? 'admin' : password
+      const loginPassword = email === 'admin' && password === 'admin123' ? 'admin123' : password
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: loginEmail,
         password: loginPassword,

@@ -18,7 +18,8 @@ const handler: Handler = async (event) => {
     const supabase = createClient(supabaseUrl, serviceKey)
 
     const email = 'admin@civilaihub.com'
-    const password = 'admin'
+    // Supabase 默认最短密码长度为 6，故设置为 admin123
+    const password = 'admin123'
 
     // Create or fetch user
     const { data: userData, error: adminErr } = await supabase.auth.admin.createUser({
@@ -35,6 +36,13 @@ const handler: Handler = async (event) => {
       userId = usersList.users.find(u => u.email === email)?.id
       if (!userId) return { statusCode: 500, body: 'Failed to locate admin user' }
     }
+
+    // Ensure password is updated to desired value
+    const { error: pwdErr } = await supabase.auth.admin.updateUserById(userId, {
+      password,
+      email_confirm: true
+    })
+    if (pwdErr) return { statusCode: 500, body: `Password update failed: ${pwdErr.message}` }
 
     // Ensure admin_users record (manually handle upsert without unique constraint)
     const { data: existingAdmin, error: selectErr } = await supabase
