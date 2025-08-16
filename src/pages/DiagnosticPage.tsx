@@ -35,10 +35,10 @@ const DiagnosticPage = () => {
     // 2. 检查Supabase连接
     const checkSupabaseConnection = async () => {
       try {
-        const { data, error } = await supabase.from('tools').select('count', { count: 'exact', head: true });
+        const { count, error } = await supabase.from('tools').select('id', { count: 'exact', head: true });
         if (error) throw error;
-        return { status: 'success', message: `连接成功，工具表有 ${data || 0} 条记录` };
-      } catch (error) {
+        return { status: 'success', message: `连接成功，工具表约 ${count || 0} 条记录` };
+      } catch (error: any) {
         return { status: 'error', message: `连接失败: ${error.message}` };
       }
     };

@@ -121,8 +121,7 @@ export async function getSystemStats() {
     console.log('👥 获取用户总数...');
     const { count: totalUsers, error: usersError } = await supabase
       .from('user_profiles')
-      .select('id', { count: 'exact', head: true })
-      .timeout(5000); // 5秒超时
+      .select('id', { count: 'exact', head: true });
     
     if (usersError) {
       console.error('❌ 获取用户总数失败:', usersError);

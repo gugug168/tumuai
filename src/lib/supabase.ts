@@ -138,7 +138,7 @@ export async function incrementToolViews(id: string) {
   try {
     const { error } = await supabase
       .from('tools')
-      .update({ views: supabase.rpc('increment_views', { tool_id: id }) })
+      .update({ views: (supabase as any).sql`views + 1` })
       .eq('id', id)
 
     if (error) {

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Search, Menu, X, Hammer, User, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
+import { checkAdminStatus } from '../lib/admin';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -11,6 +12,24 @@ const Header = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const location = useLocation();
   const { user, profile, signOut } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (user) {
+        try {
+          const admin = await checkAdminStatus();
+          if (!cancelled) setIsAdmin(!!admin);
+        } catch {
+          if (!cancelled) setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
 
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -123,7 +142,7 @@ const Header = () => {
                   <span>{profile?.username || profile?.full_name || '用户中心'}</span>
                 </Link>
                 {/* 管理员入口 - 仅对管理员显示 */}
-                {user?.email === 'admin@civilaihub.com' && (
+                {isAdmin && (
                   <Link
                     to="/admin"
                     className="text-red-600 hover:text-red-700 font-medium transition-colors"

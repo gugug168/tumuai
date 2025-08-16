@@ -119,6 +119,13 @@ CREATE POLICY "Admins can manage submissions"
     )
   );
 
+-- 允许认证用户读取自身管理员记录，供前端权限检查使用
+CREATE POLICY IF NOT EXISTS "Users can read own admin record"
+  ON admin_users
+  FOR SELECT
+  TO authenticated
+  USING (user_id = auth.uid());
+
 -- 创建索引
 CREATE INDEX IF NOT EXISTS idx_admin_users_user_id ON admin_users(user_id);
 CREATE INDEX IF NOT EXISTS idx_admin_users_role ON admin_users(role);
