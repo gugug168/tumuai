@@ -111,155 +111,41 @@ export async function logAdminAction(
 
 // 获取系统统计数据
 export async function getSystemStats() {
-  console.log('📊 开始获取系统统计数据...');
-  
   try {
-    // 工具总数查询（使用更安全的字段选择）
-    console.log('🔧 获取工具总数...');
-    const { count: totalTools, error: toolsError } = await supabase
-      .from('tools')
-      .select('id', { count: 'exact', head: true });
-    
-    if (toolsError) {
-      console.error('❌ 获取工具总数失败:', toolsError);
-    } else {
-      console.log('✅ 工具总数:', totalTools);
-    }
-    
-    // 用户总数查询（添加查询超时）
-    console.log('👥 获取用户总数...');
-    const { count: totalUsers, error: usersError } = await supabase
-      .from('user_profiles')
-      .select('id', { count: 'exact', head: true });
-    
-    if (usersError) {
-      console.error('❌ 获取用户总数失败:', usersError);
-    } else {
-      console.log('✅ 用户总数:', totalUsers);
-    }
-    
-    // 待审核提交数查询（使用类型安全的枚举）
-    console.log('⏳ 获取待审核提交数...');
-    const { count: pendingSubmissions, error: pendingError } = await supabase
-      .from('tool_submissions')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'pending' as const);
-    
-    if (pendingError) {
-      console.error('❌ 获取待审核提交数失败:', pendingError);
-    } else {
-      console.log('✅ 待审核提交数:', pendingSubmissions);
-    }
-    
-    // 评价总数查询（添加重试机制）
-    console.log('⭐ 获取评价总数...');
-    let totalReviews = 0;
-    let reviewsError = null;
-    
-    try {
-      const { count: reviewsCount, error: reviewsErrorInternal } = await supabase
-        .from('tool_reviews')
-        .select('id', { count: 'exact', head: true })
-        .maybeSingle();
-        
-      if (reviewsErrorInternal) {
-        throw reviewsErrorInternal;
-      }
-      
-      totalReviews = reviewsCount || 0;
-      console.log('✅ 评价总数:', totalReviews);
-    } catch (error) {
-      reviewsError = error;
-      console.error('❌ 获取评价总数失败:', error);
-    }
-    
-    // 收藏总数查询（使用更安全的查询方式）
-    console.log('❤️ 获取收藏总数...');
-    let totalFavorites = 0;
-    let favoritesError = null;
-    
-    try {
-      const { count: favoritesCount, error: favoritesErrorInternal } = await supabase
-        .from('tool_favorites')
-        .select('id', { count: 'exact', head: true });
-      
-      if (favoritesErrorInternal) {
-        throw favoritesErrorInternal;
-      }
-      
-      totalFavorites = favoritesCount || 0;
-      console.log('✅ 收藏总数:', totalFavorites);
-    } catch (error) {
-      favoritesError = error;
-      console.error('❌ 获取收藏总数失败:', error);
-    }
-
-    const stats = {
-      totalTools: totalTools || 0,
-      totalUsers: totalUsers || 0,
-      pendingSubmissions: pendingSubmissions || 0,
-      totalReviews: totalReviews || 0,
-      totalFavorites: totalFavorites || 0
-    };
-    
-    console.log('📊 统计数据汇总:', stats);
-
-    return stats;
+    const { data: sessionRes } = await supabase.auth.getSession()
+    const token = sessionRes?.session?.access_token
+    if (!token) throw new Error('No session')
+    const resp = await fetch('/.netlify/functions/admin-stats', {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store'
+    })
+    if (resp.ok) return await resp.json()
+    throw new Error('admin-stats failed')
   } catch (error) {
-    console.error('❌ 获取统计数据异常:', error);
-    return {
-      totalTools: 0,
-      totalUsers: 0,
-      pendingSubmissions: 0,
-      totalReviews: 0,
-      totalFavorites: 0
-    }
+    console.error('❌ 获取统计数据异常:', error)
+    return { totalTools: 0, totalUsers: 0, pendingSubmissions: 0, totalReviews: 0, totalFavorites: 0 }
   }
 }
 
 // 获取工具提交列表
 export async function getToolSubmissions(status?: string) {
-  console.log('📝 开始获取工具提交列表...', status ? `状态: ${status}` : '全部状态');
-  
   try {
-    let query = supabase
-      .from('tool_submissions')
-      .select(`
-        id,
-        submitter_email,
-        tool_name,
-        tagline,
-        description,
-        website_url,
-        logo_url,
-        categories,
-        features,
-        pricing,
-        status,
-        admin_notes,
-        reviewed_by,
-        reviewed_at,
-        created_at,
-        updated_at
-      `)
-      .order('created_at', { ascending: false })
-
-    if (status) {
-      query = query.eq('status', status)
+    const { data: sessionRes } = await supabase.auth.getSession()
+    const token = sessionRes?.session?.access_token
+    if (!token) throw new Error('No session')
+    const resp = await fetch('/.netlify/functions/admin-datasets', {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store'
+    })
+    if (resp.ok) {
+      const json = await resp.json()
+      const list = json?.submissions || []
+      return status ? list.filter((it: any) => it.status === status) : list
     }
-
-    const { data, error } = await query
-    console.log('📝 工具提交查询结果:', { 记录数: data?.length || 0, 错误: error });
-    
-    if (error) {
-      console.error('❌ 获取工具提交失败:', error);
-      return [];
-    }
-    console.log('✅ 工具提交数据获取成功');
-    return data as ToolSubmission[]
+    return []
   } catch (error) {
-    console.error('❌ 获取工具提交异常:', error);
-    return [];
+    console.error('❌ 获取工具提交异常:', error)
+    return []
   }
 }
 
@@ -322,78 +208,47 @@ export async function reviewToolSubmission(
 
 // 获取用户列表
 export async function getUsers(page = 1, limit = 20) {
-  console.log('👥 开始获取用户列表...', `页码: ${page}, 限制: ${limit}`);
-  const offset = (page - 1) * limit
-
   try {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select(`
-        id,
-        user_id,
-        email,
-        full_name,
-        avatar_url,
-        bio,
-        website,
-        created_at,
-        updated_at
-      `)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
-
-    if (error) {
-      console.error('❌ 获取用户列表失败:', error);
-      return [];
+    const { data: sessionRes } = await supabase.auth.getSession()
+    const token = sessionRes?.session?.access_token
+    if (!token) throw new Error('No session')
+    const resp = await fetch('/.netlify/functions/admin-datasets', {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store'
+    })
+    if (resp.ok) {
+      const json = await resp.json()
+      const list = json?.users || []
+      const start = (page - 1) * limit
+      return list.slice(start, start + limit)
     }
-    console.log('✅ 用户列表获取成功:', data?.length || 0, '条记录');
-    return data || [];
+    return []
   } catch (error) {
-    console.error('❌ 获取用户列表异常:', error);
-    return [];
+    console.error('❌ 获取用户列表异常:', error)
+    return []
   }
 }
 
 // 获取工具列表（管理员视图）
 export async function getToolsAdmin(page = 1, limit = 20) {
-  console.log('🔧 开始获取工具列表...', `页码: ${page}, 限制: ${limit}`);
-  const offset = (page - 1) * limit
-
   try {
-    const { data, error } = await supabase
-      .from('tools')
-      .select(`
-        id,
-        name,
-        tagline,
-        description,
-        website_url,
-        logo_url,
-        categories,
-        features,
-        pricing,
-        featured,
-        date_added,
-        upvotes,
-        views,
-        rating,
-        review_count,
-        created_at,
-        updated_at
-      `)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
-
-    if (error) {
-      console.error('❌ 获取工具列表失败:', error);
-      return [];
+    const { data: sessionRes } = await supabase.auth.getSession()
+    const token = sessionRes?.session?.access_token
+    if (!token) throw new Error('No session')
+    const resp = await fetch('/.netlify/functions/admin-datasets', {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store'
+    })
+    if (resp.ok) {
+      const json = await resp.json()
+      const list = json?.tools || []
+      const start = (page - 1) * limit
+      return list.slice(start, start + limit)
     }
-    
-    console.log('✅ 工具列表获取成功:', data?.length || 0, '条记录');
-    return data || [];
+    return []
   } catch (error) {
-    console.error('❌ 获取工具列表异常:', error);
-    return [];
+    console.error('❌ 获取工具列表异常:', error)
+    return []
   }
 }
 
@@ -429,34 +284,23 @@ export async function deleteTool(toolId: string) {
 
 // 获取管理员日志
 export async function getAdminLogs(page = 1, limit = 50) {
-  console.log('📋 开始获取管理员日志...', `页码: ${page}, 限制: ${limit}`);
-  const offset = (page - 1) * limit
-
   try {
-    const { data, error } = await supabase
-      .from('admin_logs')
-      .select(`
-        id,
-        admin_id,
-        action,
-        target_type,
-        target_id,
-        details,
-        ip_address,
-        user_agent,
-        created_at
-      `)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
-
-    if (error) {
-      console.error('❌ 获取管理员日志失败:', error);
-      return [];
+    const { data: sessionRes } = await supabase.auth.getSession()
+    const token = sessionRes?.session?.access_token
+    if (!token) throw new Error('No session')
+    const resp = await fetch('/.netlify/functions/admin-datasets', {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store'
+    })
+    if (resp.ok) {
+      const json = await resp.json()
+      const list = json?.logs || []
+      const start = (page - 1) * limit
+      return list.slice(start, start + limit)
     }
-    console.log('✅ 管理员日志获取成功:', data?.length || 0, '条记录');
-    return data || [];
+    return []
   } catch (error) {
-    console.error('❌ 获取管理员日志异常:', error);
-    return [];
+    console.error('❌ 管理员日志异常:', error)
+    return []
   }
 }
