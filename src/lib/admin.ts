@@ -58,6 +58,18 @@ async function fetchJSONWithTimeout(
   }
 }
 
+// 等待获取可用的 Access Token（解决页面初始时会话尚未恢复导致的 No session/空数据）
+async function ensureAccessToken(timeoutMs = 6000): Promise<string> {
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    const { data: sessionRes } = await supabase.auth.getSession()
+    const token = sessionRes?.session?.access_token
+    if (token) return token
+    await new Promise((r) => setTimeout(r, 150))
+  }
+  throw new Error('No session')
+}
+
 // 检查用户是否为管理员
 export async function checkAdminStatus(): Promise<AdminUser | null> {
   const { data: sessionRes } = await supabase.auth.getSession()
@@ -126,9 +138,7 @@ export async function logAdminAction(
 // 获取系统统计数据
 export async function getSystemStats() {
   try {
-    const { data: sessionRes } = await supabase.auth.getSession()
-    const token = sessionRes?.session?.access_token
-    if (!token) throw new Error('No session')
+    const token = await ensureAccessToken()
     const json = await fetchJSONWithTimeout('/.netlify/functions/admin-stats', {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
@@ -144,9 +154,7 @@ export async function getSystemStats() {
 // 获取工具提交列表
 export async function getToolSubmissions(status?: string) {
   try {
-    const { data: sessionRes } = await supabase.auth.getSession()
-    const token = sessionRes?.session?.access_token
-    if (!token) throw new Error('No session')
+    const token = await ensureAccessToken()
     const json = await fetchJSONWithTimeout('/.netlify/functions/admin-datasets', {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
@@ -220,9 +228,7 @@ export async function reviewToolSubmission(
 // 获取用户列表
 export async function getUsers(page = 1, limit = 20) {
   try {
-    const { data: sessionRes } = await supabase.auth.getSession()
-    const token = sessionRes?.session?.access_token
-    if (!token) throw new Error('No session')
+    const token = await ensureAccessToken()
     const json = await fetchJSONWithTimeout('/.netlify/functions/admin-datasets', {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
@@ -240,9 +246,7 @@ export async function getUsers(page = 1, limit = 20) {
 // 获取工具列表（管理员视图）
 export async function getToolsAdmin(page = 1, limit = 20) {
   try {
-    const { data: sessionRes } = await supabase.auth.getSession()
-    const token = sessionRes?.session?.access_token
-    if (!token) throw new Error('No session')
+    const token = await ensureAccessToken()
     const json = await fetchJSONWithTimeout('/.netlify/functions/admin-datasets', {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
@@ -290,9 +294,7 @@ export async function deleteTool(toolId: string) {
 // 获取管理员日志
 export async function getAdminLogs(page = 1, limit = 50) {
   try {
-    const { data: sessionRes } = await supabase.auth.getSession()
-    const token = sessionRes?.session?.access_token
-    if (!token) throw new Error('No session')
+    const token = await ensureAccessToken()
     const json = await fetchJSONWithTimeout('/.netlify/functions/admin-datasets', {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
