@@ -41,6 +41,23 @@ export interface ToolSubmission {
   updated_at: string
 }
 
+// 通用：带超时的 JSON 请求
+async function fetchJSONWithTimeout(
+  url: string,
+  options: RequestInit & { timeoutMs?: number } = {}
+) {
+  const { timeoutMs = 8000, ...rest } = options
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const resp = await fetch(url, { ...rest, signal: controller.signal })
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    return await resp.json()
+  } finally {
+    clearTimeout(id)
+  }
+}
+
 // 检查用户是否为管理员
 export async function checkAdminStatus(): Promise<AdminUser | null> {
   const { data: sessionRes } = await supabase.auth.getSession()
@@ -55,15 +72,12 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
 
   try {
     // 优先通过服务端函数校验管理员，避免前端RLS/网络问题
-    const resp = await fetch('/.netlify/functions/admin-check', {
+    const json = await fetchJSONWithTimeout('/.netlify/functions/admin-check', {
       headers: { Authorization: `Bearer ${accessToken}` },
-      cache: 'no-store'
-    })
-    if (resp.ok) {
-      const json = await resp.json()
-      if (json && json.user_id === user.id) return json as AdminUser
-      return null
-    }
+      cache: 'no-store',
+      timeoutMs: 8000
+    }).catch(() => null as any)
+    if (json && json.user_id === user.id) return json as AdminUser
 
     // 兜底：直接查询（要求 admin_users 有自读策略）
     const { data, error } = await supabase
@@ -115,12 +129,12 @@ export async function getSystemStats() {
     const { data: sessionRes } = await supabase.auth.getSession()
     const token = sessionRes?.session?.access_token
     if (!token) throw new Error('No session')
-    const resp = await fetch('/.netlify/functions/admin-stats', {
+    const json = await fetchJSONWithTimeout('/.netlify/functions/admin-stats', {
       headers: { Authorization: `Bearer ${token}` },
-      cache: 'no-store'
+      cache: 'no-store',
+      timeoutMs: 8000
     })
-    if (resp.ok) return await resp.json()
-    throw new Error('admin-stats failed')
+    return json
   } catch (error) {
     console.error('❌ 获取统计数据异常:', error)
     return { totalTools: 0, totalUsers: 0, pendingSubmissions: 0, totalReviews: 0, totalFavorites: 0 }
@@ -133,16 +147,13 @@ export async function getToolSubmissions(status?: string) {
     const { data: sessionRes } = await supabase.auth.getSession()
     const token = sessionRes?.session?.access_token
     if (!token) throw new Error('No session')
-    const resp = await fetch('/.netlify/functions/admin-datasets', {
+    const json = await fetchJSONWithTimeout('/.netlify/functions/admin-datasets', {
       headers: { Authorization: `Bearer ${token}` },
-      cache: 'no-store'
-    })
-    if (resp.ok) {
-      const json = await resp.json()
-      const list = json?.submissions || []
-      return status ? list.filter((it: any) => it.status === status) : list
-    }
-    return []
+      cache: 'no-store',
+      timeoutMs: 8000
+    }).catch(() => null as any)
+    const list = json?.submissions || []
+    return status ? list.filter((it: any) => it.status === status) : list
   } catch (error) {
     console.error('❌ 获取工具提交异常:', error)
     return []
@@ -212,17 +223,14 @@ export async function getUsers(page = 1, limit = 20) {
     const { data: sessionRes } = await supabase.auth.getSession()
     const token = sessionRes?.session?.access_token
     if (!token) throw new Error('No session')
-    const resp = await fetch('/.netlify/functions/admin-datasets', {
+    const json = await fetchJSONWithTimeout('/.netlify/functions/admin-datasets', {
       headers: { Authorization: `Bearer ${token}` },
-      cache: 'no-store'
-    })
-    if (resp.ok) {
-      const json = await resp.json()
-      const list = json?.users || []
-      const start = (page - 1) * limit
-      return list.slice(start, start + limit)
-    }
-    return []
+      cache: 'no-store',
+      timeoutMs: 8000
+    }).catch(() => null as any)
+    const list = json?.users || []
+    const start = (page - 1) * limit
+    return list.slice(start, start + limit)
   } catch (error) {
     console.error('❌ 获取用户列表异常:', error)
     return []
@@ -235,17 +243,14 @@ export async function getToolsAdmin(page = 1, limit = 20) {
     const { data: sessionRes } = await supabase.auth.getSession()
     const token = sessionRes?.session?.access_token
     if (!token) throw new Error('No session')
-    const resp = await fetch('/.netlify/functions/admin-datasets', {
+    const json = await fetchJSONWithTimeout('/.netlify/functions/admin-datasets', {
       headers: { Authorization: `Bearer ${token}` },
-      cache: 'no-store'
-    })
-    if (resp.ok) {
-      const json = await resp.json()
-      const list = json?.tools || []
-      const start = (page - 1) * limit
-      return list.slice(start, start + limit)
-    }
-    return []
+      cache: 'no-store',
+      timeoutMs: 8000
+    }).catch(() => null as any)
+    const list = json?.tools || []
+    const start = (page - 1) * limit
+    return list.slice(start, start + limit)
   } catch (error) {
     console.error('❌ 获取工具列表异常:', error)
     return []
@@ -288,17 +293,14 @@ export async function getAdminLogs(page = 1, limit = 50) {
     const { data: sessionRes } = await supabase.auth.getSession()
     const token = sessionRes?.session?.access_token
     if (!token) throw new Error('No session')
-    const resp = await fetch('/.netlify/functions/admin-datasets', {
+    const json = await fetchJSONWithTimeout('/.netlify/functions/admin-datasets', {
       headers: { Authorization: `Bearer ${token}` },
-      cache: 'no-store'
-    })
-    if (resp.ok) {
-      const json = await resp.json()
-      const list = json?.logs || []
-      const start = (page - 1) * limit
-      return list.slice(start, start + limit)
-    }
-    return []
+      cache: 'no-store',
+      timeoutMs: 8000
+    }).catch(() => null as any)
+    const list = json?.logs || []
+    const start = (page - 1) * limit
+    return list.slice(start, start + limit)
   } catch (error) {
     console.error('❌ 管理员日志异常:', error)
     return []

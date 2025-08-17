@@ -41,6 +41,23 @@ export interface ToolComment {
   replies?: ToolComment[]
 }
 
+// 通用：带超时的 JSON 请求
+async function fetchJSONWithTimeout(
+  url: string,
+  options: RequestInit & { timeoutMs?: number } = {}
+) {
+  const { timeoutMs = 8000, ...rest } = options
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const resp = await fetch(url, { ...rest, signal: controller.signal })
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    return await resp.json()
+  } finally {
+    clearTimeout(id)
+  }
+}
+
 // 收藏工具
 export async function addToFavorites(toolId: string) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -111,13 +128,12 @@ export async function getUserFavorites(userId?: string) {
   try {
     // 走服务端函数，提升稳定性与速度
     if (accessToken) {
-      const resp = await fetch('/.netlify/functions/user-favorites', {
+      const json = await fetchJSONWithTimeout('/.netlify/functions/user-favorites', {
         headers: { Authorization: `Bearer ${accessToken}` },
-        cache: 'no-store'
-      })
-      if (resp.ok) {
-        return await resp.json()
-      }
+        cache: 'no-store',
+        timeoutMs: 8000
+      }).catch(() => null as any)
+      if (json) return json
     }
   } catch (e) {
     // 忽略，回退到直连
