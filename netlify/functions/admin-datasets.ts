@@ -26,7 +26,8 @@ const handler: Handler = async (event) => {
 
     const [submissions, users, tools, logs] = await Promise.all([
       supabase.from('tool_submissions').select('*').order('created_at', { ascending: false }).limit(50),
-      supabase.from('user_profiles').select('id,user_id,email,full_name,avatar_url,created_at').order('created_at', { ascending: false }).limit(50),
+      // 兼容不一致的列结构，避免因某列缺失而导致整个查询返回错误
+      supabase.from('user_profiles').select('*').limit(50),
       supabase.from('tools').select('id,name,tagline,website_url,logo_url,categories,features,pricing,featured,date_added,upvotes,views,rating,review_count,created_at,updated_at').order('created_at', { ascending: false }).limit(50),
       supabase.from('admin_logs').select('id,admin_id,action,target_type,target_id,details,ip_address,user_agent,created_at').order('created_at', { ascending: false }).limit(100)
     ])
