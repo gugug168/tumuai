@@ -59,6 +59,8 @@ async function fetchJSONWithTimeout(
 }
 
 // 等待获取可用的 Access Token（解决页面初始时会话尚未恢复导致的 No session/空数据）
+let accessTokenCache: string | null = null
+
 function readTokenFromLocalStorage(): string | null {
   try {
     const key = Object.keys(localStorage).find(k => k.includes('sb-') && k.endsWith('-auth-token'))
@@ -72,17 +74,33 @@ function readTokenFromLocalStorage(): string | null {
   }
 }
 
-async function ensureAccessToken(timeoutMs = 6000): Promise<string> {
+async function ensureAccessToken(timeoutMs = 3000): Promise<string> {
+  // 0) 先看缓存，避免并发重复等待
+  if (accessTokenCache) return accessTokenCache
+
+  // 1) LocalStorage 命中最快
+  const lsFirst = readTokenFromLocalStorage()
+  if (lsFirst) {
+    accessTokenCache = lsFirst
+    return lsFirst
+  }
+
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
-    // 1) 先读 supabase 会话
+    // 2) 读 supabase 会话
     const { data: sessionRes } = await supabase.auth.getSession()
     const token = sessionRes?.session?.access_token
-    if (token) return token
+    if (token) {
+      accessTokenCache = token
+      return token
+    }
 
-    // 2) 兜底从 localStorage 直接读取（应对会话恢复竞态）
+    // 3) 再尝试 LocalStorage（会话可能刚刚写入）
     const lsToken = readTokenFromLocalStorage()
-    if (lsToken) return lsToken
+    if (lsToken) {
+      accessTokenCache = lsToken
+      return lsToken
+    }
 
     await new Promise((r) => setTimeout(r, 150))
   }

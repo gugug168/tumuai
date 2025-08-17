@@ -79,9 +79,9 @@ const AdminDashboard = () => {
       ].map(p => p.catch((e) => console.error('❌ 子任务失败:', e)))
 
       const hardCap = new Promise<void>((resolve) => setTimeout(() => {
-        console.warn('⏱️ 管理数据加载达到硬性超时(10s)，继续渲染已到达的数据')
+        console.warn('⏱️ 管理数据加载达到硬性超时(15s)，继续渲染已到达的数据')
         resolve()
-      }, 10000))
+      }, 15000))
 
       await Promise.race([
         Promise.allSettled(loaders).then(() => undefined),
