@@ -21,6 +21,9 @@ import {
   getUsers,
   getToolsAdmin,
   getAdminLogs,
+  createTool,
+  updateTool,
+  deleteTool,
   type AdminUser,
   type ToolSubmission,
   type AdminLog
@@ -373,6 +376,84 @@ const AdminDashboard = () => {
                             </div>
                           </div>
                         ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'tools' && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-medium text-gray-900">工具管理</h3>
+                      <button
+                        onClick={async () => {
+                          const name = prompt('工具名称');
+                          if (!name) return;
+                          const website = prompt('官网地址');
+                          if (!website) return;
+                          try {
+                            await createTool({ name, website_url: website });
+                            await loadData();
+                            alert('已创建');
+                          } catch (e) {
+                            alert('创建失败');
+                          }
+                        }}
+                        className="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white text-sm"
+                      >
+                        新增工具
+                      </button>
+                    </div>
+                    {tools.length === 0 ? (
+                      <p className="text-gray-500">暂无工具</p>
+                    ) : (
+                      <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                        <table className="min-w-full divide-y divide-gray-300">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">名称</th>
+                              <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">官网</th>
+                              <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">操作</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200 bg-white">
+                            {tools.map((tool: any) => (
+                              <tr key={tool.id}>
+                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900">{tool.name}</td>
+                                <td className="whitespace-nowrap px-3 py-4 text-sm text-indigo-600">{tool.website_url}</td>
+                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 space-x-2">
+                                  <button
+                                    onClick={async () => {
+                                      const newName = prompt('新名称', tool.name) || tool.name;
+                                      const newSite = prompt('新官网', tool.website_url) || tool.website_url;
+                                      try {
+                                        await updateTool(tool.id, { name: newName, website_url: newSite });
+                                        await loadData();
+                                        alert('已保存');
+                                      } catch (e) {
+                                        alert('保存失败');
+                                      }
+                                    }}
+                                    className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200"
+                                  >编辑</button>
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm('确定删除该工具？')) return;
+                                      try {
+                                        await deleteTool(tool.id);
+                                        await loadData();
+                                        alert('已删除');
+                                      } catch (e) {
+                                        alert('删除失败');
+                                      }
+                                    }}
+                                    className="px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200"
+                                  >删除</button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     )}
                   </div>

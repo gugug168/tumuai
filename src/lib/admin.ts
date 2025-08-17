@@ -58,6 +58,31 @@ async function fetchJSONWithTimeout(
   }
 }
 
+async function postJSONWithTimeout(
+  url: string,
+  body: any,
+  options: RequestInit & { timeoutMs?: number } = {}
+) {
+  const { timeoutMs = 8000, headers, ...rest } = options
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(headers || {}) },
+      body: JSON.stringify(body ?? {}),
+      signal: controller.signal,
+      cache: 'no-store',
+      ...rest
+    })
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    const text = await resp.text()
+    try { return text ? JSON.parse(text) : null } catch { return null }
+  } finally {
+    clearTimeout(id)
+  }
+}
+
 // 等待获取可用的 Access Token（解决页面初始时会话尚未恢复导致的 No session/空数据）
 let accessTokenCache: string | null = null
 
@@ -217,54 +242,15 @@ export async function reviewToolSubmission(
   status: 'approved' | 'rejected',
   adminNotes?: string
 ) {
-  const admin = await checkAdminStatus()
-  if (!admin) throw new Error('Unauthorized')
-
-  const { data: submission, error: fetchError } = await supabase
-    .from('tool_submissions')
-    .select('*')
-    .eq('id', submissionId)
-    .single()
-
-  if (fetchError) throw fetchError
-
-  // 更新提交状态
-  const { error: updateError } = await supabase
-    .from('tool_submissions')
-    .update({
-      status,
-      admin_notes: adminNotes,
-      reviewed_by: admin.id,
-      reviewed_at: new Date().toISOString()
-    })
-    .eq('id', submissionId)
-
-  if (updateError) throw updateError
-
-  // 如果批准，创建工具记录
-  if (status === 'approved') {
-    const { error: insertError } = await supabase
-      .from('tools')
-      .insert([{
-        name: submission.tool_name,
-        tagline: submission.tagline,
-        description: submission.description,
-        website_url: submission.website_url,
-        logo_url: submission.logo_url,
-        categories: submission.categories,
-        features: submission.features,
-        pricing: submission.pricing,
-        featured: false,
-        date_added: new Date().toISOString()
-      }])
-
-    if (insertError) throw insertError
-  }
-
-  // 记录操作日志
-  await logAdminAction('review_submission', 'tool_submission', submissionId, {
+  const token = await ensureAccessToken()
+  await postJSONWithTimeout('/.netlify/functions/admin-actions', {
+    action: 'review_submission',
+    submissionId,
     status,
-    admin_notes: adminNotes
+    adminNotes
+  }, {
+    headers: { Authorization: `Bearer ${token}` },
+    timeoutMs: 8000
   })
 }
 
@@ -306,32 +292,25 @@ export async function getToolsAdmin(page = 1, limit = 20) {
 
 // 更新工具信息
 export async function updateTool(toolId: string, updates: Partial<any>) {
-  const admin = await checkAdminStatus()
-  if (!admin) throw new Error('Unauthorized')
-
-  const { error } = await supabase
-    .from('tools')
-    .update(updates)
-    .eq('id', toolId)
-
-  if (error) throw error
-
-  await logAdminAction('update_tool', 'tool', toolId, updates)
+  const token = await ensureAccessToken()
+  await postJSONWithTimeout('/.netlify/functions/admin-actions', {
+    action: 'update_tool',
+    id: toolId,
+    updates
+  }, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
 }
 
 // 删除工具
 export async function deleteTool(toolId: string) {
-  const admin = await checkAdminStatus()
-  if (!admin) throw new Error('Unauthorized')
-
-  const { error } = await supabase
-    .from('tools')
-    .delete()
-    .eq('id', toolId)
-
-  if (error) throw error
-
-  await logAdminAction('delete_tool', 'tool', toolId)
+  const token = await ensureAccessToken()
+  await postJSONWithTimeout('/.netlify/functions/admin-actions', {
+    action: 'delete_tool',
+    id: toolId
+  }, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
 }
 
 // 获取管理员日志
@@ -350,4 +329,25 @@ export async function getAdminLogs(page = 1, limit = 50) {
     console.error('❌ 管理员日志异常:', error)
     return []
   }
+}
+
+// 新增工具
+export async function createTool(tool: {
+  name: string
+  tagline?: string
+  description?: string
+  website_url: string
+  logo_url?: string
+  categories?: string[]
+  features?: string[]
+  pricing?: 'Free' | 'Freemium' | 'Paid' | 'Trial'
+  featured?: boolean
+}) {
+  const token = await ensureAccessToken()
+  return await postJSONWithTimeout('/.netlify/functions/admin-actions', {
+    action: 'create_tool',
+    tool
+  }, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
 }
