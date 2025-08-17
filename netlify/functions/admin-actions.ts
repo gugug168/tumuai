@@ -1,131 +1,428 @@
 import { Handler } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
 
-async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?: string) {
-	const supabase = createClient(supabaseUrl, serviceKey)
-	if (!accessToken) return null
-	const { data: userRes } = await supabase.auth.getUser(accessToken)
-	const userId = userRes?.user?.id
-	if (!userId) return null
-	const { data } = await supabase
-		.from('admin_users')
-		.select('id,user_id')
-		.eq('user_id', userId)
-		.maybeSingle()
-	return data ? { userId } : null
+interface AdminUser {
+  id: string
+  userId: string
+}
+
+async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?: string): Promise<AdminUser | null> {
+  const supabase = createClient(supabaseUrl, serviceKey)
+  if (!accessToken) return null
+  
+  try {
+    const { data: userRes, error: authError } = await supabase.auth.getUser(accessToken)
+    if (authError || !userRes?.user?.id) return null
+    
+    const userId = userRes.user.id
+    const { data, error } = await supabase
+      .from('admin_users')
+      .select('id,user_id')
+      .eq('user_id', userId)
+      .maybeSingle()
+    
+    if (error || !data) return null
+    return { id: data.id, userId: data.user_id }
+  } catch (error) {
+    console.error('Admin verification error:', error)
+    return null
+  }
 }
 
 const handler: Handler = async (event) => {
-	try {
-		const supabaseUrl = process.env.VITE_SUPABASE_URL as string
-		const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
-		if (!supabaseUrl || !serviceKey) {
-			return { statusCode: 500, body: 'Missing Supabase server config' }
-		}
+  try {
+    const supabaseUrl = process.env.VITE_SUPABASE_URL as string
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
+    
+    if (!supabaseUrl || !serviceKey) {
+      console.error('Missing Supabase configuration')
+      return { statusCode: 500, body: JSON.stringify({ error: 'Server configuration error' }) }
+    }
 
-		const authHeader = event.headers.authorization || event.headers.Authorization
-		const accessToken = authHeader?.replace(/^Bearer\s+/i, '')
-		const admin = await verifyAdmin(supabaseUrl, serviceKey, accessToken)
-		if (!admin) return { statusCode: 403, body: 'Forbidden' }
+    const authHeader = event.headers.authorization || event.headers.Authorization
+    const accessToken = authHeader?.replace(/^Bearer\s+/i, '')
+    const admin = await verifyAdmin(supabaseUrl, serviceKey, accessToken)
+    
+    if (!admin) {
+      return { statusCode: 403, body: JSON.stringify({ error: 'Forbidden' }) }
+    }
 
-		const supabase = createClient(supabaseUrl, serviceKey)
-		const method = event.httpMethod.toUpperCase()
-		if (method !== 'POST') {
-			return { statusCode: 405, body: 'Method Not Allowed' }
-		}
+    const supabase = createClient(supabaseUrl, serviceKey)
+    const method = event.httpMethod.toUpperCase()
+    
+    if (method !== 'POST') {
+      return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) }
+    }
 
-		const body = event.body ? JSON.parse(event.body) : {}
-		const action = body?.action as string
+    const body = event.body ? JSON.parse(event.body) : {}
+    const action = body?.action as string
 
-		if (action === 'review_submission') {
-			const { submissionId, status, adminNotes } = body || {}
-			if (!submissionId || !status) return { statusCode: 400, body: 'Missing parameters' }
+    // 记录管理员操作日志
+    async function logAdminAction(actionType: string, targetType: string, targetId?: string, details?: any) {
+      try {
+        await supabase.from('admin_logs').insert([{
+          admin_id: admin.id,
+          action: actionType,
+          target_type: targetType,
+          target_id: targetId,
+          details: details || {},
+          created_at: new Date().toISOString()
+        }])
+      } catch (error) {
+        console.error('Failed to log admin action:', error)
+      }
+    }
 
-			// 拿到提交详情
-			const { data: submission, error: fetchErr } = await supabase
-				.from('tool_submissions')
-				.select('*')
-				.eq('id', submissionId)
-				.maybeSingle()
-			if (fetchErr) return { statusCode: 500, body: fetchErr.message }
+    switch (action) {
+      case 'review_submission': {
+        const { submissionId, status, adminNotes } = body || {}
+        
+        if (!submissionId || !status) {
+          return { statusCode: 400, body: JSON.stringify({ error: 'Missing submissionId or status' }) }
+        }
 
-			// 更新状态
-			const { error: updErr } = await supabase
-				.from('tool_submissions')
-				.update({
-					status,
-					admin_notes: adminNotes || null,
-					reviewed_by: admin.userId,
-					reviewed_at: new Date().toISOString()
-				})
-				.eq('id', submissionId)
-			if (updErr) return { statusCode: 500, body: updErr.message }
+        if (!['approved', 'rejected'].includes(status)) {
+          return { statusCode: 400, body: JSON.stringify({ error: 'Invalid status' }) }
+        }
 
-			// 审核通过则创建工具
-			if (status === 'approved' && submission) {
-				const insertObj: any = {
-					name: submission.tool_name,
-					tagline: submission.tagline,
-					description: submission.description,
-					website_url: submission.website_url,
-					logo_url: submission.logo_url,
-					categories: submission.categories || [],
-					features: submission.features || [],
-					pricing: submission.pricing || 'Free',
-					featured: false,
-					date_added: new Date().toISOString()
-				}
-				const { error: insErr } = await supabase.from('tools').insert([insertObj])
-				if (insErr) return { statusCode: 500, body: insErr.message }
-			}
+        try {
+          // 获取提交详情
+          const { data: submission, error: fetchErr } = await supabase
+            .from('tool_submissions')
+            .select('*')
+            .eq('id', submissionId)
+            .maybeSingle()
+          
+          if (fetchErr) {
+            console.error('Error fetching submission:', fetchErr)
+            return { statusCode: 500, body: JSON.stringify({ error: fetchErr.message }) }
+          }
 
-			return { statusCode: 200, body: JSON.stringify({ ok: true }) }
-		}
+          if (!submission) {
+            return { statusCode: 404, body: JSON.stringify({ error: 'Submission not found' }) }
+          }
 
-		if (action === 'create_tool') {
-			const tool = body?.tool
-			if (!tool?.name || !tool?.website_url) return { statusCode: 400, body: 'Missing fields' }
-			const payload = {
-				name: tool.name,
-				tagline: tool.tagline || '',
-				description: tool.description || '',
-				website_url: tool.website_url,
-				logo_url: tool.logo_url || null,
-				categories: Array.isArray(tool.categories) ? tool.categories : [],
-				features: Array.isArray(tool.features) ? tool.features : [],
-				pricing: tool.pricing || 'Free',
-				featured: !!tool.featured,
-				date_added: new Date().toISOString()
-			}
-			const { data, error } = await supabase.from('tools').insert([payload]).select('id').maybeSingle()
-			if (error) return { statusCode: 500, body: error.message }
-			return { statusCode: 200, body: JSON.stringify({ id: data?.id }) }
-		}
+          // 更新提交状态
+          const { error: updErr } = await supabase
+            .from('tool_submissions')
+            .update({
+              status,
+              admin_notes: adminNotes || null,
+              reviewed_by: admin.userId,
+              reviewed_at: new Date().toISOString()
+            })
+            .eq('id', submissionId)
 
-		if (action === 'update_tool') {
-			const { id, updates } = body || {}
-			if (!id || !updates) return { statusCode: 400, body: 'Missing id/updates' }
-			const safe: any = {}
-			for (const k of ['name','tagline','description','website_url','logo_url','categories','features','pricing','featured']) {
-				if (k in updates) safe[k] = updates[k]
-			}
-			const { error } = await supabase.from('tools').update(safe).eq('id', id)
-			if (error) return { statusCode: 500, body: error.message }
-			return { statusCode: 200, body: JSON.stringify({ ok: true }) }
-		}
+          if (updErr) {
+            console.error('Error updating submission:', updErr)
+            return { statusCode: 500, body: JSON.stringify({ error: updErr.message }) }
+          }
 
-		if (action === 'delete_tool') {
-			const { id } = body || {}
-			if (!id) return { statusCode: 400, body: 'Missing id' }
-			const { error } = await supabase.from('tools').delete().eq('id', id)
-			if (error) return { statusCode: 500, body: error.message }
-			return { statusCode: 200, body: JSON.stringify({ ok: true }) }
-		}
+          // 如果审核通过，创建工具
+          if (status === 'approved') {
+            const insertObj: any = {
+              name: submission.tool_name,
+              tagline: submission.tagline,
+              description: submission.description || '',
+              website_url: submission.website_url,
+              logo_url: submission.logo_url || null,
+              categories: Array.isArray(submission.categories) ? submission.categories : [],
+              features: Array.isArray(submission.features) ? submission.features : [],
+              pricing: submission.pricing || 'Free',
+              featured: false,
+              date_added: new Date().toISOString(),
+              upvotes: 0,
+              views: 0,
+              rating: 0,
+              review_count: 0
+            }
 
-		return { statusCode: 400, body: 'Unknown action' }
-	} catch (e: any) {
-		return { statusCode: 500, body: e?.message || 'Unexpected error' }
-	}
+            const { error: insErr, data: newTool } = await supabase
+              .from('tools')
+              .insert([insertObj])
+              .select('id')
+              .maybeSingle()
+
+            if (insErr) {
+              console.error('Error creating tool:', insErr)
+              return { statusCode: 500, body: JSON.stringify({ error: insErr.message }) }
+            }
+
+            // 记录操作日志
+            await logAdminAction('approve_submission', 'tool_submission', submissionId, {
+              tool_id: newTool?.id,
+              tool_name: submission.tool_name
+            })
+          } else {
+            // 记录拒绝操作
+            await logAdminAction('reject_submission', 'tool_submission', submissionId, {
+              reason: adminNotes
+            })
+          }
+
+          return { statusCode: 200, body: JSON.stringify({ success: true }) }
+        } catch (error: any) {
+          console.error('Error in review_submission:', error)
+          return { statusCode: 500, body: JSON.stringify({ error: error.message || 'Internal server error' }) }
+        }
+      }
+
+      case 'create_tool': {
+        const tool = body?.tool
+        if (!tool?.name || !tool?.website_url) {
+          return { statusCode: 400, body: JSON.stringify({ error: 'Missing required fields: name, website_url' }) }
+        }
+
+        try {
+          const payload = {
+            name: tool.name.trim(),
+            tagline: (tool.tagline || '').trim(),
+            description: (tool.description || '').trim(),
+            website_url: tool.website_url.trim(),
+            logo_url: tool.logo_url?.trim() || null,
+            categories: Array.isArray(tool.categories) ? tool.categories.filter(Boolean) : [],
+            features: Array.isArray(tool.features) ? tool.features.filter(Boolean) : [],
+            pricing: tool.pricing || 'Free',
+            featured: Boolean(tool.featured),
+            date_added: new Date().toISOString()
+          }
+
+          const { data, error } = await supabase
+            .from('tools')
+            .insert([payload])
+            .select('id')
+            .maybeSingle()
+
+          if (error) {
+            console.error('Error creating tool:', error)
+            return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
+          }
+
+          await logAdminAction('create_tool', 'tool', data?.id, payload)
+          return { statusCode: 200, body: JSON.stringify({ success: true, id: data?.id }) }
+        } catch (error: any) {
+          console.error('Error in create_tool:', error)
+          return { statusCode: 500, body: JSON.stringify({ error: error.message || 'Internal server error' }) }
+        }
+      }
+
+      case 'update_tool': {
+        const { id, updates } = body || {}
+        if (!id || !updates) {
+          return { statusCode: 400, body: JSON.stringify({ error: 'Missing id or updates' }) }
+        }
+
+        try {
+          const safe: any = {}
+          const allowedFields = ['name', 'tagline', 'description', 'website_url', 'logo_url', 'categories', 'features', 'pricing', 'featured']
+          
+          for (const key of allowedFields) {
+            if (key in updates) {
+              if (key === 'categories' || key === 'features') {
+                safe[key] = Array.isArray(updates[key]) ? updates[key].filter(Boolean) : []
+              } else if (key === 'name' || key === 'tagline' || key === 'description' || key === 'website_url' || key === 'logo_url') {
+                safe[key] = typeof updates[key] === 'string' ? updates[key].trim() : updates[key]
+              } else {
+                safe[key] = updates[key]
+              }
+            }
+          }
+
+          if (Object.keys(safe).length === 0) {
+            return { statusCode: 400, body: JSON.stringify({ error: 'No valid fields to update' }) }
+          }
+
+          const { error } = await supabase
+            .from('tools')
+            .update(safe)
+            .eq('id', id)
+
+          if (error) {
+            console.error('Error updating tool:', error)
+            return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
+          }
+
+          await logAdminAction('update_tool', 'tool', id, safe)
+          return { statusCode: 200, body: JSON.stringify({ success: true }) }
+        } catch (error: any) {
+          console.error('Error in update_tool:', error)
+          return { statusCode: 500, body: JSON.stringify({ error: error.message || 'Internal server error' }) }
+        }
+      }
+
+      case 'delete_tool': {
+        const { id } = body || {}
+        if (!id) {
+          return { statusCode: 400, body: JSON.stringify({ error: 'Missing id' }) }
+        }
+
+        try {
+          // 先获取工具信息用于日志
+          const { data: tool } = await supabase
+            .from('tools')
+            .select('name')
+            .eq('id', id)
+            .maybeSingle()
+
+          const { error } = await supabase
+            .from('tools')
+            .delete()
+            .eq('id', id)
+
+          if (error) {
+            console.error('Error deleting tool:', error)
+            return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
+          }
+
+          await logAdminAction('delete_tool', 'tool', id, { name: tool?.name })
+          return { statusCode: 200, body: JSON.stringify({ success: true }) }
+        } catch (error: any) {
+          console.error('Error in delete_tool:', error)
+          return { statusCode: 500, body: JSON.stringify({ error: error.message || 'Internal server error' }) }
+        }
+      }
+
+      case 'create_category': {
+        const category = body?.category
+        if (!category?.name || !category?.slug) {
+          return { statusCode: 400, body: JSON.stringify({ error: 'Missing category name or slug' }) }
+        }
+
+        try {
+          const payload = {
+            name: category.name.trim(),
+            slug: category.slug.trim(),
+            description: category.description?.trim() || null,
+            color: category.color || '#3B82F6',
+            icon: category.icon || 'tool',
+            parent_id: category.parent_id || null,
+            sort_order: category.sort_order || 0,
+            is_active: category.is_active !== false
+          }
+
+          const { data, error } = await supabase
+            .from('categories')
+            .insert([payload])
+            .select('id')
+            .maybeSingle()
+
+          if (error) {
+            console.error('Error creating category:', error)
+            return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
+          }
+
+          await logAdminAction('create_category', 'category', data?.id, payload)
+          return { statusCode: 200, body: JSON.stringify({ success: true, id: data?.id }) }
+        } catch (error: any) {
+          console.error('Error in create_category:', error)
+          return { statusCode: 500, body: JSON.stringify({ error: error.message || 'Internal server error' }) }
+        }
+      }
+
+      case 'update_category': {
+        const { id, updates } = body || {}
+        if (!id || !updates) {
+          return { statusCode: 400, body: JSON.stringify({ error: 'Missing category id or updates' }) }
+        }
+
+        try {
+          const safe: any = {}
+          const allowedFields = ['name', 'slug', 'description', 'color', 'icon', 'parent_id', 'sort_order', 'is_active']
+          
+          for (const key of allowedFields) {
+            if (key in updates) {
+              if (key === 'name' || key === 'slug' || key === 'description' || key === 'color' || key === 'icon') {
+                safe[key] = typeof updates[key] === 'string' ? updates[key].trim() : updates[key]
+              } else {
+                safe[key] = updates[key]
+              }
+            }
+          }
+
+          if (Object.keys(safe).length === 0) {
+            return { statusCode: 400, body: JSON.stringify({ error: 'No valid fields to update' }) }
+          }
+
+          const { error } = await supabase
+            .from('categories')
+            .update(safe)
+            .eq('id', id)
+
+          if (error) {
+            console.error('Error updating category:', error)
+            return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
+          }
+
+          await logAdminAction('update_category', 'category', id, safe)
+          return { statusCode: 200, body: JSON.stringify({ success: true }) }
+        } catch (error: any) {
+          console.error('Error in update_category:', error)
+          return { statusCode: 500, body: JSON.stringify({ error: error.message || 'Internal server error' }) }
+        }
+      }
+
+      case 'delete_category': {
+        const { id } = body || {}
+        if (!id) {
+          return { statusCode: 400, body: JSON.stringify({ error: 'Missing category id' }) }
+        }
+
+        try {
+          // 检查是否有工具使用此分类
+          const { count } = await supabase
+            .from('tools')
+            .select('id', { count: 'exact', head: true })
+            .contains('categories', [id])
+
+          if (count && count > 0) {
+            return { statusCode: 400, body: JSON.stringify({ error: 'Cannot delete category with associated tools' }) }
+          }
+
+          const { error } = await supabase
+            .from('categories')
+            .delete()
+            .eq('id', id)
+
+          if (error) {
+            console.error('Error deleting category:', error)
+            return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
+          }
+
+          await logAdminAction('delete_category', 'category', id)
+          return { statusCode: 200, body: JSON.stringify({ success: true }) }
+        } catch (error: any) {
+          console.error('Error in delete_category:', error)
+          return { statusCode: 500, body: JSON.stringify({ error: error.message || 'Internal server error' }) }
+        }
+      }
+
+      case 'get_categories': {
+        try {
+          const { data: categories, error } = await supabase
+            .from('categories')
+            .select('*')
+            .order('sort_order', { ascending: true })
+            .order('name', { ascending: true })
+
+          if (error) {
+            console.error('Error fetching categories:', error)
+            return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
+          }
+
+          return { statusCode: 200, body: JSON.stringify({ categories }) }
+        } catch (error: any) {
+          console.error('Error in get_categories:', error)
+          return { statusCode: 500, body: JSON.stringify({ error: error.message || 'Internal server error' }) }
+        }
+      }
+
+      default:
+        return { statusCode: 400, body: JSON.stringify({ error: 'Unknown action' }) }
+    }
+  } catch (e: any) {
+    console.error('Admin action error:', e)
+    return { statusCode: 500, body: JSON.stringify({ error: e?.message || 'Internal server error' }) }
+  }
 }
 
 export { handler }

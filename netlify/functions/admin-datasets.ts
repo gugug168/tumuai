@@ -24,24 +24,45 @@ const handler: Handler = async (event) => {
 
     const supabase = createClient(supabaseUrl, serviceKey)
 
-    const [submissions, users, tools, logs] = await Promise.all([
+    const [submissions, users, tools, logs, categories, stats] = await Promise.all([
       supabase.from('tool_submissions').select('*').order('created_at', { ascending: false }).limit(50),
       // 兼容不一致的列结构，避免因某列缺失而导致整个查询返回错误
       supabase.from('user_profiles').select('*').limit(50),
       supabase.from('tools').select('id,name,tagline,website_url,logo_url,categories,features,pricing,featured,date_added,upvotes,views,rating,review_count,created_at,updated_at').order('created_at', { ascending: false }).limit(50),
-      supabase.from('admin_logs').select('id,admin_id,action,target_type,target_id,details,ip_address,user_agent,created_at').order('created_at', { ascending: false }).limit(100)
+      supabase.from('admin_logs').select('id,admin_id,action,target_type,target_id,details,ip_address,user_agent,created_at').order('created_at', { ascending: false }).limit(100),
+      supabase.from('categories').select('*').order('sort_order', { ascending: true }).order('name', { ascending: true }),
+      // 获取统计信息
+      supabase.from('tools').select('id', { count: 'exact', head: true }),
+    ])
+
+    // 获取额外的统计数据
+    const [userCount, submissionCount, pendingCount, categoryCount] = await Promise.all([
+      supabase.from('user_profiles').select('id', { count: 'exact', head: true }),
+      supabase.from('tool_submissions').select('id', { count: 'exact', head: true }),
+      supabase.from('tool_submissions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabase.from('categories').select('id', { count: 'exact', head: true })
     ])
 
     const body = {
       submissions: submissions.data || [],
       users: users.data || [],
       tools: tools.data || [],
-      logs: logs.data || []
+      logs: logs.data || [],
+      categories: categories.data || [],
+      stats: {
+        totalTools: stats.count || 0,
+        totalUsers: userCount.count || 0,
+        totalSubmissions: submissionCount.count || 0,
+        pendingSubmissions: pendingCount.count || 0,
+        totalCategories: categoryCount.count || 0,
+        totalLogs: logs.data?.length || 0
+      }
     }
 
     return { statusCode: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }
   } catch (e: any) {
-    return { statusCode: 500, body: e?.message || 'Unexpected error' }
+    console.error('Admin datasets error:', e)
+    return { statusCode: 500, body: JSON.stringify({ error: e?.message || 'Internal server error' }) }
   }
 }
 

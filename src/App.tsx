@@ -10,7 +10,7 @@ import SubmitToolPage from './pages/SubmitToolPage';
 import AboutPage from './pages/AboutPage';
 import ProfilePage from './pages/ProfilePage';
 import FavoritesPage from './pages/FavoritesPage';
-import AdminDashboard from './pages/AdminDashboard';
+import EnhancedAdminDashboard from './pages/EnhancedAdminDashboard';
 import DiagnosticPage from './pages/DiagnosticPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 
@@ -29,7 +29,7 @@ function App() {
               <Route path="/about" element={<AboutPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/favorites" element={<FavoritesPage />} />
-              <Route path="/admin/*" element={<AdminDashboard />} />
+              <Route path="/admin/*" element={<EnhancedAdminDashboard />} />
               <Route path="/admin-login" element={<AdminLoginPage />} />
               <Route path="/diagnostic" element={<DiagnosticPage />} />
             </Routes>

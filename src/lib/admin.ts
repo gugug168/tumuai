@@ -331,6 +331,65 @@ export async function getAdminLogs(page = 1, limit = 50) {
   }
 }
 
+// 获取分类列表
+export async function getCategories() {
+  try {
+    const token = await ensureAccessToken()
+    const json = await postJSONWithTimeout('/.netlify/functions/admin-actions', {
+      action: 'get_categories'
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    return json?.categories || []
+  } catch (error) {
+    console.error('❌ 获取分类异常:', error)
+    return []
+  }
+}
+
+// 创建分类
+export async function createCategory(category: {
+  name: string
+  slug: string
+  description?: string
+  color?: string
+  icon?: string
+  parent_id?: string
+  sort_order?: number
+  is_active?: boolean
+}) {
+  const token = await ensureAccessToken()
+  return await postJSONWithTimeout('/.netlify/functions/admin-actions', {
+    action: 'create_category',
+    category
+  }, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
+
+// 更新分类
+export async function updateCategory(id: string, updates: Partial<any>) {
+  const token = await ensureAccessToken()
+  return await postJSONWithTimeout('/.netlify/functions/admin-actions', {
+    action: 'update_category',
+    id,
+    updates
+  }, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
+
+// 删除分类
+export async function deleteCategory(id: string) {
+  const token = await ensureAccessToken()
+  return await postJSONWithTimeout('/.netlify/functions/admin-actions', {
+    action: 'delete_category',
+    id
+  }, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
+
 // 新增工具
 export async function createTool(tool: {
   name: string
