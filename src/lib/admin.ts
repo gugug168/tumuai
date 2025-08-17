@@ -59,12 +59,31 @@ async function fetchJSONWithTimeout(
 }
 
 // 等待获取可用的 Access Token（解决页面初始时会话尚未恢复导致的 No session/空数据）
+function readTokenFromLocalStorage(): string | null {
+  try {
+    const key = Object.keys(localStorage).find(k => k.includes('sb-') && k.endsWith('-auth-token'))
+    if (!key) return null
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return parsed?.currentSession?.access_token || parsed?.access_token || null
+  } catch {
+    return null
+  }
+}
+
 async function ensureAccessToken(timeoutMs = 6000): Promise<string> {
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
+    // 1) 先读 supabase 会话
     const { data: sessionRes } = await supabase.auth.getSession()
     const token = sessionRes?.session?.access_token
     if (token) return token
+
+    // 2) 兜底从 localStorage 直接读取（应对会话恢复竞态）
+    const lsToken = readTokenFromLocalStorage()
+    if (lsToken) return lsToken
+
     await new Promise((r) => setTimeout(r, 150))
   }
   throw new Error('No session')
@@ -72,30 +91,36 @@ async function ensureAccessToken(timeoutMs = 6000): Promise<string> {
 
 // 检查用户是否为管理员
 export async function checkAdminStatus(): Promise<AdminUser | null> {
-  const { data: sessionRes } = await supabase.auth.getSession()
-  const accessToken = sessionRes?.session?.access_token
-  const user = sessionRes?.session?.user
-  console.log('🔍 检查用户登录状态:', user?.email)
+  // 容忍会话尚未完全恢复，优先拿 token，再获取用户
+  const token = await ensureAccessToken().catch(() => null)
+  const { data: userRes } = await supabase.auth.getUser()
+  const userId = userRes?.user?.id || null
+  console.log('🔍 检查用户登录状态:', userRes?.user?.email)
 
-  if (!user || !accessToken) {
-    console.log('❌ 用户未登录')
+  if (!token) {
+    console.log('❌ 未获取到 token')
     return null
   }
 
   try {
-    // 优先通过服务端函数校验管理员，避免前端RLS/网络问题
+    // 优先通过服务端函数校验管理员
     const json = await fetchJSONWithTimeout('/.netlify/functions/admin-check', {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
       timeoutMs: 8000
     }).catch(() => null as any)
-    if (json && json.user_id === user.id) return json as AdminUser
+    if (json) {
+      // 如本地拿不到 userId，也直接信任服务端返回
+      if (!userId || json.user_id === userId) return json as AdminUser
+    }
+
+    if (!userId) return null
 
     // 兜底：直接查询（要求 admin_users 有自读策略）
     const { data, error } = await supabase
       .from('admin_users')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single()
 
     if (error) {
