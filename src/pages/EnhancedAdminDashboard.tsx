@@ -29,7 +29,8 @@ import {
   Check,
   ExternalLink,
   Copy,
-  EyeOff
+  EyeOff,
+  Wrench
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -51,6 +52,7 @@ import {
   type ToolSubmission,
   type AdminLog
 } from '../lib/admin';
+import DatabaseRepair from '../components/DatabaseRepair';
 
 interface Category {
   id: string;
@@ -308,7 +310,8 @@ const EnhancedAdminDashboard = () => {
     { id: 'submissions', label: '工具审核', icon: FileText, count: stats.pendingSubmissions },
     { id: 'tools', label: '工具管理', icon: Database },
     { id: 'categories', label: '分类管理', icon: Tag },
-    { id: 'users', label: '用户管理', icon: Users }
+    { id: 'users', label: '用户管理', icon: Users },
+    { id: 'repair', label: '数据库修复', icon: Wrench }
   ];
 
   if (loading) {
@@ -734,6 +737,14 @@ const EnhancedAdminDashboard = () => {
                     </table>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* 数据库修复 */}
+            {activeTab === 'repair' && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">数据库修复</h3>
+                <DatabaseRepair />
               </div>
             )}
           </div>

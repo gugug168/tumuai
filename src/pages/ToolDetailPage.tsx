@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   ExternalLink, 
@@ -15,6 +15,7 @@ import {
   Home,
   ChevronRight
 } from 'lucide-react';
+import { addToFavorites, removeFromFavorites, isFavorited, addToolReview, getToolReviews } from '../lib/community';
 
 // 模拟工具数据
 const toolsData = {
@@ -466,10 +467,44 @@ const ToolDetailPage = () => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [isFavoritedTool, setIsFavoritedTool] = useState(false);
+  const [loadingFavorite, setLoadingFavorite] = useState(false);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(true);
   
   // 模拟获取工具数据
   const tool = toolsData[parseInt(toolId || '1') as keyof typeof toolsData];
+  const toolIdAsString = toolId || '1';
   
+  useEffect(() => {
+    if (tool) {
+      checkFavoriteStatus();
+      loadReviews();
+    }
+  }, [toolIdAsString, tool]);
+
+  const checkFavoriteStatus = async () => {
+    try {
+      const favorited = await isFavorited(toolIdAsString);
+      setIsFavoritedTool(favorited);
+    } catch (error) {
+      console.error('检查收藏状态失败:', error);
+    }
+  };
+
+  const loadReviews = async () => {
+    try {
+      setLoadingReviews(true);
+      const reviewsData = await getToolReviews(toolIdAsString);
+      setReviews(reviewsData || []);
+    } catch (error) {
+      console.error('加载评论失败:', error);
+      setReviews([]);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
+
   if (!tool) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -484,12 +519,38 @@ const ToolDetailPage = () => {
     );
   }
 
-  const handleSubmitReview = (e: React.FormEvent) => {
+  const handleToggleFavorite = async () => {
+    try {
+      setLoadingFavorite(true);
+      if (isFavoritedTool) {
+        await removeFromFavorites(toolIdAsString);
+        setIsFavoritedTool(false);
+      } else {
+        await addToFavorites(toolIdAsString);
+        setIsFavoritedTool(true);
+      }
+    } catch (error) {
+      console.error('收藏操作失败:', error);
+      alert('操作失败，请稍后重试');
+    } finally {
+      setLoadingFavorite(false);
+    }
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 这里处理评论提交逻辑
-    console.log('提交评论:', newReview);
-    setNewReview({ rating: 5, comment: '' });
-    alert('评论提交成功！');
+    try {
+      await addToolReview(toolIdAsString, {
+        rating: newReview.rating,
+        content: newReview.comment
+      });
+      setNewReview({ rating: 5, comment: '' });
+      await loadReviews();
+      alert('评论提交成功！');
+    } catch (error) {
+      console.error('评论提交失败:', error);
+      alert('评论提交失败，请稍后重试');
+    }
   };
 
   return (
@@ -562,9 +623,19 @@ const ToolDetailPage = () => {
                 访问官网
                 <ExternalLink className="ml-2 w-4 h-4" />
               </a>
-              <button className="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors flex items-center justify-center">
-                <Heart className="mr-2 w-4 h-4" />
-                收藏工具
+              <button
+                onClick={handleToggleFavorite}
+                disabled={loadingFavorite}
+                className={`px-6 py-3 rounded-lg font-semibold flex items-center justify-center transition-colors ${
+                  isFavoritedTool
+                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                } ${loadingFavorite ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <Heart
+                  className={`mr-2 w-4 h-4 ${isFavoritedTool ? 'fill-current text-red-500' : ''}`}
+                />
+                {loadingFavorite ? '处理中...' : isFavoritedTool ? '已收藏' : '收藏工具'}
               </button>
             </div>
           </div>
@@ -729,38 +800,44 @@ const ToolDetailPage = () => {
               </form>
 
               {/* 评论列表 */}
-              <div className="space-y-6">
-                {reviews.map((review) => (
-                  <div key={review.id} className="border-b border-gray-200 pb-6 last:border-b-0">
-                    <div className="flex items-start space-x-4">
-                      <img
-                        src={review.avatar}
-                        alt={review.user}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <h4 className="font-semibold text-gray-900">{review.user}</h4>
-                          <div className="flex items-center space-x-1">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Star
-                                key={star}
-                                className={`w-4 h-4 ${
-                                  star <= review.rating
-                                    ? 'text-yellow-400 fill-current'
-                                    : 'text-gray-300'
-                                }`}
-                              />
-                            ))}
+              {loadingReviews ? (
+                <div className="text-center py-8 text-gray-500">加载评论中...</div>
+              ) : reviews.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">暂无评论，快来发表第一条评论吧！</div>
+              ) : (
+                <div className="space-y-6">
+                  {reviews.map((review) => (
+                    <div key={review.id} className="border-b border-gray-200 pb-6 last:border-b-0">
+                      <div className="flex items-start space-x-4">
+                        <img
+                          src={review.user_profiles?.avatar_url || 'https://images.pexels.com/photos/3785079/pexels-photo-3785079.jpeg?auto=compress&cs=tinysrgb&w=50'}
+                          alt={review.user_profiles?.full_name || '用户'}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <h4 className="font-semibold text-gray-900">{review.user_profiles?.full_name || '匿名用户'}</h4>
+                            <div className="flex items-center space-x-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`w-4 h-4 ${
+                                    star <= review.rating
+                                      ? 'text-yellow-400 fill-current'
+                                      : 'text-gray-300'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-sm text-gray-500">{new Date(review.created_at).toLocaleDateString('zh-CN')}</span>
                           </div>
-                          <span className="text-sm text-gray-500">{review.date}</span>
+                          <p className="text-gray-700 leading-relaxed">{review.content || review.comment}</p>
                         </div>
-                        <p className="text-gray-700 leading-relaxed">{review.comment}</p>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
