@@ -69,10 +69,26 @@ const AdminDashboard = () => {
       
       console.log('✅ 管理员权限验证通过');
       
-      // 分步加载数据，避免阻塞
-      await Promise.all([loadStats(), loadSubmissions(), loadUsers(), loadTools(), loadLogs()]);
+      // 分步加载数据，避免阻塞；增加硬性超时，避免某个Promise永久悬挂
+      const loaders = [
+        loadStats(),
+        loadSubmissions(),
+        loadUsers(),
+        loadTools(),
+        loadLogs()
+      ].map(p => p.catch((e) => console.error('❌ 子任务失败:', e)))
 
-      console.log('🎉 所有管理数据加载完成');
+      const hardCap = new Promise<void>((resolve) => setTimeout(() => {
+        console.warn('⏱️ 管理数据加载达到硬性超时(10s)，继续渲染已到达的数据')
+        resolve()
+      }, 10000))
+
+      await Promise.race([
+        Promise.allSettled(loaders).then(() => undefined),
+        hardCap
+      ])
+
+      console.log('🎉 管理数据加载流程结束（全部完成或达成硬性超时）');
     } catch (error: any) {
       console.error('❌ 管理数据加载失败:', error);
       setError(`管理数据加载失败: ${error.message || '请检查网络连接或联系技术支持'}`);
