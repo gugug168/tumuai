@@ -158,15 +158,28 @@ const handler: Handler = async (event) => {
               category_id: submission.category_id || primaryId || null
             }
 
-            const { error: insErr, data: newTool } = await supabase
+            // 首次尝试插入（包含 categories）
+            let { error: insErr, data: newTool } = await supabase
               .from('tools')
               .insert([insertObj])
               .select('id')
               .maybeSingle()
 
+            // 若失败（常见是 categories 类型不匹配），回退为最小插入再补充更新
             if (insErr) {
-              console.error('Error creating tool:', insErr)
-              return { statusCode: 500, body: JSON.stringify({ error: insErr.message }) }
+              console.warn('Insert with categories failed, retrying without categories:', insErr.message)
+              const { categories, ...minInsert } = insertObj
+              const retry = await supabase
+                .from('tools')
+                .insert([minInsert])
+                .select('id')
+                .maybeSingle()
+              insErr = retry.error as any
+              newTool = retry.data as any
+              if (insErr) {
+                console.error('Error creating tool after fallback:', insErr)
+                return { statusCode: 500, body: JSON.stringify({ error: insErr.message }) }
+              }
             }
 
             // 记录操作日志
@@ -212,15 +225,27 @@ const handler: Handler = async (event) => {
             category_id: (tool as any).category_id || primaryId || null
           }
 
-          const { data, error } = await supabase
+          // 首次插入，若失败则去掉 categories 再尝试
+          let { data, error } = await supabase
             .from('tools')
             .insert([payload])
             .select('id')
             .maybeSingle()
 
           if (error) {
-            console.error('Error creating tool:', error)
-            return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
+            console.warn('Insert tool with categories failed, retrying without categories:', error.message)
+            const { categories, ...minPayload } = payload as any
+            const retry = await supabase
+              .from('tools')
+              .insert([minPayload])
+              .select('id')
+              .maybeSingle()
+            error = retry.error as any
+            data = retry.data as any
+            if (error) {
+              console.error('Error creating tool after fallback:', error)
+              return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
+            }
           }
 
           await logAdminAction('create_tool', 'tool', data?.id, payload)
