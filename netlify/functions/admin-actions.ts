@@ -73,6 +73,25 @@ const handler: Handler = async (event) => {
       }
     }
 
+    // 将分类名称/混合输入解析为分类ID数组，并返回主分类ID
+    async function resolveCategoryIds(input: unknown): Promise<{ ids: string[]; primaryId: string | null }> {
+      const raw = Array.isArray(input) ? input.filter(Boolean) : []
+      if (raw.length === 0) return { ids: [], primaryId: null }
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      const preUuids = raw.filter((v: any) => typeof v === 'string' && uuidRe.test(v)) as string[]
+      const names = raw.filter((v: any) => typeof v === 'string' && !uuidRe.test(v)) as string[]
+      let foundIds: string[] = [...preUuids]
+      if (names.length > 0) {
+        const { data: cats } = await supabase
+          .from('categories')
+          .select('id,name')
+          .in('name', names)
+        if (cats && cats.length) foundIds = foundIds.concat(cats.map(c => c.id))
+      }
+      const uniqueIds = Array.from(new Set(foundIds))
+      return { ids: uniqueIds, primaryId: uniqueIds[0] || null }
+    }
+
     switch (action) {
       case 'review_submission': {
         const { submissionId, status, adminNotes } = body || {}
@@ -120,20 +139,22 @@ const handler: Handler = async (event) => {
 
           // 如果审核通过，创建工具
           if (status === 'approved') {
+            const { ids: categoryIds, primaryId } = await resolveCategoryIds(submission.categories)
             const insertObj: Record<string, unknown> = {
               name: submission.tool_name,
               tagline: submission.tagline,
               description: submission.description || '',
               website_url: submission.website_url,
               logo_url: submission.logo_url || null,
-              categories: Array.isArray(submission.categories) ? submission.categories : [],
+              categories: categoryIds,
               features: Array.isArray(submission.features) ? submission.features : [],
               pricing: submission.pricing || 'Free',
               featured: false,
               date_added: new Date().toISOString(),
               upvotes: 0,
               views: 0,
-              rating: 0
+              rating: 0,
+              category_id: submission.category_id || primaryId || null
             }
 
             const { error: insErr, data: newTool } = await supabase
@@ -174,17 +195,19 @@ const handler: Handler = async (event) => {
         }
 
         try {
+          const { ids: categoryIds, primaryId } = await resolveCategoryIds(tool.categories || [])
           const payload = {
             name: tool.name.trim(),
             tagline: (tool.tagline || '').trim(),
             description: (tool.description || '').trim(),
             website_url: tool.website_url.trim(),
             logo_url: tool.logo_url?.trim() || null,
-            categories: Array.isArray(tool.categories) ? tool.categories.filter(Boolean) : [],
+            categories: categoryIds,
             features: Array.isArray(tool.features) ? tool.features.filter(Boolean) : [],
             pricing: tool.pricing || 'Free',
             featured: Boolean(tool.featured),
-            date_added: new Date().toISOString()
+            date_added: new Date().toISOString(),
+            category_id: (tool as any).category_id || primaryId || null
           }
 
           const { data, error } = await supabase
