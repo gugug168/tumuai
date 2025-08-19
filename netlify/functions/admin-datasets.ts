@@ -13,7 +13,7 @@ async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?
 
 const handler: Handler = async (event) => {
   try {
-    const supabaseUrl = process.env.VITE_SUPABASE_URL as string
+    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) as string
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
     if (!supabaseUrl || !serviceKey) return { statusCode: 500, body: 'Missing Supabase server config' }
 
@@ -28,7 +28,8 @@ const handler: Handler = async (event) => {
       supabase.from('tool_submissions').select('*').order('created_at', { ascending: false }).limit(50),
       // 兼容不一致的列结构，避免因某列缺失而导致整个查询返回错误
       supabase.from('user_profiles').select('*').limit(50),
-      supabase.from('tools').select('id,name,tagline,website_url,logo_url,categories,features,pricing,featured,date_added,upvotes,views,rating,review_count,created_at,updated_at').order('created_at', { ascending: false }).limit(50),
+      // 使用 * 避免列名不一致导致查询失败
+      supabase.from('tools').select('*').order('created_at', { ascending: false }).limit(50),
       supabase.from('admin_logs').select('id,admin_id,action,target_type,target_id,details,ip_address,user_agent,created_at').order('created_at', { ascending: false }).limit(100),
       supabase.from('categories').select('*').order('sort_order', { ascending: true }).order('name', { ascending: true }),
       // 获取统计信息
@@ -46,7 +47,11 @@ const handler: Handler = async (event) => {
     const body = {
       submissions: submissions.data || [],
       users: users.data || [],
-      tools: tools.data || [],
+      tools: (tools.data || []).map((t: any) => ({
+        ...t,
+        reviews_count: (t as any).reviews_count ?? (t as any).review_count ?? 0,
+        review_count: (t as any).review_count ?? (t as any).reviews_count ?? 0,
+      })),
       logs: logs.data || [],
       categories: categories.data || [],
       stats: {

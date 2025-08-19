@@ -31,7 +31,7 @@ async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?
 
 const handler: Handler = async (event) => {
   try {
-    const supabaseUrl = process.env.VITE_SUPABASE_URL as string
+    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) as string
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
     
     if (!supabaseUrl || !serviceKey) {
@@ -58,7 +58,7 @@ const handler: Handler = async (event) => {
     const action = body?.action as string
 
     // 记录管理员操作日志
-    async function logAdminAction(actionType: string, targetType: string, targetId?: string, details?: any) {
+    async function logAdminAction(actionType: string, targetType: string, targetId?: string, details?: Record<string, unknown>) {
       try {
         await supabase.from('admin_logs').insert([{
           admin_id: admin.id,
@@ -120,7 +120,7 @@ const handler: Handler = async (event) => {
 
           // 如果审核通过，创建工具
           if (status === 'approved') {
-            const insertObj: any = {
+            const insertObj: Record<string, unknown> = {
               name: submission.tool_name,
               tagline: submission.tagline,
               description: submission.description || '',
@@ -133,8 +133,7 @@ const handler: Handler = async (event) => {
               date_added: new Date().toISOString(),
               upvotes: 0,
               views: 0,
-              rating: 0,
-              review_count: 0
+              rating: 0
             }
 
             const { error: insErr, data: newTool } = await supabase
@@ -161,9 +160,10 @@ const handler: Handler = async (event) => {
           }
 
           return { statusCode: 200, body: JSON.stringify({ success: true }) }
-        } catch (error: any) {
+        } catch (error) {
           console.error('Error in review_submission:', error)
-          return { statusCode: 500, body: JSON.stringify({ error: error.message || 'Internal server error' }) }
+          const errorMessage = error instanceof Error ? error.message : 'Internal server error'
+          return { statusCode: 500, body: JSON.stringify({ error: errorMessage }) }
         }
       }
 

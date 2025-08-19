@@ -9,7 +9,7 @@ const handler: Handler = async (event) => {
       return { statusCode: 403, body: 'Forbidden' }
     }
 
-    const supabaseUrl = process.env.VITE_SUPABASE_URL as string
+    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) as string
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
     if (!supabaseUrl || !serviceKey) {
       return { statusCode: 500, body: 'Missing Supabase server config' }
