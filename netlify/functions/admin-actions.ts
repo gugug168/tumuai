@@ -154,6 +154,7 @@ const handler: Handler = async (event) => {
               upvotes: 0,
               views: 0,
               rating: 0,
+              status: 'published',
               category_id: submission.category_id || primaryId || null
             }
 
@@ -207,6 +208,7 @@ const handler: Handler = async (event) => {
             pricing: tool.pricing || 'Free',
             featured: Boolean(tool.featured),
             date_added: new Date().toISOString(),
+            status: 'published',
             category_id: (tool as any).category_id || primaryId || null
           }
 
