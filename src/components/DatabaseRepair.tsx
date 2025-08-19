@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Wrench, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const DatabaseRepair = () => {
   const [repairing, setRepairing] = useState(false);
@@ -12,7 +13,9 @@ const DatabaseRepair = () => {
     setResult(null);
 
     try {
-      const token = localStorage.getItem('auth-token') || '';
+      // 使用 Supabase 会话令牌（避免 401）
+      const { data: sessionRes } = await supabase.auth.getSession();
+      const token = sessionRes?.session?.access_token || '';
       
       const response = await fetch('/.netlify/functions/db-repair', {
         method: 'POST',
@@ -45,7 +48,8 @@ const DatabaseRepair = () => {
 
   const verifyCategories = async () => {
     try {
-      const token = localStorage.getItem('auth-token') || '';
+      const { data: sessionRes } = await supabase.auth.getSession();
+      const token = sessionRes?.session?.access_token || '';
       
       const response = await fetch('/.netlify/functions/admin-categories', {
         method: 'POST',
