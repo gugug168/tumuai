@@ -10,12 +10,22 @@
       "Bash(netlify logs:*)",
       "Bash(curl:*)",
       "WebFetch(domain:docs.netlify.com)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(supabase link:*)",
+      "Bash(supabase db pull:*)",
+      "Bash(supabase migration repair:*)",
+      "Bash(supabase db remote commit:*)",
+      "Bash(supabase db dump:*)",
+      "mcp__chrome-mcp__chrome_navigate",
+      "WebFetch(domain:tumuai.net)",
+      "Bash(supabase:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": [],
     "additionalDirectories": [
       "E:\\e"
     ]
-  }
+  },
+  "outputStyle": "Learning"
 }
