@@ -127,7 +127,7 @@ const handler: Handler = async (event) => {
             .update({
               status,
               admin_notes: adminNotes || null,
-              reviewed_by: admin.userId,
+              reviewed_by: admin.id,
               reviewed_at: new Date().toISOString()
             })
             .eq('id', submissionId)
