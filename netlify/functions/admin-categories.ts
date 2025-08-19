@@ -16,6 +16,11 @@ export async function handler(event, context) {
 
   try {
     const { action, data } = JSON.parse(event.body || '{}')
+
+    function toSlug(name: string): string {
+      const base = (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+      return base && base !== '-' ? base : `c-${Math.random().toString(36).slice(2, 8)}`
+    }
     const authHeader = event.headers.authorization
     
     // 验证管理员权限
@@ -69,6 +74,7 @@ export async function handler(event, context) {
           .from('categories')
           .insert([{
             name: data.name,
+            slug: data.slug || toSlug(data.name),
             description: data.description,
             icon: data.icon,
             color: data.color,
@@ -87,6 +93,7 @@ export async function handler(event, context) {
           .from('categories')
           .update({
             name: data.name,
+            slug: data.slug || toSlug(data.name),
             description: data.description,
             icon: data.icon,
             color: data.color,

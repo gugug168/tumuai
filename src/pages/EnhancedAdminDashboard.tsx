@@ -53,6 +53,7 @@ import {
   type AdminLog
 } from '../lib/admin';
 import DatabaseRepair from '../components/DatabaseRepair';
+import ToolManagementModal from '../components/ToolManagementModal';
 
 interface Category {
   id: string;
@@ -750,6 +751,15 @@ const EnhancedAdminDashboard = () => {
           </div>
         </div>
       </div>
+      {/* 工具创建/编辑弹窗 */}
+      <ToolManagementModal
+        isOpen={showToolModal || !!editingTool}
+        onClose={() => { setShowToolModal(false); setEditingTool(null) }}
+        onSave={() => { loadData() }}
+        tool={editingTool as any}
+        categories={categories.map(c => ({ id: c.id, name: c.name }))}
+        mode={editingTool ? 'edit' : 'create'}
+      />
     </div>
   );
 };
