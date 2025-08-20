@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
-  process.env.SUPABASE_URL!,
+  (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL)!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
@@ -21,7 +21,7 @@ export async function handler(event, context) {
       const base = (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
       return base && base !== '-' ? base : `c-${Math.random().toString(36).slice(2, 8)}`
     }
-    const authHeader = event.headers.authorization
+    const authHeader = event.headers.authorization || event.headers.Authorization
     
     // 验证管理员权限
     if (!authHeader) {
