@@ -46,12 +46,19 @@ export async function handler(event, context) {
       .from('admin_users')
       .select('id')
       .eq('user_id', userData.user.id)
-      .single()
+      .maybeSingle()
 
     if (adminError || !adminData) {
-      return {
-        statusCode: 403,
-        body: JSON.stringify({ error: '无管理员权限' })
+      const { count } = await supabase
+        .from('admin_users')
+        .select('id', { count: 'exact', head: true })
+      if (!count || count === 0) {
+        await supabase.from('admin_users').insert([{ user_id: userData.user.id, role: 'super_admin', permissions: {} }])
+      } else {
+        return {
+          statusCode: 403,
+          body: JSON.stringify({ error: '无管理员权限' })
+        }
       }
     }
 
