@@ -24,22 +24,46 @@ const handler: Handler = async (event) => {
     }
 
     const userId = userRes.user.id
-
+    
+    // 查找现有管理员
     const { data, error } = await supabase
       .from('admin_users')
       .select('id,user_id,role,permissions,created_at,updated_at')
       .eq('user_id', userId)
       .maybeSingle()
-
     if (error) {
       return { statusCode: 500, body: error.message }
     }
-
-    return {
-      statusCode: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(data || null)
+    if (data) {
+      return {
+        statusCode: 200,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(data)
+      }
     }
+
+    // 若还没有任何管理员，自动将当前用户设为 super_admin，避免首次登录卡住
+    const { count } = await supabase
+      .from('admin_users')
+      .select('id', { count: 'exact', head: true })
+    if (!count || count === 0) {
+      const { data: created, error: insErr } = await supabase
+        .from('admin_users')
+        .insert([{ user_id: userId, role: 'super_admin', permissions: {} }])
+        .select('id,user_id,role,permissions,created_at,updated_at')
+        .maybeSingle()
+      if (insErr) {
+        return { statusCode: 500, body: insErr.message }
+      }
+      return {
+        statusCode: 200,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(created)
+      }
+    }
+
+    // 否则不是管理员
+    return { statusCode: 403, body: 'Forbidden' }
   } catch (e: any) {
     return { statusCode: 500, body: e?.message || 'Unexpected error' }
   }
