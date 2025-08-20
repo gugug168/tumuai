@@ -1,0 +1,442 @@
+# Page snapshot
+
+```yaml
+- banner:
+  - link "Civil AI Hub 土木AI之家":
+    - /url: /
+    - img
+    - heading "Civil AI Hub" [level=1]
+    - paragraph: 土木AI之家
+  - img
+  - textbox "搜索AI工具、BIM软件、计算工具..."
+  - navigation:
+    - link "首页":
+      - /url: /
+    - link "工具中心":
+      - /url: /tools
+    - link "提交工具":
+      - /url: /submit
+    - link "关于我们":
+      - /url: /about
+    - link "提交你的工具":
+      - /url: /submit
+    - button "登录"
+    - button "注册"
+- main:
+  - img
+  - heading "管理员控制台" [level=1]
+  - button "刷新数据":
+    - img
+    - text: 刷新数据
+  - img
+  - term: 工具总数
+  - definition: "23"
+  - img
+  - term: 用户总数
+  - definition: "4"
+  - img
+  - term: 待审核
+  - definition: "0"
+  - img
+  - term: 分类总数
+  - definition: "0"
+  - navigation:
+    - button "概览":
+      - img
+      - text: 概览
+    - button "工具审核0":
+      - img
+      - text: 工具审核0
+    - button "工具管理":
+      - img
+      - text: 工具管理
+    - button "分类管理":
+      - img
+      - text: 分类管理
+    - button "用户管理":
+      - img
+      - text: 用户管理
+    - button "数据库修复":
+      - img
+      - text: 数据库修复
+  - heading "工具管理" [level=3]
+  - button "新增工具":
+    - img
+    - text: 新增工具
+  - table:
+    - rowgroup:
+      - row "名称 分类 定价 状态 操作":
+        - cell "名称"
+        - cell "分类"
+        - cell "定价"
+        - cell "状态"
+        - cell "操作"
+    - rowgroup:
+      - row "施工安全监控 基于计算机视觉的施工现场安全监控 智能施工管理 Paid 普通":
+        - cell "施工安全监控 基于计算机视觉的施工现场安全监控"
+        - cell "智能施工管理"
+        - cell "Paid"
+        - cell "普通"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://safetyvision.com
+            - img
+      - row "StructuralGPT 基于AI的结构设计助手，快速生成结构方案 AI结构设计 Freemium 精选":
+        - cell "StructuralGPT 基于AI的结构设计助手，快速生成结构方案"
+        - cell "AI结构设计"
+        - cell "Freemium"
+        - cell "精选"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://structuralgpt.com
+            - img
+      - row "BIM智能建模 利用AI技术自动生成BIM模型 BIM软件 Paid 精选":
+        - cell "BIM智能建模 利用AI技术自动生成BIM模型"
+        - cell "BIM软件"
+        - cell "Paid"
+        - cell "精选"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://bimaimodeling.com
+            - img
+      - row "智能造价估算 基于历史数据的工程造价快速估算 效率工具 Paid 精选":
+        - cell "智能造价估算 基于历史数据的工程造价快速估算"
+        - cell "效率工具"
+        - cell "Paid"
+        - cell "精选"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://smartcostestimate.com
+            - img
+      - row "施工进度AI 智能项目管理工具，优化施工进度安排 智能施工管理 Paid 精选":
+        - cell "施工进度AI 智能项目管理工具，优化施工进度安排"
+        - cell "智能施工管理"
+        - cell "Paid"
+        - cell "精选"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://constructionai.com
+            - img
+      - row "CAD智能绘图 基于自然语言的CAD绘图工具 图纸处理 Free 普通":
+        - cell "CAD智能绘图 基于自然语言的CAD绘图工具"
+        - cell "图纸处理"
+        - cell "Free"
+        - cell "普通"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://smartcad.com
+            - img
+      - row "材料检测AI 利用计算机视觉进行材料质量检测 岩土工程 Trial 普通":
+        - cell "材料检测AI 利用计算机视觉进行材料质量检测"
+        - cell "岩土工程"
+        - cell "Trial"
+        - cell "普通"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://materialai.com
+            - img
+      - row "项目协作平台 专为土木工程项目设计的智能协作平台 项目管理 Freemium 普通":
+        - cell "项目协作平台 专为土木工程项目设计的智能协作平台"
+        - cell "项目管理"
+        - cell "Freemium"
+        - cell "普通"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://projectcollab.com
+            - img
+      - row "工程资料管理 智能化的工程文档和资料管理系统 资料管理 Paid 普通":
+        - cell "工程资料管理 智能化的工程文档和资料管理系统"
+        - cell "资料管理"
+        - cell "Paid"
+        - cell "普通"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://docmanager.com
+            - img
+      - row "地质勘探AI 基于机器学习的地质数据分析工具 岩土工程 Paid 普通":
+        - cell "地质勘探AI 基于机器学习的地质数据分析工具"
+        - cell "岩土工程"
+        - cell "Paid"
+        - cell "普通"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://geoai.com
+            - img
+      - row "钢筋配筋优化 智能钢筋配筋计算和优化工具 AI结构设计 Trial 普通":
+        - cell "钢筋配筋优化 智能钢筋配筋计算和优化工具"
+        - cell "AI结构设计"
+        - cell "Trial"
+        - cell "普通"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://rebaroptimizer.com
+            - img
+      - row "混凝土强度预测 利用机器学习预测混凝土强度发展 岩土工程 Free 普通":
+        - cell "混凝土强度预测 利用机器学习预测混凝土强度发展"
+        - cell "岩土工程"
+        - cell "Free"
+        - cell "普通"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://concretestrength.com
+            - img
+      - row "智能造价估算 基于历史数据的工程造价快速估算 效率工具 Paid 精选":
+        - cell "智能造价估算 基于历史数据的工程造价快速估算"
+        - cell "效率工具"
+        - cell "Paid"
+        - cell "精选"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://smartcostestimate.com
+            - img
+      - row "施工进度AI 智能项目管理工具，优化施工进度安排 智能施工管理 Paid 精选":
+        - cell "施工进度AI 智能项目管理工具，优化施工进度安排"
+        - cell "智能施工管理"
+        - cell "Paid"
+        - cell "精选"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://constructionai.com
+            - img
+      - row "CAD智能绘图 基于自然语言的CAD绘图工具 图纸处理 Free 普通":
+        - cell "CAD智能绘图 基于自然语言的CAD绘图工具"
+        - cell "图纸处理"
+        - cell "Free"
+        - cell "普通"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://smartcad.com
+            - img
+      - row "材料检测AI 利用计算机视觉进行材料质量检测 岩土工程 Trial 普通":
+        - cell "材料检测AI 利用计算机视觉进行材料质量检测"
+        - cell "岩土工程"
+        - cell "Trial"
+        - cell "普通"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://materialai.com
+            - img
+      - row "项目协作平台 专为土木工程项目设计的智能协作平台 项目管理 Freemium 普通":
+        - cell "项目协作平台 专为土木工程项目设计的智能协作平台"
+        - cell "项目管理"
+        - cell "Freemium"
+        - cell "普通"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://projectcollab.com
+            - img
+      - row "工程资料管理 智能化的工程文档和资料管理系统 资料管理 Paid 普通":
+        - cell "工程资料管理 智能化的工程文档和资料管理系统"
+        - cell "资料管理"
+        - cell "Paid"
+        - cell "普通"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://docmanager.com
+            - img
+      - row "地质勘探AI 基于机器学习的地质数据分析工具 岩土工程 Paid 普通":
+        - cell "地质勘探AI 基于机器学习的地质数据分析工具"
+        - cell "岩土工程"
+        - cell "Paid"
+        - cell "普通"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://geoai.com
+            - img
+      - row "钢筋配筋优化 智能钢筋配筋计算和优化工具 AI结构设计 Trial 普通":
+        - cell "钢筋配筋优化 智能钢筋配筋计算和优化工具"
+        - cell "AI结构设计"
+        - cell "Trial"
+        - cell "普通"
+        - cell:
+          - button:
+            - img
+          - button:
+            - img
+          - link:
+            - /url: https://rebaroptimizer.com
+            - img
+  - heading "新增工具" [level=2]
+  - button:
+    - img
+  - img
+  - text: HTTP 500 工具名称 *
+  - textbox "例如：AutoCAD": E2E工具7294
+  - text: 一句话简介 *
+  - textbox "例如：专业的CAD设计软件": 端到端测试工具
+  - text: 详细描述
+  - textbox "详细介绍工具的功能和特点..."
+  - text: 官网地址 *
+  - textbox "https://example.com"
+  - text: Logo地址
+  - textbox "https://example.com/logo.png"
+  - text: 定价模式 *
+  - combobox:
+    - option "免费" [selected]
+    - option "免费增值"
+    - option "付费"
+    - option "试用"
+  - text: 状态
+  - checkbox "设为精选"
+  - text: 设为精选 所属分类
+  - checkbox "结构设计"
+  - text: 结构设计
+  - checkbox "设计软件"
+  - text: 设计软件
+  - checkbox "施工管理"
+  - text: 施工管理
+  - checkbox "测量工具"
+  - text: 测量工具
+  - checkbox "造价预算"
+  - text: 造价预算
+  - checkbox "BIM建模"
+  - text: BIM建模
+  - checkbox "造价软件"
+  - text: 造价软件
+  - checkbox "岩土工程"
+  - text: 岩土工程
+  - checkbox "检测试验"
+  - text: 检测试验
+  - checkbox "市政工程"
+  - text: 市政工程
+  - checkbox "文档管理"
+  - text: 文档管理
+  - checkbox "效率工具"
+  - text: 效率工具 功能特性
+  - textbox "添加功能特性..."
+  - button:
+    - img
+  - button "取消"
+  - button "创建工具":
+    - img
+    - text: 创建工具
+- contentinfo:
+  - img
+  - heading "Civil AI Hub" [level=3]
+  - paragraph: 土木AI之家
+  - paragraph: 专为土木工程师打造的AI工具导航平台，汇集最新最实用的专业工具，助力工程师提升工作效率。
+  - link:
+    - /url: "#"
+    - img
+  - link:
+    - /url: "#"
+    - img
+  - link:
+    - /url: "#"
+    - img
+  - link:
+    - /url: "#"
+    - img
+  - heading "快速导航" [level=4]
+  - list:
+    - listitem:
+      - link "工具分类":
+        - /url: "#"
+    - listitem:
+      - link "最新工具":
+        - /url: "#"
+    - listitem:
+      - link "热门推荐":
+        - /url: "#"
+    - listitem:
+      - link "提交工具":
+        - /url: "#"
+    - listitem:
+      - link "使用指南":
+        - /url: "#"
+  - heading "支持与帮助" [level=4]
+  - list:
+    - listitem:
+      - link "联系我们":
+        - /url: "#"
+    - listitem:
+      - link "意见反馈":
+        - /url: "#"
+    - listitem:
+      - link "隐私政策":
+        - /url: "#"
+    - listitem:
+      - link "服务条款":
+        - /url: "#"
+    - listitem:
+      - link "常见问题":
+        - /url: "#"
+  - paragraph: © 2024 Civil AI Hub. 保留所有权利。
+  - paragraph: 专业服务土木工程师社区
+```
