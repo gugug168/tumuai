@@ -7,8 +7,14 @@ async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?
   const { data: userRes } = await supabase.auth.getUser(accessToken)
   const userId = userRes?.user?.id
   if (!userId) return null
-  const { data } = await supabase.from('admin_users').select('id,user_id').eq('user_id', userId).maybeSingle()
-  return data ? { userId } : null
+  const { data: adminRow } = await supabase.from('admin_users').select('id,user_id').eq('user_id', userId).maybeSingle()
+  if (adminRow) return { userId }
+  const { count } = await supabase.from('admin_users').select('id', { count: 'exact', head: true })
+  if (!count || count === 0) {
+    await supabase.from('admin_users').insert([{ user_id: userId, role: 'super_admin', permissions: {} }])
+    return { userId }
+  }
+  return null
 }
 
 const handler: Handler = async (event) => {
