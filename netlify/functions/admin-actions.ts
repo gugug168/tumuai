@@ -334,14 +334,18 @@ const handler: Handler = async (event) => {
 
       case 'create_category': {
         const category = body?.category
-        if (!category?.name || !category?.slug) {
-          return { statusCode: 400, body: JSON.stringify({ error: 'Missing category name or slug' }) }
+        if (!category?.name) {
+          return { statusCode: 400, body: JSON.stringify({ error: 'Missing category name' }) }
         }
 
         try {
+          const toSlug = (name: string) => {
+            const base = (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+            return base && base !== '-' ? base : `c-${Math.random().toString(36).slice(2, 8)}`
+          }
           const payload = {
             name: category.name.trim(),
-            slug: category.slug.trim(),
+            slug: (category.slug?.trim() || toSlug(category.name)),
             description: category.description?.trim() || null,
             color: category.color || '#3B82F6',
             icon: category.icon || 'tool',

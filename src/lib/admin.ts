@@ -63,21 +63,32 @@ async function postJSONWithTimeout(
   body: any,
   options: RequestInit & { timeoutMs?: number } = {}
 ) {
-  const { timeoutMs = 8000, headers, ...rest } = options
+  const { timeoutMs = 12000, headers, ...rest } = options
   const controller = new AbortController()
   const id = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', ...(headers || {}) },
-      body: JSON.stringify(body ?? {}),
-      signal: controller.signal,
-      cache: 'no-store',
-      ...rest
-    })
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-    const text = await resp.text()
-    try { return text ? JSON.parse(text) : null } catch { return null }
+    let attempt = 0
+    let lastErr: any
+    while (attempt < 3) {
+      try {
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', ...(headers || {}) },
+          body: JSON.stringify(body ?? {}),
+          signal: controller.signal,
+          cache: 'no-store',
+          ...rest
+        })
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+        const text = await resp.text()
+        try { return text ? JSON.parse(text) : null } catch { return null }
+      } catch (e) {
+        lastErr = e
+        attempt += 1
+        await new Promise(r => setTimeout(r, 300 * attempt))
+      }
+    }
+    throw lastErr
   } finally {
     clearTimeout(id)
   }
