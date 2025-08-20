@@ -54,6 +54,7 @@ import {
 } from '../lib/admin';
 import DatabaseRepair from '../components/DatabaseRepair';
 import ToolManagementModal from '../components/ToolManagementModal';
+import CategoryManagementModal from '../components/CategoryManagementModal';
 
 interface Category {
   id: string;
@@ -759,6 +760,14 @@ const EnhancedAdminDashboard = () => {
         tool={editingTool as any}
         categories={categories.map(c => ({ id: c.id, name: c.name }))}
         mode={editingTool ? 'edit' : 'create'}
+      />
+      {/* 分类创建/编辑弹窗 */}
+      <CategoryManagementModal
+        isOpen={showCategoryModal || !!editingCategory}
+        onClose={() => { setShowCategoryModal(false); setEditingCategory(null) }}
+        onSave={() => { loadData() }}
+        category={editingCategory as any}
+        mode={editingCategory ? 'edit' : 'create'}
       />
     </div>
   );
