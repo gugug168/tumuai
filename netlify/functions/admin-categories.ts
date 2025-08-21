@@ -77,9 +77,8 @@ export async function handler(event, context) {
         break
 
       case 'create':
-        const { data: newCategory, error: createError } = await supabase
-          .from('categories')
-          .insert([{
+        {
+          const payloadWithSlug = {
             name: data.name,
             slug: data.slug || toSlug(data.name),
             description: data.description,
@@ -87,18 +86,38 @@ export async function handler(event, context) {
             color: data.color,
             sort_order: data.sort_order || 0,
             is_active: data.is_active !== false
-          }])
-          .select()
-          .single()
-        
-        if (createError) throw createError
-        result = newCategory
+          }
+          let insertResp = await supabase.from('categories').insert([payloadWithSlug]).select().maybeSingle()
+          if (insertResp.error) {
+            const msg = insertResp.error.message || ''
+            // 若后端无 slug 列，降级去掉 slug 重试
+            if (/column\s+\"slug\"/i.test(msg)) {
+              const payloadWithoutSlug: any = { ...payloadWithSlug }
+              delete payloadWithoutSlug.slug
+              insertResp = await supabase.from('categories').insert([payloadWithoutSlug]).select().maybeSingle()
+            }
+            // 若为 slug 唯一冲突，追加随机后缀重试
+            if (insertResp.error && /(unique|duplicate).*slug|categories_slug_key/i.test(insertResp.error.message || '')) {
+              const alt = { ...payloadWithSlug, slug: `${payloadWithSlug.slug}-${Math.random().toString(36).slice(2,6)}` }
+              insertResp = await supabase.from('categories').insert([alt]).select().maybeSingle()
+            }
+            // 若为 name 唯一冲突，直接返回已存在记录
+            if (insertResp.error && /(unique|duplicate).*name|categories_name_key/i.test(insertResp.error.message || '')) {
+              const existing = await supabase.from('categories').select('*').eq('name', data.name).maybeSingle()
+              if (!existing.error && existing.data) {
+                result = existing.data
+                break
+              }
+            }
+          }
+          if (insertResp.error) throw insertResp.error
+          result = insertResp.data
+        }
         break
 
       case 'update':
-        const { data: updatedCategory, error: updateError } = await supabase
-          .from('categories')
-          .update({
+        {
+          const payloadWithSlug = {
             name: data.name,
             slug: data.slug || toSlug(data.name),
             description: data.description,
@@ -107,13 +126,16 @@ export async function handler(event, context) {
             sort_order: data.sort_order,
             is_active: data.is_active,
             updated_at: new Date().toISOString()
-          })
-          .eq('id', data.id)
-          .select()
-          .single()
-        
-        if (updateError) throw updateError
-        result = updatedCategory
+          }
+          let updateResp = await supabase.from('categories').update(payloadWithSlug).eq('id', data.id).select().maybeSingle()
+          if (updateResp.error && /column\s+\"slug\"/i.test(updateResp.error.message || '')) {
+            const payloadWithoutSlug: any = { ...payloadWithSlug }
+            delete payloadWithoutSlug.slug
+            updateResp = await supabase.from('categories').update(payloadWithoutSlug).eq('id', data.id).select().maybeSingle()
+          }
+          if (updateResp.error) throw updateResp.error
+          result = updateResp.data
+        }
         break
 
       case 'delete':
