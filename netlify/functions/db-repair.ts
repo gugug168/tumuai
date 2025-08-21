@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
-  process.env.SUPABASE_URL!,
+  (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL)!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
@@ -20,8 +20,8 @@ export async function handler(event, context) {
   }
 
   try {
-    // 验证管理员权限
-    const authHeader = event.headers.authorization
+    // 验证管理员权限（兼容大小写）
+    const authHeader = event.headers.authorization || event.headers.Authorization
     if (!authHeader) {
       return {
         statusCode: 401,
@@ -44,18 +44,26 @@ export async function handler(event, context) {
       .from('admin_users')
       .select('id')
       .eq('user_id', userData.user.id)
-      .single()
+      .maybeSingle()
 
     if (adminError || !adminData) {
-      return {
-        statusCode: 403,
-        body: JSON.stringify({ error: '无管理员权限' })
+      // 若 admin_users 为空，自动引导首位登录用户为 super_admin
+      const { count } = await supabase
+        .from('admin_users')
+        .select('id', { count: 'exact', head: true })
+      if (!count || count === 0) {
+        await supabase.from('admin_users').insert([{ user_id: userData.user.id, role: 'super_admin', permissions: {} }])
+      } else {
+        return {
+          statusCode: 403,
+          body: JSON.stringify({ error: '无管理员权限' })
+        }
       }
     }
 
     console.log('开始执行数据库修复...')
 
-    // 1. 修复categories表结构
+    // 1. 修复categories表结构（加入 slug 唯一列）
     console.log('修复categories表...')
     await supabase.rpc('exec_sql', {
       sql: `
@@ -65,6 +73,7 @@ export async function handler(event, context) {
         CREATE TABLE categories (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           name VARCHAR(255) NOT NULL UNIQUE,
+          slug VARCHAR(255) UNIQUE,
           description TEXT,
           color VARCHAR(7) DEFAULT '#3B82F6',
           icon VARCHAR(50) DEFAULT 'Folder',
@@ -77,21 +86,25 @@ export async function handler(event, context) {
       `
     }).catch(e => console.log('Categories表已存在或无需修复'))
 
-    // 2. 插入8个土木行业分类
+    // 2. 插入8个土木行业分类（生成 slug）
     console.log('插入8个土木行业分类...')
+    function toSlug(name: string): string {
+      const base = (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+      return base && base !== '-' ? base : `c-${Math.random().toString(36).slice(2, 8)}`
+    }
     const categories = [
-      { name: '结构设计', description: '建筑结构设计与分析工具', color: '#EF4444', icon: 'Building2', sort_order: 1 },
-      { name: '建筑设计', description: '建筑设计与建模软件', color: '#F97316', icon: 'Home', sort_order: 2 },
-      { name: '施工管理', description: '项目管理和施工协调工具', color: '#10B981', icon: 'Construction', sort_order: 3 },
-      { name: '造价预算', description: '工程造价与预算计算工具', color: '#8B5CF6', icon: 'Calculator', sort_order: 4 },
-      { name: 'BIM建模', description: '建筑信息模型与协作平台', color: '#06B6D4', icon: 'Box', sort_order: 5 },
-      { name: '岩土工程', description: '地质分析与基础设计工具', color: '#84CC16', icon: 'Mountain', sort_order: 6 },
-      { name: '市政工程', description: '道路、桥梁、管网设计工具', color: '#F59E0B', icon: 'Road', sort_order: 7 },
-      { name: '效率工具', description: '通用办公与效率提升工具', color: '#64748B', icon: 'Zap', sort_order: 8 }
+      { name: '结构设计', slug: toSlug('结构设计'), description: '建筑结构设计与分析工具', color: '#EF4444', icon: 'Building2', sort_order: 1 },
+      { name: '建筑设计', slug: toSlug('建筑设计'), description: '建筑设计与建模软件', color: '#F97316', icon: 'Home', sort_order: 2 },
+      { name: '施工管理', slug: toSlug('施工管理'), description: '项目管理和施工协调工具', color: '#10B981', icon: 'Construction', sort_order: 3 },
+      { name: '造价预算', slug: toSlug('造价预算'), description: '工程造价与预算计算工具', color: '#8B5CF6', icon: 'Calculator', sort_order: 4 },
+      { name: 'BIM建模', slug: toSlug('BIM建模'), description: '建筑信息模型与协作平台', color: '#06B6D4', icon: 'Box', sort_order: 5 },
+      { name: '岩土工程', slug: toSlug('岩土工程'), description: '地质分析与基础设计工具', color: '#84CC16', icon: 'Mountain', sort_order: 6 },
+      { name: '市政工程', slug: toSlug('市政工程'), description: '道路、桥梁、管网设计工具', color: '#F59E0B', icon: 'Road', sort_order: 7 },
+      { name: '效率工具', slug: toSlug('效率工具'), description: '通用办公与效率提升工具', color: '#64748B', icon: 'Zap', sort_order: 8 }
     ]
 
     for (const category of categories) {
-      await supabase.from('categories').upsert(category, { onConflict: 'name' })
+      await supabase.from('categories').upsert(category as any, { onConflict: 'name' })
     }
 
     // 3. 修复tool_submissions表
