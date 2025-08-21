@@ -367,12 +367,13 @@ export async function getAdminLogs(page = 1, limit = 50) {
 export async function getCategories() {
   try {
     const token = await ensureAccessToken()
-    const json = await postJSONWithTimeout('/.netlify/functions/admin-actions', {
-      action: 'get_categories'
+    const json = await postJSONWithTimeout('/.netlify/functions/admin-categories', {
+      action: 'list'
     }, {
       headers: { Authorization: `Bearer ${token}` }
     })
-    return json?.categories || []
+    // admin-categories 返回 { success, data }
+    return json?.data || []
   } catch (error) {
     console.error('❌ 获取分类异常:', error)
     return []
@@ -391,9 +392,17 @@ export async function createCategory(category: {
   is_active?: boolean
 }) {
   const token = await ensureAccessToken()
-  return await postJSONWithTimeout('/.netlify/functions/admin-actions', {
-    action: 'create_category',
-    category
+  return await postJSONWithTimeout('/.netlify/functions/admin-categories', {
+    action: 'create',
+    data: {
+      name: category.name,
+      slug: category.slug,
+      description: category.description,
+      color: category.color,
+      icon: category.icon,
+      sort_order: category.sort_order,
+      is_active: category.is_active
+    }
   }, {
     headers: { Authorization: `Bearer ${token}` }
   })
@@ -402,10 +411,9 @@ export async function createCategory(category: {
 // 更新分类
 export async function updateCategory(id: string, updates: Partial<any>) {
   const token = await ensureAccessToken()
-  return await postJSONWithTimeout('/.netlify/functions/admin-actions', {
-    action: 'update_category',
-    id,
-    updates
+  return await postJSONWithTimeout('/.netlify/functions/admin-categories', {
+    action: 'update',
+    data: { id, ...updates }
   }, {
     headers: { Authorization: `Bearer ${token}` }
   })
@@ -414,9 +422,9 @@ export async function updateCategory(id: string, updates: Partial<any>) {
 // 删除分类
 export async function deleteCategory(id: string) {
   const token = await ensureAccessToken()
-  return await postJSONWithTimeout('/.netlify/functions/admin-actions', {
-    action: 'delete_category',
-    id
+  return await postJSONWithTimeout('/.netlify/functions/admin-categories', {
+    action: 'delete',
+    data: { id }
   }, {
     headers: { Authorization: `Bearer ${token}` }
   })
