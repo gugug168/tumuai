@@ -8,7 +8,7 @@
     - heading "Civil AI Hub" [level=1]
     - paragraph: 土木AI之家
   - img
-  - textbox "搜索AI工具、BIM软件、计算工具..."
+  - textbox "搜索AI工具、BIM软件、计算工具...": admin@civilaihub.com
   - navigation:
     - link "首页":
       - /url: /
@@ -22,150 +22,29 @@
       - /url: /submit
     - button "登录"
     - button "注册"
+- heading "登录" [level=2]
+- button:
+  - img
+- text: 邮箱地址
+- img
+- textbox "请输入邮箱地址"
+- text: 密码
+- img
+- textbox "请输入密码"
+- button "登录"
+- paragraph:
+  - text: 还没有账号？
+  - button "立即注册"
 - main:
   - img
-  - heading "管理员控制台" [level=1]
-  - button "刷新数据":
-    - img
-    - text: 刷新数据
+  - heading "管理员登录" [level=1]
+  - text: 账号
   - img
-  - term: 工具总数
-  - definition: "23"
+  - textbox "admin 或 邮箱": admin
+  - text: 密码
   - img
-  - term: 用户总数
-  - definition: "4"
-  - img
-  - term: 待审核
-  - definition: "0"
-  - img
-  - term: 分类总数
-  - definition: "0"
-  - navigation:
-    - button "概览":
-      - img
-      - text: 概览
-    - button "工具审核0":
-      - img
-      - text: 工具审核0
-    - button "工具管理":
-      - img
-      - text: 工具管理
-    - button "分类管理":
-      - img
-      - text: 分类管理
-    - button "用户管理":
-      - img
-      - text: 用户管理
-    - button "数据库修复":
-      - img
-      - text: 数据库修复
-  - heading "分类管理" [level=3]
-  - button "新增分类":
-    - img
-    - text: 新增分类
-  - heading "结构设计" [level=4]
-  - paragraph: 建筑结构设计与分析工具
-  - text: "排序: 1 状态: 启用"
-  - button:
-    - img
-  - button:
-    - img
-  - heading "设计软件" [level=4]
-  - paragraph: CAD、BIM、3D建模等设计相关软件
-  - text: "排序: 1 状态: 启用"
-  - button:
-    - img
-  - button:
-    - img
-  - heading "施工管理" [level=4]
-  - paragraph: 项目管理和施工协调工具
-  - text: "排序: 3 状态: 启用"
-  - button:
-    - img
-  - button:
-    - img
-  - heading "测量工具" [level=4]
-  - paragraph: 工程测量、地形测量、施工放样工具
-  - text: "排序: 4 状态: 启用"
-  - button:
-    - img
-  - button:
-    - img
-  - heading "造价预算" [level=4]
-  - paragraph: 工程造价与预算计算工具
-  - text: "排序: 4 状态: 启用"
-  - button:
-    - img
-  - button:
-    - img
-  - heading "BIM建模" [level=4]
-  - paragraph: 建筑信息模型与协作平台
-  - text: "排序: 5 状态: 启用"
-  - button:
-    - img
-  - button:
-    - img
-  - heading "造价软件" [level=4]
-  - paragraph: 工程造价、预算、结算相关软件
-  - text: "排序: 5 状态: 启用"
-  - button:
-    - img
-  - button:
-    - img
-  - heading "岩土工程" [level=4]
-  - paragraph: 地质分析与基础设计工具
-  - text: "排序: 6 状态: 启用"
-  - button:
-    - img
-  - button:
-    - img
-  - heading "检测试验" [level=4]
-  - paragraph: 材料检测、工程质量检测工具
-  - text: "排序: 6 状态: 启用"
-  - button:
-    - img
-  - button:
-    - img
-  - heading "市政工程" [level=4]
-  - paragraph: 道路、桥梁、管网设计工具
-  - text: "排序: 7 状态: 启用"
-  - button:
-    - img
-  - button:
-    - img
-  - heading "文档管理" [level=4]
-  - paragraph: 工程文档、图纸管理、资料管理
-  - text: "排序: 7 状态: 启用"
-  - button:
-    - img
-  - button:
-    - img
-  - heading "效率工具" [level=4]
-  - paragraph: 通用办公与效率提升工具
-  - text: "排序: 8 状态: 启用"
-  - button:
-    - img
-  - button:
-    - img
-  - heading "新增分类" [level=2]
-  - button "关闭":
-    - img
-  - text: HTTP 500 分类名称
-  - textbox "例如：结构设计": 测试分类7119
-  - text: 描述
-  - textbox
-  - text: 颜色
-  - textbox: "#3B82F6"
-  - text: 图标
-  - textbox: Folder
-  - text: 排序
-  - spinbutton: "0"
-  - checkbox "启用" [checked]
-  - text: 启用
-  - button "取消"
-  - button "保存":
-    - img
-    - text: 保存
+  - textbox "admin 或 实际密码": admin123
+  - button "登录"
 - contentinfo:
   - img
   - heading "Civil AI Hub" [level=3]
