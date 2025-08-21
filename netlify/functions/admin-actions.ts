@@ -15,13 +15,30 @@ async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?
     if (authError || !userRes?.user?.id) return null
     
     const userId = userRes.user.id
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('admin_users')
       .select('id,user_id')
       .eq('user_id', userId)
       .maybeSingle()
     
-    if (error || !data) return null
+    if (error || !data) {
+      // 若管理员表为空，自动引导当前用户为 super_admin，避免首次 403 卡死
+      const { count } = await supabase
+        .from('admin_users')
+        .select('id', { count: 'exact', head: true })
+      if (!count || count === 0) {
+        const inserted = await supabase
+          .from('admin_users')
+          .insert([{ user_id: userId, role: 'super_admin', permissions: {} }])
+          .select('id,user_id')
+          .maybeSingle()
+        if (!inserted.error && inserted.data) {
+          data = inserted.data
+        }
+      }
+    }
+
+    if (!data) return null
     return { id: data.id, userId: data.user_id }
   } catch (error) {
     console.error('Admin verification error:', error)
