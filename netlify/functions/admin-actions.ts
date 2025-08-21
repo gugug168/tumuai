@@ -369,6 +369,12 @@ const handler: Handler = async (event) => {
               delete withoutSlug.slug
               ins = await supabase.from('categories').insert([withoutSlug]).select('id').maybeSingle()
             }
+            // 若表无 parent_id 列（或 schema cache 未刷新），去掉 parent_id 再试
+            if (ins.error && /(parent_id).*column|Could not find.*parent_id/i.test(ins.error.message || '')) {
+              const withoutParent = { ...basePayload }
+              delete (withoutParent as any).parent_id
+              ins = await supabase.from('categories').insert([withoutParent]).select('id').maybeSingle()
+            }
             // 若为 slug 唯一冲突，自动追加短随机后缀重试
             if (ins.error && /(unique|duplicate).*slug|categories_slug_key/i.test(ins.error.message || '')) {
               const alt = { ...basePayload, slug: `${basePayload.slug}-${Math.random().toString(36).slice(2,6)}` }
