@@ -51,7 +51,18 @@ async function fetchJSONWithTimeout(
   const id = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const resp = await fetch(url, { ...rest, signal: controller.signal })
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    if (!resp.ok) {
+      // 尝试解析后端返回的错误信息
+      const text = await resp.text().catch(() => '')
+      try {
+        const json = text ? JSON.parse(text) : null
+        const msg = json?.error || json?.message || resp.statusText || `HTTP ${resp.status}`
+        throw new Error(msg)
+      } catch {
+        const msg = text || resp.statusText || `HTTP ${resp.status}`
+        throw new Error(msg)
+      }
+    }
     return await resp.json()
   } finally {
     clearTimeout(id)
@@ -79,7 +90,17 @@ async function postJSONWithTimeout(
           cache: 'no-store',
           ...rest
         })
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => '')
+          try {
+            const json = text ? JSON.parse(text) : null
+            const msg = json?.error || json?.message || resp.statusText || `HTTP ${resp.status}`
+            throw new Error(msg)
+          } catch {
+            const msg = text || resp.statusText || `HTTP ${resp.status}`
+            throw new Error(msg)
+          }
+        }
         const text = await resp.text()
         try { return text ? JSON.parse(text) : null } catch { return null }
       } catch (e) {
