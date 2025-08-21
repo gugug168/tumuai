@@ -343,7 +343,7 @@ const handler: Handler = async (event) => {
             const base = (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
             return base && base !== '-' ? base : `c-${Math.random().toString(36).slice(2, 8)}`
           }
-          const payload = {
+          const basePayload: any = {
             name: category.name.trim(),
             slug: (category.slug?.trim() || toSlug(category.name)),
             description: category.description?.trim() || null,
@@ -354,19 +354,43 @@ const handler: Handler = async (event) => {
             is_active: category.is_active !== false
           }
 
-          const { data, error } = await supabase
+          // 首次尝试：带 slug 插入
+          let ins = await supabase
             .from('categories')
-            .insert([payload])
+            .insert([basePayload])
             .select('id')
             .maybeSingle()
 
-          if (error) {
-            console.error('Error creating category:', error)
-            return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
+          if (ins.error) {
+            const msg = ins.error.message || ''
+            // 若表无 slug 列，则去掉 slug 再试
+            if (/column\s+"slug"/i.test(msg)) {
+              const withoutSlug = { ...basePayload }
+              delete withoutSlug.slug
+              ins = await supabase.from('categories').insert([withoutSlug]).select('id').maybeSingle()
+            }
+            // 若为 slug 唯一冲突，自动追加短随机后缀重试
+            if (ins.error && /(unique|duplicate).*slug|categories_slug_key/i.test(ins.error.message || '')) {
+              const alt = { ...basePayload, slug: `${basePayload.slug}-${Math.random().toString(36).slice(2,6)}` }
+              ins = await supabase.from('categories').insert([alt]).select('id').maybeSingle()
+            }
+            // 若为 name 唯一冲突，直接返回已存在记录
+            if (ins.error && /(unique|duplicate).*name|categories_name_key/i.test(ins.error.message || '')) {
+              const existing = await supabase.from('categories').select('id').eq('name', basePayload.name).maybeSingle()
+              if (!existing.error && existing.data) {
+                await logAdminAction('create_category', 'category', existing.data.id, { name: basePayload.name })
+                return { statusCode: 200, body: JSON.stringify({ success: true, id: existing.data.id }) }
+              }
+            }
           }
 
-          await logAdminAction('create_category', 'category', data?.id, payload)
-          return { statusCode: 200, body: JSON.stringify({ success: true, id: data?.id }) }
+          if (ins.error) {
+            console.error('Error creating category:', ins.error)
+            return { statusCode: 500, body: JSON.stringify({ error: ins.error.message }) }
+          }
+
+          await logAdminAction('create_category', 'category', ins.data?.id, basePayload)
+          return { statusCode: 200, body: JSON.stringify({ success: true, id: ins.data?.id }) }
         } catch (error: any) {
           console.error('Error in create_category:', error)
           return { statusCode: 500, body: JSON.stringify({ error: error.message || 'Internal server error' }) }
