@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Upload, Link as LinkIcon, Tag, DollarSign, Image, FileText, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { uploadToolLogo, validateImageFile } from '../lib/storage';
 
 const categories = [
   'AI结构设计',
@@ -71,20 +72,12 @@ const SubmitToolPage = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // 验证文件类型
-      if (!file.type.startsWith('image/')) {
+      // 使用统一的文件验证函数
+      const validation = validateImageFile(file);
+      if (!validation.isValid) {
         setErrors(prev => ({
           ...prev,
-          logoFile: '请上传图片文件'
-        }));
-        return;
-      }
-      
-      // 验证文件大小 (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setErrors(prev => ({
-          ...prev,
-          logoFile: '图片文件大小不能超过5MB'
+          logoFile: validation.error || '文件格式不正确'
         }));
         return;
       }
@@ -161,12 +154,18 @@ const SubmitToolPage = () => {
     try {
       console.log('开始提交工具...', formData);
       
-      // 上传Logo文件到临时URL（实际项目中应该上传到云存储）
+      // 上传Logo文件到 Supabase Storage
       let logoUrl = null;
       if (formData.logoFile) {
-        // 在实际应用中，这里应该上传文件到存储服务
-        // 临时使用文件名作为URL
-        logoUrl = URL.createObjectURL(formData.logoFile);
+        try {
+          console.log('正在上传工具 logo...');
+          logoUrl = await uploadToolLogo(formData.logoFile, formData.toolName);
+          console.log('Logo 上传成功:', logoUrl);
+        } catch (uploadError) {
+          console.error('Logo 上传失败:', uploadError);
+          alert(`图片上传失败: ${(uploadError as Error).message}`);
+          return;
+        }
       }
 
       const submissionData = {
