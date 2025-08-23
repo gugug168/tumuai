@@ -178,15 +178,21 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
   }
 
   try {
-    // 优先通过服务端函数校验管理员
+    // 优先通过服务端函数校验管理员（缩短超时时间以提升性能）
     const json = await fetchJSONWithTimeout('/.netlify/functions/admin-check', {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
-      timeoutMs: 8000
-    }).catch(() => null as any)
+      timeoutMs: 3000  // 从8秒缩短到3秒
+    }).catch((err) => {
+      console.log('⚠️ 服务端验证超时，使用直接查询方式:', err.message)
+      return null as any
+    })
     if (json) {
       // 如本地拿不到 userId，也直接信任服务端返回
-      if (!userId || json.user_id === userId) return json as AdminUser
+      if (!userId || json.user_id === userId) {
+        console.log('✅ 服务端验证成功')
+        return json as AdminUser
+      }
     }
 
     if (!userId) return null

@@ -74,6 +74,8 @@ interface Tool {
 
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true); // 新增：权限检查状态
+  const [isAuthorized, setIsAuthorized] = useState(false); // 新增：权限状态
   const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState({
     totalTools: 0,
@@ -86,7 +88,7 @@ const AdminDashboard = () => {
   const [submissions, setSubmissions] = useState<ToolSubmission[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [tools, setTools] = useState<Tool[]>([]);
-  const [logs] = useState<AdminLog[]>([]);
+  const [logs, setLogs] = useState<AdminLog[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -95,8 +97,41 @@ const AdminDashboard = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [showToolModal, setShowToolModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showSubmissionModal] = useState<ToolSubmission | null>(null);
+  const [showSubmissionModal, setShowSubmissionModal] = useState<ToolSubmission | null>(null);
   const navigate = useNavigate();
+
+  // 新增：立即进行权限检查
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        console.log('🔐 开始权限验证...');
+        setAuthChecking(true);
+        
+        // 设置10秒超时
+        const timeout = new Promise<boolean>((resolve) => 
+          setTimeout(() => resolve(false), 10000)
+        );
+        
+        const adminStatus = await Promise.race([checkAdminStatus(), timeout]);
+        
+        if (!adminStatus) {
+          console.error('❌ 权限验证失败，重定向到登录页');
+          navigate('/admin-login');
+          return;
+        }
+        
+        console.log('✅ 权限验证通过');
+        setIsAuthorized(true);
+      } catch (error) {
+        console.error('❌ 权限验证异常:', error);
+        navigate('/admin-login');
+      } finally {
+        setAuthChecking(false);
+      }
+    };
+    
+    checkAuth();
+  }, [navigate]);
 
   const loadData = useCallback(async () => {
     try {
@@ -203,8 +238,11 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    // 只有权限验证通过后才加载数据
+    if (isAuthorized) {
+      loadData();
+    }
+  }, [isAuthorized, loadData]);
 
   const handleReviewSubmission = async (submissionId: string, status: 'approved' | 'rejected', notes?: string) => {
     try {
@@ -260,6 +298,33 @@ const AdminDashboard = () => {
     { id: 'users', label: '用户管理', icon: Users },
     { id: 'repair', label: '数据库修复', icon: Wrench }
   ];
+
+  // 权限验证中，显示加载界面
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Shield className="h-12 w-12 text-indigo-600 mx-auto mb-4 animate-pulse" />
+          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">正在验证管理员权限...</p>
+          <p className="text-gray-400 text-sm mt-2">请稍候，这可能需要几秒钟</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 权限验证失败，这里不应该显示任何内容（因为会重定向）
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 font-medium">权限验证失败</p>
+          <p className="text-gray-500 text-sm mt-2">正在重定向到登录页面...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

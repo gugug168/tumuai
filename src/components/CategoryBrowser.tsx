@@ -77,13 +77,67 @@ const CategoryBrowser = () => {
     async function fetchCategories() {
       try {
         setLoading(true);
-        const data = await apiRequestWithRetry(() => getCategories(), 2, 1500);
+        console.log('🔄 开始获取分类数据...');
+        
+        // 直接调用getCategories，它现在包含fallback
+        const data = await getCategories();
+        console.log('📊 获取到分类数据:', data);
+        
         // 只显示前6个分类
         setCategories(data.slice(0, 6));
         setError(null);
       } catch (err) {
-        console.error('获取分类失败:', err);
-        setError('获取分类失败');
+        console.error('❌ 获取分类失败:', err);
+        
+        // 如果所有方法都失败，使用硬编码的分类
+        const hardcodedCategories = [
+          {
+            id: 1,
+            name: 'AI结构设计',
+            description: '基于AI的结构设计与分析工具',
+            icon: 'Brain',
+            color: '#3B82F6'
+          },
+          {
+            id: 2,
+            name: 'BIM软件',
+            description: '建筑信息模型设计与管理',
+            icon: 'Layers',
+            color: '#10B981'
+          },
+          {
+            id: 3,
+            name: '效率工具',
+            description: '提升工作效率的专业工具',
+            icon: 'Zap',
+            color: '#F59E0B'
+          },
+          {
+            id: 4,
+            name: '岩土工程',
+            description: '岩土工程分析与设计',
+            icon: 'Mountain',
+            color: '#8B5CF6'
+          },
+          {
+            id: 5,
+            name: '项目管理',
+            description: '项目协作与管理工具',
+            icon: 'Users',
+            color: '#EF4444'
+          },
+          {
+            id: 6,
+            name: '智能施工管理',
+            description: '施工过程管理与优化',
+            icon: 'HardHat',
+            color: '#06B6D4'
+          }
+        ];
+        
+        console.log('🔄 使用硬编码分类数据');
+        setCategories(hardcodedCategories);
+        setError(null);
       } finally {
         setLoading(false);
       }

@@ -16,6 +16,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { addToFavorites, removeFromFavorites, isFavorited, addToolReview, getToolReviews } from '../lib/community';
+import { getToolById, incrementToolViews, Tool } from '../lib/supabase';
 
 // 模拟工具数据
 const toolsData = {
@@ -471,17 +472,79 @@ const ToolDetailPage = () => {
   const [loadingFavorite, setLoadingFavorite] = useState(false);
   const [reviews, setReviews] = useState<any[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
+  const [tool, setTool] = useState<Tool | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  // 模拟获取工具数据
-  const tool = toolsData[parseInt(toolId || '1') as keyof typeof toolsData];
-  const toolIdAsString = toolId || '1';
+  const toolIdAsString = toolId || '';
   
+  // 将数据库工具数据适配为组件需要的格式
+  const adaptedTool = tool ? {
+    id: adaptedTool.id,
+    name: adaptedTool.name,
+    logo: adaptedTool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=200',
+    category: adaptedTool.categories?.[0] || '工具',
+    website: adaptedTool.website_url,
+    shortDescription: adaptedTool.tagline,
+    detailedDescription: adaptedTool.description || adaptedTool.tagline,
+    images: [
+      adaptedTool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=800'
+    ],
+    videoUrl: '',
+    features: adaptedTool.features || [],
+    pricing: [
+      {
+        plan: adaptedTool.pricing === 'Free' ? '免费版' : adaptedTool.pricing === 'Freemium' ? '免费版' : '基础版',
+        price: adaptedTool.pricing === 'Free' ? '¥0' : '联系我们',
+        period: adaptedTool.pricing === 'Free' ? '永久' : '月',
+        features: ['基础功能', '标准支持']
+      }
+    ],
+    rating: adaptedTool.rating,
+    reviews: adaptedTool.review_count,
+    views: adaptedTool.views,
+    tags: adaptedTool.categories || [],
+    addedDate: adaptedTool.date_added.split('T')[0],
+    lastUpdated: adaptedTool.updated_at.split('T')[0]
+  } : null;
+  
+  useEffect(() => {
+    if (toolIdAsString) {
+      loadToolData();
+    }
+  }, [toolIdAsString]);
+
   useEffect(() => {
     if (tool) {
       checkFavoriteStatus();
       loadReviews();
+      // 增加浏览量
+      incrementToolViews(toolIdAsString);
     }
-  }, [toolIdAsString, tool]);
+  }, [tool, toolIdAsString]);
+
+  const loadToolData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('🔍 获取工具详情:', toolIdAsString);
+      
+      const toolData = await getToolById(toolIdAsString);
+      
+      if (toolData) {
+        setTool(toolData);
+        console.log('✅ 工具详情获取成功:', toolData.name);
+      } else {
+        setError('工具未找到');
+        console.log('❌ 工具未找到:', toolIdAsString);
+      }
+    } catch (err) {
+      console.error('❌ 获取工具详情失败:', err);
+      setError('获取工具详情失败');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const checkFavoriteStatus = async () => {
     try {
@@ -505,12 +568,25 @@ const ToolDetailPage = () => {
     }
   };
 
-  if (!tool) {
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">加载工具详情中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !tool || !adaptedTool) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">工具未找到</h2>
-          <p className="text-gray-600 mb-4">抱歉，您访问的工具不存在或已被删除。</p>
+          <p className="text-gray-600 mb-4">
+            {error || '抱歉，您访问的工具不存在或已被删除。'}
+          </p>
           <Link to="/tools" className="text-blue-600 hover:text-blue-700">
             返回工具中心
           </Link>
@@ -568,7 +644,7 @@ const ToolDetailPage = () => {
               工具中心
             </Link>
             <ChevronRight className="w-4 h-4" />
-            <span className="text-gray-900 font-medium">{tool.name}</span>
+            <span className="text-gray-900 font-medium">{adaptedTool.name}</span>
           </nav>
           
           <div className="flex items-center justify-between">
@@ -586,36 +662,36 @@ const ToolDetailPage = () => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-8">
           <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-6">
             <img
-              src={tool.logo}
-              alt={tool.name}
+              src={adaptedTool.logo}
+              alt={adaptedTool.name}
               className="w-20 h-20 rounded-xl object-cover"
             />
             <div className="flex-1">
               <div className="flex items-center space-x-3 mb-2">
-                <h1 className="text-3xl font-bold text-gray-900">{tool.name}</h1>
+                <h1 className="text-3xl font-bold text-gray-900">{adaptedTool.name}</h1>
                 <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
-                  {tool.category}
+                  {adaptedTool.category}
                 </span>
               </div>
-              <p className="text-lg text-gray-600 mb-4">{tool.shortDescription}</p>
+              <p className="text-lg text-gray-600 mb-4">{adaptedTool.shortDescription}</p>
               <div className="flex items-center space-x-4 text-sm text-gray-500">
                 <div className="flex items-center space-x-1">
                   <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                  <span>{tool.rating} ({tool.reviews} 评价)</span>
+                  <span>{adaptedTool.rating} ({adaptedTool.reviews} 评价)</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Eye className="w-4 h-4" />
-                  <span>{tool.views.toLocaleString()} 次浏览</span>
+                  <span>{adaptedTool.views.toLocaleString()} 次浏览</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Calendar className="w-4 h-4" />
-                  <span>更新于 {tool.lastUpdated}</span>
+                  <span>更新于 {adaptedTool.lastUpdated}</span>
                 </div>
               </div>
             </div>
             <div className="flex flex-col space-y-3">
               <a
-                href={tool.website}
+                href={adaptedTool.website}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center"
@@ -648,7 +724,7 @@ const ToolDetailPage = () => {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">详细介绍</h2>
               <div className="prose prose-lg max-w-none text-gray-800 leading-relaxed">
-                {tool.detailedDescription.split('\n\n').map((paragraph, index) => (
+                {adaptedTool.detailedDescription.split('\n\n').map((paragraph, index) => (
                   <p key={index} className="mb-4 text-gray-800">
                     {paragraph}
                   </p>
@@ -663,11 +739,11 @@ const ToolDetailPage = () => {
                 {/* 主图片 */}
                 <div className="relative">
                   <img
-                    src={tool.images[selectedImage]}
-                    alt={`${tool.name} 截图 ${selectedImage + 1}`}
+                    src={adaptedTool.images[selectedImage]}
+                    alt={`${adaptedTool.name} 截图 ${selectedImage + 1}`}
                     className="w-full h-96 object-cover rounded-lg"
                   />
-                  {tool.videoUrl && selectedImage === 0 && (
+                  {adaptedTool.videoUrl && selectedImage === 0 && (
                     <button
                       onClick={() => setShowVideoModal(true)}
                       className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg hover:bg-opacity-40 transition-colors"
@@ -681,7 +757,7 @@ const ToolDetailPage = () => {
                 
                 {/* 缩略图 */}
                 <div className="flex space-x-4">
-                  {tool.images.map((image, index) => (
+                  {adaptedTool.images.map((image, index) => (
                     <button
                       key={index}
                       onClick={() => setSelectedImage(index)}
@@ -704,7 +780,7 @@ const ToolDetailPage = () => {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">核心功能</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {tool.features.map((feature, index) => (
+                {adaptedTool.features.map((feature, index) => (
                   <div key={index} className="flex items-center space-x-3">
                     <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
                     <span className="text-gray-700">{feature}</span>
@@ -720,20 +796,20 @@ const ToolDetailPage = () => {
               {/* 评论统计 */}
               <div className="flex items-center space-x-6 mb-8 p-4 bg-gray-50 rounded-lg">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-gray-900">{tool.rating}</div>
+                  <div className="text-3xl font-bold text-gray-900">{adaptedTool.rating}</div>
                   <div className="flex items-center justify-center space-x-1 mb-1">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Star
                         key={star}
                         className={`w-4 h-4 ${
-                          star <= Math.floor(tool.rating)
+                          star <= Math.floor(adaptedTool.rating)
                             ? 'text-yellow-400 fill-current'
                             : 'text-gray-300'
                         }`}
                       />
                     ))}
                   </div>
-                  <div className="text-sm text-gray-500">{tool.reviews} 条评价</div>
+                  <div className="text-sm text-gray-500">{adaptedTool.reviews} 条评价</div>
                 </div>
                 <div className="flex-1">
                   <div className="space-y-2">
@@ -847,7 +923,7 @@ const ToolDetailPage = () => {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-6">定价方案</h3>
               <div className="space-y-4">
-                {tool.pricing.map((plan, index) => (
+                {adaptedTool.pricing.map((plan, index) => (
                   <div
                     key={index}
                     className={`border rounded-lg p-4 ${
@@ -883,7 +959,7 @@ const ToolDetailPage = () => {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-4">工具标签</h3>
               <div className="flex flex-wrap gap-2">
-                {tool.tags.map((tag, index) => (
+                {adaptedTool.tags.map((tag, index) => (
                   <span
                     key={index}
                     className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm flex items-center"
@@ -901,19 +977,19 @@ const ToolDetailPage = () => {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">分类</span>
-                  <span className="font-medium text-gray-900">{tool.category}</span>
+                  <span className="font-medium text-gray-900">{adaptedTool.category}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">收录时间</span>
-                  <span className="font-medium text-gray-900">{tool.addedDate}</span>
+                  <span className="font-medium text-gray-900">{adaptedTool.addedDate}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">最后更新</span>
-                  <span className="font-medium text-gray-900">{tool.lastUpdated}</span>
+                  <span className="font-medium text-gray-900">{adaptedTool.lastUpdated}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">浏览量</span>
-                  <span className="font-medium text-gray-900">{tool.views.toLocaleString()}</span>
+                  <span className="font-medium text-gray-900">{adaptedTool.views.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -924,7 +1000,7 @@ const ToolDetailPage = () => {
         <div className="mt-12">
           <div className="card p-8">
             <h2 className="text-2xl font-bold text-primary-800 mb-6">相关工具推荐</h2>
-            <p className="text-gray-600 mb-6">与当前工具同属"{tool.category}"分类的其他优质工具</p>
+            <p className="text-gray-600 mb-6">与当前工具同属"{adaptedTool.category}"分类的其他优质工具</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {relatedTools.map((relatedTool) => (
                 <Link

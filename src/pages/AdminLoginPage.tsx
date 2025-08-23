@@ -23,19 +23,23 @@ const AdminLoginPage = () => {
       })
       if (signInError) throw signInError
 
-      // 等待会话稳定后再查管理员表（增加超时兜底）
-      await new Promise(res => setTimeout(res, 300))
-      const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000))
+      // 等待会话稳定后再查管理员表（激进优化：更短的超时）
+      await new Promise(res => setTimeout(res, 100))
+      const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000))
       const admin = await Promise.race([checkAdminStatus(), timeout])
       if (admin === null) {
-        // 无法在 5s 内确认管理员，先进入后台由控制台页面继续校验
+        // 无法在 3s 内确认管理员，直接跳转让管理员页面处理
+        console.log('⚠️ 权限验证超时(3s)，直接跳转到管理员页面')
         window.location.assign('/admin')
         return
       }
       if (!admin) {
+        // 如果明确不是管理员，显示错误
         setError('当前账户不是管理员，无法进入后台')
         return
       }
+      // 验证成功，跳转到管理员页面
+      console.log('✅ 管理员验证成功，跳转到管理员页面')
       window.location.assign('/admin')
     } catch (err: any) {
       setError(err?.message || '登录失败，请重试')

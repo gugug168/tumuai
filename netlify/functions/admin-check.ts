@@ -42,17 +42,48 @@ const handler: Handler = async (event) => {
       }
     }
 
-    // 若还没有任何管理员，自动将当前用户设为 super_admin，避免首次登录卡住
+    // 检查是否有任何管理员，如果没有则自动将当前用户设为 super_admin
     const { count } = await supabase
       .from('admin_users')
       .select('id', { count: 'exact', head: true })
-    if (!count || count === 0) {
+    
+    // 如果管理员表为空，或者当前用户是admin@civilaihub.com，则自动创建管理员
+    const userEmail = userRes.user.email
+    const shouldCreateAdmin = (!count || count === 0) || (userEmail === 'admin@civilaihub.com')
+    
+    if (shouldCreateAdmin) {
+      const permissions = {
+        manage_tools: true,
+        manage_users: true,
+        manage_submissions: true,
+        manage_admins: true,
+        view_analytics: true,
+        system_settings: true
+      }
+      
       const { data: created, error: insErr } = await supabase
         .from('admin_users')
-        .insert([{ user_id: userId, role: 'super_admin', permissions: {} }])
+        .insert([{ user_id: userId, role: 'super_admin', permissions }])
         .select('id,user_id,role,permissions,created_at,updated_at')
         .maybeSingle()
       if (insErr) {
+        // 如果是因为冲突（用户已存在），尝试更新
+        if (insErr.code === '23505') {
+          const { data: updated, error: updateErr } = await supabase
+            .from('admin_users')
+            .update({ role: 'super_admin', permissions, updated_at: new Date().toISOString() })
+            .eq('user_id', userId)
+            .select('id,user_id,role,permissions,created_at,updated_at')
+            .maybeSingle()
+          if (updateErr) {
+            return { statusCode: 500, body: updateErr.message }
+          }
+          return {
+            statusCode: 200,
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(updated)
+          }
+        }
         return { statusCode: 500, body: insErr.message }
       }
       return {
