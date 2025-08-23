@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
   Calculator, 
@@ -7,77 +7,109 @@ import {
   BarChart3, 
   Layers,
   Ruler,
-  HardHat
+  HardHat,
+  Mountain,
+  Road,
+  Zap,
+  Box,
+  Construction,
+  PenTool,
+  MapPin,
+  DollarSign,
+  Microscope
 } from 'lucide-react';
+import { getCategories } from '../lib/supabase';
+import { apiRequestWithRetry } from '../lib/api';
 
-const categories = [
-  {
-    id: 1,
-    name: '结构设计',
-    description: '结构计算、分析、设计工具',
-    icon: Building2,
-    color: 'bg-blue-500',
-    count: 85
-  },
-  {
-    id: 2,
-    name: 'BIM建模',
-    description: '建筑信息模型相关工具',
-    icon: Layers,
-    color: 'bg-green-500',
-    count: 72
-  },
-  {
-    id: 3,
-    name: '施工管理',
-    description: '项目管理、进度控制工具',
-    icon: HardHat,
-    color: 'bg-orange-500',
-    count: 64
-  },
-  {
-    id: 4,
-    name: '造价估算',
-    description: '工程造价、成本控制工具',
-    icon: Calculator,
-    color: 'bg-purple-500',
-    count: 58
-  },
-  {
-    id: 5,
-    name: '工程制图',
-    description: 'CAD、制图、绘图工具',
-    icon: Ruler,
-    color: 'bg-red-500',
-    count: 45
-  },
-  {
-    id: 6,
-    name: '数据分析',
-    description: '工程数据分析、可视化工具',
-    icon: BarChart3,
-    color: 'bg-indigo-500',
-    count: 39
-  },
-  {
-    id: 7,
-    name: '质量检测',
-    description: '材料检测、质量控制工具',
-    icon: Wrench,
-    color: 'bg-teal-500',
-    count: 32
-  },
-  {
-    id: 8,
-    name: '文档管理',
-    description: '技术文档、报告生成工具',
-    icon: FileText,
-    color: 'bg-yellow-500',
-    count: 28
-  }
-];
+// 图标映射
+const iconMap: Record<string, React.ComponentType<any>> = {
+  'Building2': Building2,
+  'Calculator': Calculator,
+  'Wrench': Wrench,
+  'FileText': FileText,
+  'BarChart3': BarChart3,
+  'Layers': Layers,
+  'Ruler': Ruler,
+  'HardHat': HardHat,
+  'Mountain': Mountain,
+  'Road': Road,
+  'Zap': Zap,
+  'Box': Box,
+  'Construction': Construction,
+  'pen-tool': PenTool,
+  'map-pin': MapPin,
+  'dollar-sign': DollarSign,
+  'microscope': Microscope,
+  'file-text': FileText
+};
+
+// 颜色类映射（将hex颜色转换为Tailwind类）
+const getColorClass = (hexColor: string) => {
+  const colorMap: Record<string, string> = {
+    '#EF4444': 'bg-red-500',
+    '#3B82F6': 'bg-blue-500',
+    '#10B981': 'bg-green-500',
+    '#8B5CF6': 'bg-purple-500',
+    '#F59E0B': 'bg-amber-500',
+    '#06B6D4': 'bg-cyan-500',
+    '#84CC16': 'bg-lime-500',
+    '#64748B': 'bg-gray-500',
+    '#F97316': 'bg-orange-500',
+    '#EC4899': 'bg-pink-500',
+    '#6366F1': 'bg-indigo-500',
+    '#14B8A6': 'bg-teal-500'
+  };
+  return colorMap[hexColor] || 'bg-gray-500';
+};
 
 const Categories = () => {
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        setLoading(true);
+        const data = await apiRequestWithRetry(() => getCategories(), 2, 1500);
+        setCategories(data);
+        setError(null);
+      } catch (err) {
+        console.error('获取分类失败:', err);
+        setError('获取分类失败');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchCategories();
+  }, []);
+
+  if (loading) {
+    return (
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-2 text-gray-600">加载分类中...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <p className="text-red-600">{error}</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="py-16 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -92,25 +124,26 @@ const Categories = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {categories.map((category) => {
-            const IconComponent = category.icon;
+            const IconComponent = iconMap[category.icon] || FileText;
+            const colorClass = getColorClass(category.color);
             return (
               <div
                 key={category.id}
                 className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group"
               >
                 <div className="flex items-center mb-4">
-                  <div className={`${category.color} p-3 rounded-lg group-hover:scale-110 transition-transform`}>
+                  <div className={`${colorClass} p-3 rounded-lg group-hover:scale-110 transition-transform`}>
                     <IconComponent className="w-6 h-6 text-white" />
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
                       {category.name}
                     </h3>
-                    <span className="text-sm text-gray-500">{category.count} 个工具</span>
+                    <span className="text-sm text-gray-500">查看工具</span>
                   </div>
                 </div>
                 <p className="text-gray-600 text-sm leading-relaxed">
-                  {category.description}
+                  {category.description || '专业工具分类'}
                 </p>
               </div>
             );

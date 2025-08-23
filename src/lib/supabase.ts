@@ -197,3 +197,25 @@ export async function searchTools(query: string, filters?: {
     return []
   }
 }
+
+// 获取分类列表
+export async function getCategories() {
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .order('name', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching categories:', error)
+      throw error
+    }
+
+    return data || []
+  } catch (error) {
+    console.error('Unexpected error fetching categories:', error)
+    throw error
+  }
+}
