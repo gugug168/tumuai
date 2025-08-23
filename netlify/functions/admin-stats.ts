@@ -45,7 +45,7 @@ const handler: Handler = async (event) => {
       supabase.from('tool_submissions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
       supabase.from('tool_reviews').select('rating'),
       supabase.from('tool_comments').select('id', { count: 'exact', head: true }),
-      supabase.from('tool_favorites').select('id', { count: 'exact', head: true })
+      supabase.from('user_favorites').select('id', { count: 'exact', head: true })
     ])
 
     const reviewCount = reviews?.length || 0

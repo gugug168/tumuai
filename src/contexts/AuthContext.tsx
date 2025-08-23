@@ -40,20 +40,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
-    
-    // 清除本地状态
-    setUser(null)
-    setSession(null)
-    setProfile(null)
-
-    // 彻底清理本地缓存，避免某些扩展或缓存导致的残留会话
     try {
-      Object.keys(localStorage)
-        .filter((k) => k.toLowerCase().includes('supabase'))
-        .forEach((k) => localStorage.removeItem(k))
-    } catch {}
+      // 先清除本地状态（立即响应UI）
+      setUser(null)
+      setSession(null)
+      setProfile(null)
+      
+      // 然后执行Supabase登出
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('Supabase signOut error:', error)
+        // 即使Supabase登出失败，也要清理本地状态
+      }
+      
+      // 彻底清理本地缓存，避免某些扩展或缓存导致的残留会话
+      try {
+        Object.keys(localStorage)
+          .filter((k) => k.toLowerCase().includes('supabase') || k.includes('sb-'))
+          .forEach((k) => {
+            console.log('Removing localStorage key:', k)
+            localStorage.removeItem(k)
+          })
+        
+        // 清理sessionStorage
+        Object.keys(sessionStorage)
+          .filter((k) => k.toLowerCase().includes('supabase') || k.includes('sb-'))
+          .forEach((k) => {
+            console.log('Removing sessionStorage key:', k)
+            sessionStorage.removeItem(k)
+          })
+      } catch (e) {
+        console.warn('Storage cleanup error:', e)
+      }
+      
+      console.log('✅ 登出完成，已清理所有状态')
+    } catch (error) {
+      console.error('❌ 登出过程中发生错误:', error)
+      throw error
+    }
   }
 
   useEffect(() => {
