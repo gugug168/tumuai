@@ -286,6 +286,66 @@ export async function reviewToolSubmission(
   })
 }
 
+// 直接审批工具提交（使用数据库函数）
+export async function approveToolSubmissionDirect(
+  submissionId: string,
+  adminNotes?: string
+) {
+  try {
+    const { data, error } = await fetch('/.netlify/functions/admin-actions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${await ensureAccessToken()}`
+      },
+      body: JSON.stringify({
+        action: 'approve_submission_direct',
+        submissionId,
+        adminNotes
+      })
+    }).then(res => res.json())
+
+    if (error) {
+      throw new Error(error)
+    }
+
+    return data
+  } catch (error) {
+    console.error('直接审批失败:', error)
+    throw error
+  }
+}
+
+// 直接拒绝工具提交（使用数据库函数）
+export async function rejectToolSubmissionDirect(
+  submissionId: string,
+  adminNotes?: string
+) {
+  try {
+    const { data, error } = await fetch('/.netlify/functions/admin-actions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${await ensureAccessToken()}`
+      },
+      body: JSON.stringify({
+        action: 'reject_submission_direct',
+        submissionId,
+        adminNotes
+      })
+    }).then(res => res.json())
+
+    if (error) {
+      throw new Error(error)
+    }
+
+    return data
+  } catch (error) {
+    console.error('直接拒绝失败:', error)
+    throw error
+  }
+}
+
 // 获取用户列表
 export async function getUsers(page = 1, limit = 20) {
   try {

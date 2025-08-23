@@ -58,6 +58,7 @@ export async function getTools(limit = 60) {
     const { data, error } = await supabase
       .from('tools')
       .select('id,name,tagline,logo_url,categories,features,pricing,rating,views,upvotes,date_added')
+      .eq('status', 'published')  // 只获取已发布的工具
       .order('upvotes', { ascending: false })
       .limit(limit)
 
@@ -80,6 +81,7 @@ export async function getFeaturedTools() {
       .from('tools')
       .select('*')
       .eq('featured', true)
+      .eq('status', 'published')  // 只获取已发布的精选工具
       .order('upvotes', { ascending: false })
       .limit(8)
 
@@ -101,6 +103,7 @@ export async function getLatestTools() {
     const { data, error } = await supabase
       .from('tools')
       .select('*')
+      .eq('status', 'published')  // 只获取已发布的最新工具
       .order('date_added', { ascending: false })
       .limit(12)
 
@@ -163,6 +166,7 @@ export async function searchTools(query: string, filters?: {
     let queryBuilder = supabase
       .from('tools')
       .select('*')
+      .eq('status', 'published')  // 只搜索已发布的工具
 
     // 文本搜索
     if (query) {

@@ -19,6 +19,7 @@ const handler: Handler = async (event) => {
     const { data, error } = await supabase
       .from('tools')
       .select('id,name,tagline,logo_url,categories,features,pricing,rating,views,upvotes,date_added')
+      .eq('status', 'published')  // 只返回已发布的工具
       .order('upvotes', { ascending: false })
       .limit(limit)
 
