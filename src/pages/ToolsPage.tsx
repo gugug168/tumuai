@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getTools, searchTools, type Tool } from '../lib/supabase';
+import { apiRequestWithRetry } from '../lib/api';
 import { addToFavorites, removeFromFavorites, isFavorited } from '../lib/community';
 import AuthModal from '../components/AuthModal';
 
@@ -96,22 +97,11 @@ const ToolsPage = () => {
     setLoadError(null);
     setLoading(true);
     try {
-      // 增加超时保护，避免网络异常导致一直加载
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        const id = setTimeout(() => {
-          clearTimeout(id);
-          reject(new Error('请求超时，请稍后重试'));
-        }, 10000);
-      });
-
-      const data = await Promise.race([
-        getTools(),
-        timeoutPromise,
-      ]) as Tool[];
+      const data = await apiRequestWithRetry(() => getTools(), 2, 1500);
       setTools(Array.isArray(data) ? data : []);
-    } catch (error: any) {
+    } catch (error) {
       console.error('加载工具失败:', error);
-      setLoadError(error?.message || '加载失败，请稍后重试');
+      setLoadError(error instanceof Error ? error.message : '加载失败，请稍后重试');
     } finally {
       setLoading(false);
     }

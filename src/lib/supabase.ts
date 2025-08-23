@@ -63,13 +63,13 @@ export async function getTools(limit = 60) {
 
     if (error) {
       console.error('Error fetching tools:', error)
-      return []
+      throw error
     }
 
     return data as Tool[]
   } catch (error) {
     console.error('Unexpected error fetching tools:', error)
-    return []
+    throw error
   }
 }
 
