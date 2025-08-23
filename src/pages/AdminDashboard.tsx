@@ -1,16 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Users, 
-  Settings, 
   BarChart3, 
   FileText, 
   Shield, 
-  Activity,
   CheckCircle,
   XCircle,
   Clock,
   Database,
-  UserCheck
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  Tag,
+  RefreshCw,
+  ExternalLink,
+  Wrench
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -24,10 +29,48 @@ import {
   createTool,
   updateTool,
   deleteTool,
+  getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
   type AdminUser,
   type ToolSubmission,
   type AdminLog
 } from '../lib/admin';
+import DatabaseRepair from '../components/DatabaseRepair';
+import ToolManagementModal from '../components/ToolManagementModal';
+import CategoryManagementModal from '../components/CategoryManagementModal';
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  color: string;
+  icon: string;
+  parent_id?: string;
+  sort_order: number;
+  is_active: boolean;
+  tools_count: number;
+}
+
+interface Tool {
+  id: string;
+  name: string;
+  tagline: string;
+  description?: string;
+  website_url: string;
+  logo_url?: string;
+  categories: string[];
+  features: string[];
+  pricing: string;
+  featured: boolean;
+  date_added: string;
+  upvotes: number;
+  views: number;
+  rating: number;
+  review_count: number;
+}
 
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(false);
@@ -37,29 +80,33 @@ const AdminDashboard = () => {
     totalUsers: 0,
     pendingSubmissions: 0,
     totalReviews: 0,
-    totalFavorites: 0
+    totalFavorites: 0,
+    totalCategories: 0
   });
   const [submissions, setSubmissions] = useState<ToolSubmission[]>([]);
   const [users, setUsers] = useState<any[]>([]);
-  const [tools, setTools] = useState<any[]>([]);
-  const [logs, setLogs] = useState<AdminLog[]>([]);
+  const [tools, setTools] = useState<Tool[]>([]);
+  const [logs] = useState<AdminLog[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [editingTool, setEditingTool] = useState<Tool | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [showToolModal, setShowToolModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showSubmissionModal] = useState<ToolSubmission | null>(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       console.log('🔄 开始加载管理数据...');
       
-      // 检查管理员权限（增加超时兜底，避免卡住）
+      // 检查管理员权限
       const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
       const adminStatus = await Promise.race([checkAdminStatus(), timeout]);
-      console.log('👤 管理员状态检查:', adminStatus);
       
       if (adminStatus === null) {
         console.warn('⚠️ 管理员校验超时，继续加载数据由后端函数再次鉴权');
@@ -72,13 +119,14 @@ const AdminDashboard = () => {
       
       console.log('✅ 管理员权限验证通过');
       
-      // 分步加载数据，避免阻塞；增加硬性超时，避免某个Promise永久悬挂
+      // 加载所有数据
       const loaders = [
         loadStats(),
         loadSubmissions(),
         loadUsers(),
         loadTools(),
-        loadLogs()
+        loadLogs(),
+        loadCategories()
       ].map(p => p.catch((e) => console.error('❌ 子任务失败:', e)))
 
       const hardCap = new Promise<void>((resolve) => setTimeout(() => {
@@ -98,14 +146,12 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
 
   const loadStats = async () => {
     try {
-      console.log('📊 开始加载统计数据...');
-      const statsData = await getSystemStats();
-      console.log('✅ 统计数据加载完成:', statsData);
-      setStats(statsData);
+      const data = await getSystemStats();
+      setStats(prev => ({ ...prev, ...data }));
     } catch (error) {
       console.error('❌ 统计数据加载失败:', error);
     }
@@ -113,10 +159,8 @@ const AdminDashboard = () => {
 
   const loadSubmissions = async () => {
     try {
-      console.log('📝 开始加载提交数据...');
-      const submissionsData = await getToolSubmissions();
-      console.log('✅ 提交数据加载完成:', submissionsData.length, '条记录');
-      setSubmissions(submissionsData);
+      const data = await getToolSubmissions();
+      setSubmissions(data);
     } catch (error) {
       console.error('❌ 提交数据加载失败:', error);
     }
@@ -124,10 +168,8 @@ const AdminDashboard = () => {
 
   const loadUsers = async () => {
     try {
-      console.log('👥 开始加载用户数据...');
-      const usersData = await getUsers();
-      console.log('✅ 用户数据加载完成:', usersData.length, '条记录');
-      setUsers(usersData);
+      const data = await getUsers();
+      setUsers(data);
     } catch (error) {
       console.error('❌ 用户数据加载失败:', error);
     }
@@ -135,10 +177,8 @@ const AdminDashboard = () => {
 
   const loadTools = async () => {
     try {
-      console.log('🔧 开始加载工具数据...');
-      const toolsData = await getToolsAdmin();
-      console.log('✅ 工具数据加载完成:', toolsData.length, '条记录');
-      setTools(toolsData);
+      const data = await getToolsAdmin();
+      setTools(data);
     } catch (error) {
       console.error('❌ 工具数据加载失败:', error);
     }
@@ -146,25 +186,80 @@ const AdminDashboard = () => {
 
   const loadLogs = async () => {
     try {
-      console.log('📋 开始加载日志数据...');
-      const logsData = await getAdminLogs();
-      console.log('✅ 日志数据加载完成:', logsData.length, '条记录');
-      setLogs(logsData);
+      const data = await getAdminLogs();
+      setLogs(data);
     } catch (error) {
       console.error('❌ 日志数据加载失败:', error);
     }
   };
 
+  const loadCategories = async () => {
+    try {
+      const data = await getCategories();
+      setCategories(data);
+    } catch (error) {
+      console.error('❌ 分类数据加载失败:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   const handleReviewSubmission = async (submissionId: string, status: 'approved' | 'rejected', notes?: string) => {
     try {
       await reviewToolSubmission(submissionId, status, notes);
-      await loadData(); // 重新加载数据
-      alert(`工具提交已${status === 'approved' ? '批准' : '拒绝'}`);
+      await loadData();
+      setShowSubmissionModal(null);
     } catch (error) {
       console.error('Review failed:', error);
       alert('操作失败，请重试');
     }
   };
+
+
+
+  const handleDeleteTool = async (toolId: string) => {
+    if (!confirm('确定删除该工具？此操作不可撤销。')) return;
+    
+    try {
+      await deleteTool(toolId);
+      await loadData();
+    } catch (error) {
+      console.error('Delete tool failed:', error);
+      alert('删除失败，请重试');
+    }
+  };
+
+
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (!confirm('确定删除该分类？相关工具将失去此分类。')) return;
+    
+    try {
+      await deleteCategory(categoryId);
+      await loadData();
+    } catch (error) {
+      console.error('Delete category failed:', error);
+      alert('删除分类失败，请重试');
+    }
+  };
+
+  const filteredSubmissions = submissions.filter(submission => {
+    const matchesSearch = submission.tool_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         submission.tagline.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || submission.status === filterStatus;
+    return matchesSearch && matchesStatus;
+  });
+
+  const tabs = [
+    { id: 'overview', label: '概览', icon: BarChart3 },
+    { id: 'submissions', label: '工具审核', icon: FileText, count: stats.pendingSubmissions },
+    { id: 'tools', label: '工具管理', icon: Database },
+    { id: 'categories', label: '分类管理', icon: Tag },
+    { id: 'users', label: '用户管理', icon: Users },
+    { id: 'repair', label: '数据库修复', icon: Wrench }
+  ];
 
   if (loading) {
     return (
@@ -177,20 +272,23 @@ const AdminDashboard = () => {
     );
   }
 
-  const tabs = [
-    { id: 'overview', label: '概览', icon: BarChart3 },
-    { id: 'submissions', label: '工具审核', icon: FileText },
-    { id: 'tools', label: '工具管理', icon: Settings },
-    { id: 'users', label: '用户管理', icon: Users }
-  ];
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center">
-            <Shield className="h-8 w-8 text-indigo-600" />
-            <h1 className="ml-3 text-2xl font-bold text-gray-900">管理员控制台</h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Shield className="h-8 w-8 text-indigo-600" />
+              <h1 className="ml-3 text-2xl font-bold text-gray-900" data-testid="admin-dashboard-title">管理员控制台</h1>
+            </div>
+            <button
+              onClick={loadData}
+              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              data-testid="refresh-data-button"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              刷新数据
+            </button>
           </div>
         </div>
       </div>
@@ -207,302 +305,419 @@ const AdminDashboard = () => {
                 <div className="mt-2 text-sm text-red-700">
                   <p>{error}</p>
                 </div>
-                <div className="mt-4">
-                  <button
-                    onClick={loadData}
-                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                  >
-                    重试
-                  </button>
-                </div>
               </div>
             </div>
           </div>
         )}
 
-        {loading ? (
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-            <span className="ml-3 text-lg text-gray-600">加载中...</span>
-          </div>
-        ) : !error ? (
-          <>
-            {/* 概览卡片 */}
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 mb-8">
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="px-4 py-5 sm:p-6">
-                  <div className="flex items-center">
-                    <Database className="h-6 w-6 text-gray-400" />
-                    <div className="ml-4">
-                      <dt className="text-sm font-medium text-gray-500 truncate">工具总数</dt>
-                      <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats.totalTools}</dd>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="px-4 py-5 sm:p-6">
-                  <div className="flex items-center">
-                    <Users className="h-6 w-6 text-gray-400" />
-                    <div className="ml-4">
-                      <dt className="text-sm font-medium text-gray-500 truncate">用户总数</dt>
-                      <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats.totalUsers}</dd>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="px-4 py-5 sm:p-6">
-                  <div className="flex items-center">
-                    <Clock className="h-6 w-6 text-gray-400" />
-                    <div className="ml-4">
-                      <dt className="text-sm font-medium text-gray-500 truncate">待审核</dt>
-                      <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats.pendingSubmissions}</dd>
-                    </div>
-                  </div>
+        {/* 概览卡片 */}
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="px-4 py-5 sm:p-6">
+              <div className="flex items-center">
+                <Database className="h-6 w-6 text-gray-400" />
+                <div className="ml-4">
+                  <dt className="text-sm font-medium text-gray-500">工具总数</dt>
+                  <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats.totalTools}</dd>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* 标签页 */}
-            <div className="bg-white shadow rounded-lg">
-              <div className="border-b border-gray-200">
-                <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
-                  <button
-                    onClick={() => setActiveTab('overview')}
-                    className={`${
-                      activeTab === 'overview'
-                        ? 'border-indigo-500 text-indigo-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-                  >
-                    <BarChart3 className="h-5 w-5 inline mr-2" />
-                    概览
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('submissions')}
-                    className={`${
-                      activeTab === 'submissions'
-                        ? 'border-indigo-500 text-indigo-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-                  >
-                    <FileText className="h-5 w-5 inline mr-2" />
-                    工具审核 ({stats.pendingSubmissions})
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('users')}
-                    className={`${
-                      activeTab === 'users'
-                        ? 'border-indigo-500 text-indigo-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-                  >
-                    <UserCheck className="h-5 w-5 inline mr-2" />
-                    用户管理
-                  </button>
-                </nav>
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="px-4 py-5 sm:p-6">
+              <div className="flex items-center">
+                <Users className="h-6 w-6 text-gray-400" />
+                <div className="ml-4">
+                  <dt className="text-sm font-medium text-gray-500">用户总数</dt>
+                  <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats.totalUsers}</dd>
+                </div>
               </div>
+            </div>
+          </div>
 
-              <div className="p-6">
-                {activeTab === 'overview' && (
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">系统概览</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-900">工具统计</h4>
-                        <p className="mt-2 text-2xl font-semibold">{stats.totalTools}</p>
-                        <p className="text-sm text-gray-500">已收录工具</p>
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="px-4 py-5 sm:p-6">
+              <div className="flex items-center">
+                <Clock className="h-6 w-6 text-orange-400" />
+                <div className="ml-4">
+                  <dt className="text-sm font-medium text-gray-500">待审核</dt>
+                  <dd className="mt-1 text-3xl font-semibold text-orange-600">{stats.pendingSubmissions}</dd>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="px-4 py-5 sm:p-6">
+              <div className="flex items-center">
+                <Tag className="h-6 w-6 text-purple-400" />
+                <div className="ml-4">
+                  <dt className="text-sm font-medium text-gray-500">分类总数</dt>
+                  <dd className="mt-1 text-3xl font-semibold text-purple-600">{stats.totalCategories}</dd>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 标签页 */}
+        <div className="bg-white shadow rounded-lg">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8 px-6 overflow-x-auto">
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
+                    activeTab === tab.id
+                      ? 'border-indigo-500 text-indigo-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  data-testid={`admin-tab-${tab.id}`}
+                >
+                  <tab.icon className="h-5 w-5 inline mr-2" />
+                  {tab.label}
+                  {tab.count && (
+                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          <div className="p-6">
+            {/* 工具审核 */}
+            {activeTab === 'submissions' && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">工具审核</h3>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      placeholder="搜索提交..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="block w-full max-w-xs rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    />
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    >
+                      <option value="all">全部状态</option>
+                      <option value="pending">待审核</option>
+                      <option value="approved">已通过</option>
+                      <option value="rejected">已拒绝</option>
+                    </select>
+                  </div>
+                </div>
+                {filteredSubmissions.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">暂无符合条件的工具提交</p>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredSubmissions.map((submission) => (
+                      <div key={submission.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900 text-lg">{submission.tool_name}</h4>
+                            <p className="text-sm text-gray-600 mt-1">{submission.tagline}</p>
+                            <p className="text-xs text-gray-500 mt-2">
+                              提交时间: {new Date(submission.created_at).toLocaleString()}
+                            </p>
+                            {submission.submitter_email && (
+                              <p className="text-xs text-gray-500">
+                                提交者: {submission.submitter_email}
+                              </p>
+                            )}
+                          </div>
+                          <div className="ml-4">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              submission.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              submission.status === 'approved' ? 'bg-green-100 text-green-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {submission.status === 'pending' ? '待审核' :
+                               submission.status === 'approved' ? '已通过' : '已拒绝'}
+                            </span>
+                          </div>
+                        </div>
+                        {submission.description && (
+                          <p className="text-sm text-gray-600 mt-3 line-clamp-2">{submission.description}</p>
+                        )}
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {submission.categories.map((category) => (
+                            <span key={category} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {category}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex items-center space-x-2 mt-4">
+                          {submission.status === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => handleReviewSubmission(submission.id, 'approved')}
+                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none"
+                                data-testid={`approve-submission-${submission.id}`}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                通过
+                              </button>
+                              <button
+                                onClick={() => handleReviewSubmission(submission.id, 'rejected')}
+                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none"
+                                data-testid={`reject-submission-${submission.id}`}
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                拒绝
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => setShowSubmissionModal(submission)}
+                            className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            详情
+                          </button>
+                        </div>
                       </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-900">用户统计</h4>
-                        <p className="mt-2 text-2xl font-semibold">{stats.totalUsers}</p>
-                        <p className="text-sm text-gray-500">注册用户</p>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-900">待审核</h4>
-                        <p className="mt-2 text-2xl font-semibold">{stats.pendingSubmissions}</p>
-                        <p className="text-sm text-gray-500">工具提交</p>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 )}
+              </div>
+            )}
 
-                {activeTab === 'submissions' && (
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">工具审核</h3>
-                    {submissions.length === 0 ? (
-                      <p className="text-gray-500">暂无待审核的工具提交</p>
-                    ) : (
-                      <div className="space-y-4">
-                        {submissions.map((submission) => (
-                          <div key={submission.id} className="border border-gray-200 rounded-lg p-4">
-                            <div className="flex justify-between">
+            {/* 工具管理 */}
+            {activeTab === 'tools' && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">工具管理</h3>
+                  <button
+                    onClick={() => setShowToolModal(true)}
+                    className="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    新增工具
+                  </button>
+                </div>
+                {tools.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">暂无工具</p>
+                ) : (
+                  <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                    <table className="min-w-full divide-y divide-gray-300">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">名称</th>
+                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">分类</th>
+                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">定价</th>
+                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">状态</th>
+                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {tools.map((tool) => (
+                          <tr key={tool.id}>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm">
                               <div>
-                                <h4 className="font-medium text-gray-900">{submission.tool_name}</h4>
-                                <p className="text-sm text-gray-500">{submission.tagline}</p>
-                                <p className="text-sm text-gray-500 mt-1">
-                                  提交时间: {new Date(submission.created_at).toLocaleString()}
-                                </p>
+                                <div className="font-medium text-gray-900">{tool.name}</div>
+                                <div className="text-gray-500">{tool.tagline}</div>
                               </div>
-                              <div className="flex space-x-2">
-                                <button
-                                  onClick={() => handleReviewSubmission(submission.id, 'approved')}
-                                  className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none"
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-1" />
-                                  通过
-                                </button>
-                                <button
-                                  onClick={() => handleReviewSubmission(submission.id, 'rejected')}
-                                  className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none"
-                                >
-                                  <XCircle className="h-4 w-4 mr-1" />
-                                  拒绝
-                                </button>
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                              <div className="flex flex-wrap gap-1">
+                                {tool.categories.slice(0, 2).map((cat) => (
+                                  <span key={cat} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                                    {cat}
+                                  </span>
+                                ))}
+                                {tool.categories.length > 2 && (
+                                  <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">
+                                    +{tool.categories.length - 2}
+                                  </span>
+                                )}
                               </div>
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                tool.pricing === 'Free' ? 'bg-green-100 text-green-800' :
+                                tool.pricing === 'Freemium' ? 'bg-blue-100 text-blue-800' :
+                                tool.pricing === 'Paid' ? 'bg-red-100 text-red-800' :
+                                'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {tool.pricing}
+                              </span>
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                tool.featured ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {tool.featured ? '精选' : '普通'}
+                              </span>
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm space-x-2">
+                              <button
+                                onClick={() => setEditingTool(tool)}
+                                className="text-indigo-600 hover:text-indigo-900"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTool(tool.id)}
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                              <a
+                                href={tool.website_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-gray-600 hover:text-gray-900"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 分类管理 */}
+            {activeTab === 'categories' && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">分类管理</h3>
+                  <button
+                    onClick={() => setShowCategoryModal(true)}
+                    className="inline-flex items-center px-3 py-2 rounded-md bg-purple-600 text-white text-sm hover:bg-purple-700"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    新增分类
+                  </button>
+                </div>
+                {categories.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">暂无分类</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {categories.map((category) => (
+                      <div key={category.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center">
+                              <div 
+                                className="w-4 h-4 rounded mr-2"
+                                style={{ backgroundColor: category.color }}
+                              ></div>
+                              <h4 className="font-medium text-gray-900">{category.name}</h4>
                             </div>
-                            {submission.description && (
-                              <p className="text-sm text-gray-600 mt-2">{submission.description}</p>
-                            )}
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              {submission.categories.map((category) => (
-                                <span key={category} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                  {category}
-                                </span>
-                              ))}
+                            <p className="text-sm text-gray-600 mt-1">{category.description || '暂无描述'}</p>
+                            <div className="flex items-center mt-2 space-x-4 text-xs text-gray-500">
+                              <span>排序: {category.sort_order}</span>
+                              <span>
+                                状态: {category.is_active ? (
+                                  <span className="text-green-600">启用</span>
+                                ) : (
+                                  <span className="text-red-600">禁用</span>
+                                )}
+                              </span>
                             </div>
                           </div>
-                        ))}
+                          <div className="flex space-x-1">
+                            <button
+                              onClick={() => setEditingCategory(category)}
+                              className="text-indigo-600 hover:text-indigo-900"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCategory(category.id)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                )}
-
-                {activeTab === 'tools' && (
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-medium text-gray-900">工具管理</h3>
-                      <button
-                        onClick={async () => {
-                          const name = prompt('工具名称');
-                          if (!name) return;
-                          const website = prompt('官网地址');
-                          if (!website) return;
-                          try {
-                            await createTool({ name, website_url: website });
-                            await loadData();
-                            alert('已创建');
-                          } catch (e) {
-                            alert('创建失败');
-                          }
-                        }}
-                        className="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white text-sm"
-                      >
-                        新增工具
-                      </button>
-                    </div>
-                    {tools.length === 0 ? (
-                      <p className="text-gray-500">暂无工具</p>
-                    ) : (
-                      <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                        <table className="min-w-full divide-y divide-gray-300">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">名称</th>
-                              <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">官网</th>
-                              <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">操作</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-200 bg-white">
-                            {tools.map((tool: any) => (
-                              <tr key={tool.id}>
-                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900">{tool.name}</td>
-                                <td className="whitespace-nowrap px-3 py-4 text-sm text-indigo-600">{tool.website_url}</td>
-                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 space-x-2">
-                                  <button
-                                    onClick={async () => {
-                                      const newName = prompt('新名称', tool.name) || tool.name;
-                                      const newSite = prompt('新官网', tool.website_url) || tool.website_url;
-                                      try {
-                                        await updateTool(tool.id, { name: newName, website_url: newSite });
-                                        await loadData();
-                                        alert('已保存');
-                                      } catch (e) {
-                                        alert('保存失败');
-                                      }
-                                    }}
-                                    className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200"
-                                  >编辑</button>
-                                  <button
-                                    onClick={async () => {
-                                      if (!confirm('确定删除该工具？')) return;
-                                      try {
-                                        await deleteTool(tool.id);
-                                        await loadData();
-                                        alert('已删除');
-                                      } catch (e) {
-                                        alert('删除失败');
-                                      }
-                                    }}
-                                    className="px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200"
-                                  >删除</button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {activeTab === 'users' && (
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">用户管理</h3>
-                    {users.length === 0 ? (
-                      <p className="text-gray-500">暂无用户数据</p>
-                    ) : (
-                      <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                        <table className="min-w-full divide-y divide-gray-300">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                                用户
-                              </th>
-                              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                                邮箱
-                              </th>
-                              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                                注册时间
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-200 bg-white">
-                            {users.map((user) => (
-                              <tr key={user.id}>
-                                <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                                  {user.full_name || user.email}
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{user.email}</td>
-                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                  {new Date(user.created_at).toLocaleDateString()}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 )}
               </div>
-            </div>
-          </>
-        ) : null}
+            )}
+
+            {/* 用户管理 */}
+            {activeTab === 'users' && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">用户管理</h3>
+                {users.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">暂无用户数据</p>
+                ) : (
+                  <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                    <table className="min-w-full divide-y divide-gray-300">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
+                            用户
+                          </th>
+                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                            邮箱
+                          </th>
+                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                            注册时间
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {users.map((user) => (
+                          <tr key={user.id}>
+                            <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                              {user.full_name || user.email}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{user.email}</td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                              {new Date(user.created_at).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 数据库修复 */}
+            {activeTab === 'repair' && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">数据库修复</h3>
+                <DatabaseRepair />
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+      {/* 工具创建/编辑弹窗 */}
+      <ToolManagementModal
+        isOpen={showToolModal || !!editingTool}
+        onClose={() => { setShowToolModal(false); setEditingTool(null) }}
+        onSave={() => { loadData() }}
+        tool={editingTool as any}
+        categories={categories.map(c => ({ id: c.id, name: c.name }))}
+        mode={editingTool ? 'edit' : 'create'}
+      />
+      {/* 分类创建/编辑弹窗 */}
+      <CategoryManagementModal
+        isOpen={showCategoryModal || !!editingCategory}
+        onClose={() => { setShowCategoryModal(false); setEditingCategory(null) }}
+        onSave={() => { loadData() }}
+        category={editingCategory as any}
+        mode={editingCategory ? 'edit' : 'create'}
+      />
     </div>
   );
 };
