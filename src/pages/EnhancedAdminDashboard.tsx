@@ -279,11 +279,12 @@ const EnhancedAdminDashboard = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <Shield className="h-8 w-8 text-indigo-600" />
-              <h1 className="ml-3 text-2xl font-bold text-gray-900">管理员控制台</h1>
+              <h1 className="ml-3 text-2xl font-bold text-gray-900" data-testid="admin-dashboard-title">管理员控制台</h1>
             </div>
             <button
               onClick={loadData}
               className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              data-testid="refresh-data-button"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               刷新数据
@@ -373,6 +374,7 @@ const EnhancedAdminDashboard = () => {
                       ? 'border-indigo-500 text-indigo-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
+                  data-testid={`admin-tab-${tab.id}`}
                 >
                   <tab.icon className="h-5 w-5 inline mr-2" />
                   {tab.label}
@@ -458,6 +460,7 @@ const EnhancedAdminDashboard = () => {
                               <button
                                 onClick={() => handleReviewSubmission(submission.id, 'approved')}
                                 className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none"
+                                data-testid={`approve-submission-${submission.id}`}
                               >
                                 <CheckCircle className="h-4 w-4 mr-1" />
                                 通过
@@ -465,6 +468,7 @@ const EnhancedAdminDashboard = () => {
                               <button
                                 onClick={() => handleReviewSubmission(submission.id, 'rejected')}
                                 className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none"
+                                data-testid={`reject-submission-${submission.id}`}
                               >
                                 <XCircle className="h-4 w-4 mr-1" />
                                 拒绝

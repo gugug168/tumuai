@@ -46,38 +46,25 @@ async function tryInjectToken(page) {
 
 async function uiLoginIfNeeded(page) {
   // 若已在管理员页，直接返回
-  const adminHeading = page.getByText('管理员控制台', { exact: false })
+  const adminHeading = page.getByTestId('admin-dashboard-title')
   if (await adminHeading.isVisible().catch(() => false)) return
 
   // 跳转到登录页尝试 UI 登录
   await page.goto('/admin-login', { waitUntil: 'domcontentloaded' })
 
-  // 尝试多种方式定位邮箱与密码输入框
-  const emailLocator = page.locator('input[type="email"], input[name*="email" i], input[autocomplete="username"]').first()
-  const passwordLocator = page.locator('input[type="password"], input[name*="password" i], input[autocomplete="current-password"]').first()
+  // 等待登录页面加载
+  await expect(page.getByTestId('admin-login-title')).toBeVisible({ timeout: 10000 })
 
-  // 回退：若未命中，使用第一个与第二个文本框
-  const hasEmail = await emailLocator.count().then(c => c > 0)
-  const hasPass = await passwordLocator.count().then(c => c > 0)
-  if (!hasEmail) {
-    await page.getByRole('textbox').first().fill(ADMIN_USER)
-  } else {
-    await emailLocator.fill(ADMIN_USER)
-  }
-  if (!hasPass) {
-    await page.locator('input').nth(1).fill(ADMIN_PASS)
-  } else {
-    await passwordLocator.fill(ADMIN_PASS)
-  }
+  // 使用稳定的测试 ID 定位输入框
+  await page.getByTestId('admin-email-input').fill(ADMIN_USER)
+  await page.getByTestId('admin-password-input').fill(ADMIN_PASS)
 
-  // 登录按钮
-  const loginBtn = page.getByRole('button', { name: /登录|登入|Login/i }).first()
-  await loginBtn.click({ trial: false }).catch(async () => {
-    await page.locator('button').first().click().catch(() => {})
-  })
+  // 点击登录按钮
+  await page.getByTestId('admin-login-button').click()
 
+  // 等待跳转到管理页面
   await page.waitForURL('**/admin', { timeout: 30000 })
-  await expect(page.getByText('管理员控制台', { exact: false })).toBeVisible({ timeout: 20000 })
+  await expect(page.getByTestId('admin-dashboard-title')).toBeVisible({ timeout: 20000 })
 }
 
 test.beforeEach(async ({ page }) => {
@@ -89,32 +76,49 @@ test.describe('Admin flows', () => {
   test('login and load dashboard', async ({ page }) => {
     await page.goto('/admin', { waitUntil: 'domcontentloaded' })
     // 若未注入 token 或跳转失败，则回退 UI 登录
-    if (!await page.getByText('管理员控制台', { exact: false }).isVisible().catch(() => false)) {
+    if (!await page.getByTestId('admin-dashboard-title').isVisible().catch(() => false)) {
       await uiLoginIfNeeded(page)
     }
-    await expect(page.getByText('管理员控制台', { exact: false })).toBeVisible({ timeout: 20000 })
+    await expect(page.getByTestId('admin-dashboard-title')).toBeVisible({ timeout: 20000 })
   })
 
-  test('review approve first pending submission if any', async ({ page }) => {
+  test('navigate to tool review and approve first pending submission if any', async ({ page }) => {
     await page.goto('/admin')
-    if (!await page.getByText('管理员控制台', { exact: false }).isVisible().catch(() => false)) {
+    if (!await page.getByTestId('admin-dashboard-title').isVisible().catch(() => false)) {
       await uiLoginIfNeeded(page)
     }
-    await page.getByRole('button', { name: '工具审核' }).click()
-    const approve = page.getByRole('button', { name: '通过' }).first()
-    if (await approve.isVisible()) {
-      await approve.click()
-      // 成功后不应有报错提示
+    
+    // 点击工具审核标签
+    await page.getByTestId('admin-tab-submissions').click()
+    
+    // 等待审核页面加载
+    await page.waitForTimeout(1000)
+    
+    // 查找第一个待审核的提交，如果有的话
+    const firstApproveButton = page.locator('[data-testid^="approve-submission-"]').first()
+    const hasSubmissions = await firstApproveButton.count().then(c => c > 0)
+    
+    if (hasSubmissions) {
+      await firstApproveButton.click()
+      // 等待操作完成，成功后不应有报错提示
+      await page.waitForTimeout(2000)
       await expect(page.getByText('操作失败', { exact: false })).toHaveCount(0)
+    } else {
+      console.log('No pending submissions found for approval')
     }
   })
 
-  test('create/update category', async ({ page }) => {
+  test('navigate to category management', async ({ page }) => {
     await page.goto('/admin')
-    if (!await page.getByText('管理员控制台', { exact: false }).isVisible().catch(() => false)) {
+    if (!await page.getByTestId('admin-dashboard-title').isVisible().catch(() => false)) {
       await uiLoginIfNeeded(page)
     }
-    await page.getByRole('button', { name: '分类管理' }).click()
+    
+    // 点击分类管理标签
+    await page.getByTestId('admin-tab-categories').click()
+    
+    // 等待分类管理页面加载
+    await page.waitForTimeout(1000)
     await page.getByRole('button', { name: '新增分类' }).click()
     // 简化：直接命名
     const name = `测试分类${Date.now().toString().slice(-4)}`
