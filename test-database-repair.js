@@ -2,8 +2,9 @@
 // 运行：node test-database-repair.js
 // 确保已设置环境变量：SUPABASE_URL 和 SUPABASE_SERVICE_ROLE_KEY
 
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config({ path: '.env.local' });
+import { createClient } from '@supabase/supabase-js';
+import { config } from 'dotenv';
+config({ path: '.env.local' });
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -150,8 +151,6 @@ async function testDatabaseRepair() {
 }
 
 // 执行测试
-if (require.main === module) {
-  testDatabaseRepair().catch(console.error);
-}
+testDatabaseRepair().catch(console.error);
 
-module.exports = { testDatabaseRepair };
+export { testDatabaseRepair };
