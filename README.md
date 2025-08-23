@@ -58,26 +58,61 @@ npm run format
 项目使用VITE构建，需要配置以下环境变量：
 
 ### 1. 创建环境变量文件
-```bash
-# 创建.env文件（用于生产环境）
-cp .env.example .env
+在项目根目录创建以下文件：
 
-# 创建.env.local文件（用于开发环境）
-cp .env.local.example .env.local
+```bash
+# 开发环境配置文件
+touch .env.local
+
+# 生产环境在Netlify中配置环境变量
 ```
 
-### 2. 配置环境变量
-编辑创建的.env或.env.local文件，设置以下变量：
+### 2. 本地开发环境变量
+在 `.env.local` 文件中配置：
 
-| 变量名称 | 描述 |
-|---------|------|
-| `VITE_SUPABASE_URL` | Supabase项目的URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase的匿名密钥 |
+```bash
+# Supabase 配置
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
 
-### 3. 获取Supabase环境变量值
+# Netlify Functions 专用（本地测试时需要）
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+
+# 端到端测试配置（可选）
+E2E_ADMIN_USER=admin@civilaihub.com
+E2E_ADMIN_PASS=your-admin-password
+E2E_SUPABASE_URL=https://your-project.supabase.co
+E2E_SUPABASE_ANON_KEY=your-anon-key-here
+E2E_SUPABASE_TOKEN=your-test-access-token
+```
+
+### 3. 生产环境配置（Netlify）
+在 Netlify Dashboard 中配置以下环境变量：
+
+| 变量名称 | 描述 | 必需 |
+|---------|------|------|
+| `VITE_SUPABASE_URL` | Supabase项目的URL | ✅ |
+| `VITE_SUPABASE_ANON_KEY` | Supabase的匿名密钥 | ✅ |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase服务角色密钥（用于Netlify Functions） | ✅ |
+| `E2E_ADMIN_USER` | 测试管理员邮箱 | 🔶 |
+| `E2E_ADMIN_PASS` | 测试管理员密码 | 🔶 |
+| `E2E_SUPABASE_URL` | 测试环境Supabase URL | 🔶 |
+| `E2E_SUPABASE_ANON_KEY` | 测试环境匿名密钥 | 🔶 |
+
+### 4. 获取Supabase环境变量值
 1. 登录到 [Supabase Dashboard](https://app.supabase.com/)
 2. 选择项目后点击左侧菜单底部"Project Settings"
-3. 在"API"选项卡中获取项目URL和匿名密钥
+3. 在"API"选项卡中获取：
+   - **URL**: 项目URL（VITE_SUPABASE_URL）
+   - **anon public**: 匿名公钥（VITE_SUPABASE_ANON_KEY）
+   - **service_role**: 服务角色密钥（SUPABASE_SERVICE_ROLE_KEY，⚠️保密）
+
+### 5. 环境变量安全说明
+⚠️ **重要安全提示**：
+- `VITE_SUPABASE_ANON_KEY`: 可以暴露在前端，但应配置RLS策略
+- `SUPABASE_SERVICE_ROLE_KEY`: 绝对不能暴露到前端，仅用于服务端
+- 生产环境密钥与开发环境应该分离
+- 定期轮换API密钥
 
 ## 🌐 技术栈
 

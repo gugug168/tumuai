@@ -1,35 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Users, 
-  Settings, 
   BarChart3, 
   FileText, 
   Shield, 
-  Activity,
   CheckCircle,
   XCircle,
   Clock,
   Database,
-  UserCheck,
   Plus,
   Edit,
   Trash2,
   Eye,
   Tag,
-  Palette,
-  Folder,
   RefreshCw,
-  Search,
-  Filter,
-  ChevronDown,
-  ChevronUp,
-  Save,
-  Cancel,
-  AlertTriangle,
-  Check,
   ExternalLink,
-  Copy,
-  EyeOff,
   Wrench
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -101,7 +86,7 @@ const EnhancedAdminDashboard = () => {
   const [submissions, setSubmissions] = useState<ToolSubmission[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [tools, setTools] = useState<Tool[]>([]);
-  const [logs, setLogs] = useState<AdminLog[]>([]);
+  const [logs] = useState<AdminLog[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -110,7 +95,7 @@ const EnhancedAdminDashboard = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [showToolModal, setShowToolModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showSubmissionModal, setShowSubmissionModal] = useState<ToolSubmission | null>(null);
+  const [showSubmissionModal] = useState<ToolSubmission | null>(null);
   const navigate = useNavigate();
 
   const loadData = useCallback(async () => {
@@ -232,27 +217,7 @@ const EnhancedAdminDashboard = () => {
     }
   };
 
-  const handleCreateTool = async (toolData: any) => {
-    try {
-      await createTool(toolData);
-      await loadData();
-      setShowToolModal(false);
-    } catch (error) {
-      console.error('Create tool failed:', error);
-      alert('创建失败，请重试');
-    }
-  };
 
-  const handleUpdateTool = async (toolId: string, updates: any) => {
-    try {
-      await updateTool(toolId, updates);
-      await loadData();
-      setEditingTool(null);
-    } catch (error) {
-      console.error('Update tool failed:', error);
-      alert('更新失败，请重试');
-    }
-  };
 
   const handleDeleteTool = async (toolId: string) => {
     if (!confirm('确定删除该工具？此操作不可撤销。')) return;
@@ -266,27 +231,7 @@ const EnhancedAdminDashboard = () => {
     }
   };
 
-  const handleCreateCategory = async (categoryData: any) => {
-    try {
-      await createCategory(categoryData);
-      await loadData();
-      setShowCategoryModal(false);
-    } catch (error) {
-      console.error('Create category failed:', error);
-      alert('创建分类失败，请重试');
-    }
-  };
 
-  const handleUpdateCategory = async (categoryId: string, updates: any) => {
-    try {
-      await updateCategory(categoryId, updates);
-      await loadData();
-      setEditingCategory(null);
-    } catch (error) {
-      console.error('Update category failed:', error);
-      alert('更新分类失败，请重试');
-    }
-  };
 
   const handleDeleteCategory = async (categoryId: string) => {
     if (!confirm('确定删除该分类？相关工具将失去此分类。')) return;

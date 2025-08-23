@@ -1,12 +1,30 @@
 // 数据库修复测试脚本
 // 运行：node test-database-repair.js
+// 确保已设置环境变量：SUPABASE_URL 和 SUPABASE_SERVICE_ROLE_KEY
 
 const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
 
-const supabase = createClient(
-  process.env.SUPABASE_URL || 'https://your-project.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || 'your-service-role-key'
-);
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl) {
+  console.error('❌ 错误: 缺少 SUPABASE_URL 或 VITE_SUPABASE_URL 环境变量');
+  console.log('请在 .env.local 文件中设置 Supabase URL');
+  process.exit(1);
+}
+
+if (!serviceKey) {
+  console.error('❌ 错误: 缺少 SUPABASE_SERVICE_ROLE_KEY 环境变量');
+  console.log('请在 .env.local 文件中设置 Supabase Service Role Key');
+  process.exit(1);
+}
+
+console.log('🔧 使用环境变量配置 Supabase 连接...');
+console.log('📍 URL:', supabaseUrl);
+console.log('🔑 Service Key:', serviceKey.substring(0, 20) + '...');
+
+const supabase = createClient(supabaseUrl, serviceKey);
 
 async function testDatabaseRepair() {
   console.log('🔄 开始测试数据库修复...');

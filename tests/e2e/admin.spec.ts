@@ -3,10 +3,19 @@ import { createClient } from '@supabase/supabase-js'
 
 const ADMIN_USER = process.env.E2E_ADMIN_USER || 'admin@civilaihub.com'
 const ADMIN_PASS = process.env.E2E_ADMIN_PASS || 'admin123'
-const SUPABASE_URL = process.env.E2E_SUPABASE_URL || 'https://bixljqdwkjuzftlpmgtb.supabase.co'
-const SUPABASE_ANON_KEY = process.env.E2E_SUPABASE_ANON_KEY || ''
+const SUPABASE_URL = process.env.E2E_SUPABASE_URL || process.env.VITE_SUPABASE_URL
+const SUPABASE_ANON_KEY = process.env.E2E_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || ''
 const SUPABASE_TOKEN = process.env.E2E_SUPABASE_TOKEN || ''
-const SB_LOCAL_KEY = `sb-bixljqdwkjuzftlpmgtb-auth-token`
+
+if (!SUPABASE_URL) {
+  console.error('❌ 错误: 缺少 Supabase URL 环境变量')
+  console.log('请设置 E2E_SUPABASE_URL 或 VITE_SUPABASE_URL 环境变量')
+  process.exit(1)
+}
+
+// 从 URL 中提取项目 ID 用于本地存储键
+const PROJECT_ID = SUPABASE_URL.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || 'unknown'
+const SB_LOCAL_KEY = `sb-${PROJECT_ID}-auth-token`
 
 async function tryInjectToken(page) {
   // 优先使用直接提供的访问令牌

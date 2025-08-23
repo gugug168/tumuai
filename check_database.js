@@ -1,8 +1,28 @@
 // 数据库连接检查脚本
 import { createClient } from '@supabase/supabase-js';
+import { config } from 'dotenv';
 
-const supabaseUrl = 'https://bixljqdwkjuzftlpmgtb.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpeGxqcWR3a2p1emZ0bHBtZ3RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ5MTc4NzUsImV4cCI6MjA3MDQ5Mzg3NX0.dKpr91AP0SrY7IllDEOGPQZ5QFAa1TK30otahmK-uy8';
+// 加载环境变量
+config({ path: '.env.local' });
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl) {
+  console.error('❌ 错误: 缺少 VITE_SUPABASE_URL 环境变量');
+  console.log('请在 .env.local 文件中设置 Supabase URL');
+  process.exit(1);
+}
+
+if (!supabaseKey) {
+  console.error('❌ 错误: 缺少 VITE_SUPABASE_ANON_KEY 环境变量');
+  console.log('请在 .env.local 文件中设置 Supabase 匿名密钥');
+  process.exit(1);
+}
+
+console.log('🔧 使用环境变量配置 Supabase 连接...');
+console.log('📍 URL:', supabaseUrl);
+console.log('🔑 Key:', supabaseKey.substring(0, 20) + '...');
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
