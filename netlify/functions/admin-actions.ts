@@ -1,9 +1,51 @@
 import { Handler } from '@netlify/functions'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, PostgrestError } from '@supabase/supabase-js'
 
 interface AdminUser {
   id: string
   userId: string
+}
+
+interface ToolUpdate {
+  name?: string
+  tagline?: string
+  description?: string
+  website_url?: string
+  logo_url?: string
+  categories?: string[]
+  features?: string[]
+  pricing?: string
+  featured?: boolean
+}
+
+interface ErrorResponse {
+  message?: string
+  code?: string
+}
+
+interface CategoryPayload {
+  name: string
+  slug: string
+  description?: string | null
+  color: string
+  icon: string
+  parent_id?: string | null
+  sort_order: number
+  is_active: boolean
+}
+
+interface ToolData {
+  id?: string
+  name?: string
+  tagline?: string
+  description?: string
+  website_url?: string
+  logo_url?: string
+  categories?: string[]
+  features?: string[]
+  pricing?: string
+  featured?: boolean
+  category_id?: string | null
 }
 
 async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?: string): Promise<AdminUser | null> {
@@ -15,7 +57,7 @@ async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?
     if (authError || !userRes?.user?.id) return null
     
     const userId = userRes.user.id
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from('admin_users')
       .select('id,user_id')
       .eq('user_id', userId)
@@ -95,8 +137,8 @@ const handler: Handler = async (event) => {
       const raw = Array.isArray(input) ? input.filter(Boolean) : []
       if (raw.length === 0) return { ids: [], primaryId: null }
       const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-      const preUuids = raw.filter((v: any) => typeof v === 'string' && uuidRe.test(v)) as string[]
-      const names = raw.filter((v: any) => typeof v === 'string' && !uuidRe.test(v)) as string[]
+      const preUuids = raw.filter((v: unknown): v is string => typeof v === 'string' && uuidRe.test(v))
+      const names = raw.filter((v: unknown): v is string => typeof v === 'string' && !uuidRe.test(v))
       let foundIds: string[] = [...preUuids]
       if (names.length > 0) {
         const { data: cats } = await supabase
@@ -185,14 +227,14 @@ const handler: Handler = async (event) => {
             // 若失败（常见是 categories 类型不匹配），回退为最小插入再补充更新
             if (insErr) {
               console.warn('Insert with categories failed, retrying without categories:', insErr.message)
-              const { categories, ...minInsert } = insertObj
+              const { ...minInsert } = insertObj // Remove unused categories variable
               const retry = await supabase
                 .from('tools')
                 .insert([minInsert])
                 .select('id')
                 .maybeSingle()
-              insErr = retry.error as any
-              newTool = retry.data as any
+              insErr = retry.error as PostgrestError | null
+              newTool = retry.data as ToolData | null
               if (insErr) {
                 console.error('Error creating tool after fallback:', insErr)
                 return { statusCode: 500, body: JSON.stringify({ error: insErr.message }) }
@@ -239,7 +281,7 @@ const handler: Handler = async (event) => {
             featured: Boolean(tool.featured),
             date_added: new Date().toISOString(),
             status: 'published',
-            category_id: (tool as any).category_id || primaryId || null
+            category_id: (tool as ToolData).category_id || primaryId || null
           }
 
           // 首次插入，若失败则去掉 categories 再尝试
@@ -251,14 +293,14 @@ const handler: Handler = async (event) => {
 
           if (error) {
             console.warn('Insert tool with categories failed, retrying without categories:', error.message)
-            const { categories, ...minPayload } = payload as any
+            const { ...minPayload } = payload // Remove unused categories variable
             const retry = await supabase
               .from('tools')
               .insert([minPayload])
               .select('id')
               .maybeSingle()
-            error = retry.error as any
-            data = retry.data as any
+            error = retry.error as PostgrestError | null
+            data = retry.data as ToolData | null
             if (error) {
               console.error('Error creating tool after fallback:', error)
               return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
@@ -267,9 +309,10 @@ const handler: Handler = async (event) => {
 
           await logAdminAction('create_tool', 'tool', data?.id, payload)
           return { statusCode: 200, body: JSON.stringify({ success: true, id: data?.id }) }
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Error in create_tool:', error)
-          return { statusCode: 500, body: JSON.stringify({ error: error.message || 'Internal server error' }) }
+          const err = error as ErrorResponse
+          return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal server error' }) }
         }
       }
 
@@ -280,7 +323,7 @@ const handler: Handler = async (event) => {
         }
 
         try {
-          const safe: any = {}
+          const safe: Partial<ToolUpdate> = {}
           const allowedFields = ['name', 'tagline', 'description', 'website_url', 'logo_url', 'categories', 'features', 'pricing', 'featured']
           
           for (const key of allowedFields) {
@@ -311,9 +354,10 @@ const handler: Handler = async (event) => {
 
           await logAdminAction('update_tool', 'tool', id, safe)
           return { statusCode: 200, body: JSON.stringify({ success: true }) }
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Error in update_tool:', error)
-          return { statusCode: 500, body: JSON.stringify({ error: error.message || 'Internal server error' }) }
+          const err = error as ErrorResponse
+          return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal server error' }) }
         }
       }
 
@@ -343,9 +387,10 @@ const handler: Handler = async (event) => {
 
           await logAdminAction('delete_tool', 'tool', id, { name: tool?.name })
           return { statusCode: 200, body: JSON.stringify({ success: true }) }
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Error in delete_tool:', error)
-          return { statusCode: 500, body: JSON.stringify({ error: error.message || 'Internal server error' }) }
+          const err = error as ErrorResponse
+          return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal server error' }) }
         }
       }
 
@@ -360,7 +405,7 @@ const handler: Handler = async (event) => {
             const base = (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
             return base && base !== '-' ? base : `c-${Math.random().toString(36).slice(2, 8)}`
           }
-          const basePayload: any = {
+          const basePayload: CategoryPayload = {
             name: category.name.trim(),
             slug: (category.slug?.trim() || toSlug(category.name)),
             description: category.description?.trim() || null,
@@ -389,7 +434,7 @@ const handler: Handler = async (event) => {
             // 若表无 parent_id 列（或 schema cache 未刷新），去掉 parent_id 再试
             if (ins.error && /(parent_id).*column|Could not find.*parent_id/i.test(ins.error.message || '')) {
               const withoutParent = { ...basePayload }
-              delete (withoutParent as any).parent_id
+              delete (withoutParent as Partial<CategoryPayload>).parent_id
               ins = await supabase.from('categories').insert([withoutParent]).select('id').maybeSingle()
             }
             // 若为 slug 唯一冲突，自动追加短随机后缀重试
@@ -414,9 +459,10 @@ const handler: Handler = async (event) => {
 
           await logAdminAction('create_category', 'category', ins.data?.id, basePayload)
           return { statusCode: 200, body: JSON.stringify({ success: true, id: ins.data?.id }) }
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Error in create_category:', error)
-          return { statusCode: 500, body: JSON.stringify({ error: error.message || 'Internal server error' }) }
+          const err = error as ErrorResponse
+          return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal server error' }) }
         }
       }
 
@@ -427,7 +473,7 @@ const handler: Handler = async (event) => {
         }
 
         try {
-          const safe: any = {}
+          const safe: Partial<CategoryPayload> = {}
           const allowedFields = ['name', 'slug', 'description', 'color', 'icon', 'parent_id', 'sort_order', 'is_active']
           
           for (const key of allowedFields) {
@@ -456,9 +502,10 @@ const handler: Handler = async (event) => {
 
           await logAdminAction('update_category', 'category', id, safe)
           return { statusCode: 200, body: JSON.stringify({ success: true }) }
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Error in update_category:', error)
-          return { statusCode: 500, body: JSON.stringify({ error: error.message || 'Internal server error' }) }
+          const err = error as ErrorResponse
+          return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal server error' }) }
         }
       }
 
@@ -491,9 +538,10 @@ const handler: Handler = async (event) => {
 
           await logAdminAction('delete_category', 'category', id)
           return { statusCode: 200, body: JSON.stringify({ success: true }) }
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Error in delete_category:', error)
-          return { statusCode: 500, body: JSON.stringify({ error: error.message || 'Internal server error' }) }
+          const err = error as ErrorResponse
+          return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal server error' }) }
         }
       }
 
@@ -511,18 +559,20 @@ const handler: Handler = async (event) => {
           }
 
           return { statusCode: 200, body: JSON.stringify({ categories }) }
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Error in get_categories:', error)
-          return { statusCode: 500, body: JSON.stringify({ error: error.message || 'Internal server error' }) }
+          const err = error as ErrorResponse
+          return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal server error' }) }
         }
       }
 
       default:
         return { statusCode: 400, body: JSON.stringify({ error: 'Unknown action' }) }
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Admin action error:', e)
-    return { statusCode: 500, body: JSON.stringify({ error: e?.message || 'Internal server error' }) }
+    const err = e as ErrorResponse
+    return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal server error' }) }
   }
 }
 

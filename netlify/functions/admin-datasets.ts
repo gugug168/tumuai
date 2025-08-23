@@ -1,6 +1,12 @@
 import { Handler } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
 
+interface ToolDataset {
+  reviews_count?: number
+  review_count?: number
+  [key: string]: unknown
+}
+
 async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?: string) {
   const supabase = createClient(supabaseUrl, serviceKey)
   if (!accessToken) return null
@@ -53,10 +59,10 @@ const handler: Handler = async (event) => {
     const body = {
       submissions: submissions.data || [],
       users: users.data || [],
-      tools: (tools.data || []).map((t: any) => ({
+      tools: (tools.data || []).map((t: ToolDataset) => ({
         ...t,
-        reviews_count: (t as any).reviews_count ?? (t as any).review_count ?? 0,
-        review_count: (t as any).review_count ?? (t as any).reviews_count ?? 0,
+        reviews_count: t.reviews_count ?? t.review_count ?? 0,
+        review_count: t.review_count ?? t.reviews_count ?? 0,
       })),
       logs: logs.data || [],
       categories: categories.data || [],
@@ -71,9 +77,9 @@ const handler: Handler = async (event) => {
     }
 
     return { statusCode: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Admin datasets error:', e)
-    return { statusCode: 500, body: JSON.stringify({ error: e?.message || 'Internal server error' }) }
+    return { statusCode: 500, body: JSON.stringify({ error: (e as Error)?.message || 'Internal server error' }) }
   }
 }
 

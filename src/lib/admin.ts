@@ -1,5 +1,4 @@
 import { supabase } from './supabase'
-import type { User } from '@supabase/supabase-js'
 
 export interface AdminUser {
   id: string
@@ -16,7 +15,7 @@ export interface AdminLog {
   action: string
   target_type: string
   target_id?: string
-  details: Record<string, any>
+  details: Record<string, unknown>
   ip_address?: string
   user_agent?: string
   created_at: string
@@ -71,7 +70,7 @@ async function fetchJSONWithTimeout(
 
 async function postJSONWithTimeout(
   url: string,
-  body: any,
+  body: unknown,
   options: RequestInit & { timeoutMs?: number } = {}
 ) {
   const { timeoutMs = 12000, headers, ...rest } = options
@@ -79,7 +78,7 @@ async function postJSONWithTimeout(
   const id = setTimeout(() => controller.abort(), timeoutMs)
   try {
     let attempt = 0
-    let lastErr: any
+    let lastErr: Error | null = null
     while (attempt < 3) {
       try {
         const resp = await fetch(url, {
@@ -276,7 +275,7 @@ export async function getToolSubmissions(status?: string) {
       timeoutMs: 8000
     }).catch(() => null as any)
     const list = json?.submissions || []
-    return status ? list.filter((it: any) => it.status === status) : list
+    return status ? list.filter((it: { status?: string }) => it.status === status) : list
   } catch (error) {
     console.error('❌ 获取工具提交异常:', error)
     return []

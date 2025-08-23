@@ -25,12 +25,21 @@ const handler: Handler = async (event) => {
 
     const userId = userRes.user.id
     
-    // 查找现有管理员
-    const { data, error } = await supabase
-      .from('admin_users')
-      .select('id,user_id,role,permissions,created_at,updated_at')
-      .eq('user_id', userId)
-      .maybeSingle()
+    // 并行执行两个查询以提高性能
+    const [adminResult, countResult] = await Promise.all([
+      // 查找现有管理员
+      supabase
+        .from('admin_users')
+        .select('id,user_id,role,permissions,created_at,updated_at')
+        .eq('user_id', userId)
+        .maybeSingle(),
+      // 检查管理员总数
+      supabase
+        .from('admin_users')
+        .select('id', { count: 'exact', head: true })
+    ])
+
+    const { data, error } = adminResult
     if (error) {
       return { statusCode: 500, body: error.message }
     }
@@ -42,10 +51,7 @@ const handler: Handler = async (event) => {
       }
     }
 
-    // 检查是否有任何管理员，如果没有则自动将当前用户设为 super_admin
-    const { count } = await supabase
-      .from('admin_users')
-      .select('id', { count: 'exact', head: true })
+    const { count } = countResult
     
     // 如果管理员表为空，或者当前用户是admin@civilaihub.com，则自动创建管理员
     const userEmail = userRes.user.email
@@ -95,8 +101,8 @@ const handler: Handler = async (event) => {
 
     // 否则不是管理员
     return { statusCode: 403, body: 'Forbidden' }
-  } catch (e: any) {
-    return { statusCode: 500, body: e?.message || 'Unexpected error' }
+  } catch (e: unknown) {
+    return { statusCode: 500, body: (e as Error)?.message || 'Unexpected error' }
   }
 }
 

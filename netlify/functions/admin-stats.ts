@@ -6,7 +6,6 @@ async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?
   if (!accessToken) return null
   const { data: userRes } = await supabase.auth.getUser(accessToken)
   const userId = userRes?.user?.id
-  const email = userRes?.user?.email || ''
   if (!userId) return null
   // 尝试获取管理员
   const { data: adminRow } = await supabase
@@ -49,7 +48,7 @@ const handler: Handler = async (event) => {
     ])
 
     const reviewCount = reviews?.length || 0
-    const averageRating = reviewCount > 0 ? (reviews!.reduce((s, r: any) => s + (r.rating || 0), 0) / reviewCount) : 0
+    const averageRating = reviewCount > 0 ? (reviews!.reduce((s, r: { rating?: number }) => s + (r.rating || 0), 0) / reviewCount) : 0
 
     return {
       statusCode: 200,
@@ -64,8 +63,8 @@ const handler: Handler = async (event) => {
         commentsCount: commentsCount || 0
       })
     }
-  } catch (e: any) {
-    return { statusCode: 500, body: e?.message || 'Unexpected error' }
+  } catch (e: unknown) {
+    return { statusCode: 500, body: (e as Error)?.message || 'Unexpected error' }
   }
 }
 

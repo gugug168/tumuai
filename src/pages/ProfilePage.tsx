@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { User, Heart, Eye, Star, Settings, BookOpen, TrendingUp, Award, Camera } from 'lucide-react';
+import { User, Heart, Star, Settings, TrendingUp, Camera } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateUserProfile } from '../lib/auth';
-import AuthModal from '../components/AuthModal';
 import { useNavigate } from 'react-router-dom';
 
 const ProfilePage = () => {
   const { user, profile, refreshProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('favorites');
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     username: '',

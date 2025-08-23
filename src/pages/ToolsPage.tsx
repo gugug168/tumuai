@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { 
   Star, 
@@ -8,12 +8,10 @@ import {
   Filter,
   Grid,
   List,
-  Search,
-  ChevronDown,
-  X
+  Search
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getTools, searchTools, type Tool } from '../lib/supabase';
+import { getTools, type Tool } from '../lib/supabase';
 import { apiRequestWithRetry } from '../lib/api';
 import { addToFavorites, removeFromFavorites, isFavorited } from '../lib/community';
 import AuthModal from '../components/AuthModal';
@@ -85,13 +83,13 @@ const ToolsPage = () => {
 
   useEffect(() => {
     applyFilters();
-  }, [tools, filters]);
+  }, [applyFilters]);
 
   useEffect(() => {
     if (user) {
       loadFavoriteStates();
     }
-  }, [user, tools]);
+  }, [user, loadFavoriteStates]);
 
   const loadTools = async () => {
     setLoadError(null);
@@ -107,7 +105,7 @@ const ToolsPage = () => {
     }
   };
 
-  const loadFavoriteStates = async () => {
+  const loadFavoriteStates = useCallback(async () => {
     if (!user) return;
     
     const states: {[key: string]: boolean} = {};
@@ -121,9 +119,9 @@ const ToolsPage = () => {
       }
     }
     setFavoriteStates(states);
-  };
+  }, [user, tools]);
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...tools];
 
     // 搜索筛选
@@ -173,7 +171,7 @@ const ToolsPage = () => {
     });
 
     setFilteredTools(filtered);
-  };
+  }, [tools, filters]);
 
   const handleFilterChange = (type: string, value: string | string[]) => {
     setFilters(prev => ({
