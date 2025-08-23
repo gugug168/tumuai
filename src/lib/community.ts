@@ -65,7 +65,7 @@ export async function addToFavorites(toolId: string) {
 
   // 检查是否已经收藏
   const { data: existing } = await supabase
-    .from('tool_favorites')
+    .from('user_favorites')
     .select('id')
     .eq('user_id', user.id)
     .eq('tool_id', toolId)
@@ -75,7 +75,7 @@ export async function addToFavorites(toolId: string) {
     throw new Error('已经收藏过此工具')
   }
   const { data, error } = await supabase
-    .from('tool_favorites')
+    .from('user_favorites')
     .insert([{
       user_id: user.id,
       tool_id: toolId
@@ -93,7 +93,7 @@ export async function removeFromFavorites(toolId: string) {
   if (!user) throw new Error('用户未登录')
 
   const { error } = await supabase
-    .from('tool_favorites')
+    .from('user_favorites')
     .delete()
     .eq('user_id', user.id)
     .eq('tool_id', toolId)
@@ -107,7 +107,7 @@ export async function isFavorited(toolId: string) {
   if (!user) return false
 
   const { data, error } = await supabase
-    .from('tool_favorites')
+    .from('user_favorites')
     .select('id')
     .eq('user_id', user.id)
     .eq('tool_id', toolId)
@@ -140,7 +140,7 @@ export async function getUserFavorites(userId?: string) {
   }
 
   const { data, error } = await supabase
-    .from('tool_favorites')
+    .from('user_favorites')
     .select(`
       *,
       tools (
@@ -316,7 +316,7 @@ export async function likeComment(commentId: string) {
 export async function getToolStats(toolId: string) {
   // 获取收藏数
   const { count: favoritesCount } = await supabase
-    .from('tool_favorites')
+    .from('user_favorites')
     .select('*', { count: 'exact', head: true })
     .eq('tool_id', toolId)
 
