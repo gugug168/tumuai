@@ -167,7 +167,7 @@ const ToolManagementModal: React.FC<ToolManagementModalProps> = ({
               required
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white text-gray-900 placeholder-gray-500"
               placeholder="例如：AutoCAD"
             />
           </div>
@@ -181,7 +181,7 @@ const ToolManagementModal: React.FC<ToolManagementModalProps> = ({
               required
               value={formData.tagline}
               onChange={(e) => setFormData(prev => ({ ...prev, tagline: e.target.value }))}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white text-gray-900 placeholder-gray-500"
               placeholder="例如：专业的CAD设计软件"
             />
           </div>
@@ -194,7 +194,7 @@ const ToolManagementModal: React.FC<ToolManagementModalProps> = ({
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               rows={3}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white text-gray-900 placeholder-gray-500"
               placeholder="详细介绍工具的功能和特点..."
             />
           </div>
@@ -209,7 +209,7 @@ const ToolManagementModal: React.FC<ToolManagementModalProps> = ({
                 required
                 value={formData.website_url}
                 onChange={(e) => setFormData(prev => ({ ...prev, website_url: e.target.value }))}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white text-gray-900 placeholder-gray-500"
                 placeholder="https://example.com"
               />
             </div>
@@ -222,7 +222,7 @@ const ToolManagementModal: React.FC<ToolManagementModalProps> = ({
                 type="url"
                 value={formData.logo_url}
                 onChange={(e) => setFormData(prev => ({ ...prev, logo_url: e.target.value }))}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white text-gray-900 placeholder-gray-500"
                 placeholder="https://example.com/logo.png"
               />
             </div>
@@ -292,7 +292,7 @@ const ToolManagementModal: React.FC<ToolManagementModalProps> = ({
                 value={featureInput}
                 onChange={(e) => setFeatureInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addFeature())}
-                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white text-gray-900 placeholder-gray-500"
                 placeholder="添加功能特性..."
               />
               <button

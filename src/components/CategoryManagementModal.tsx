@@ -108,7 +108,7 @@ const CategoryManagementModal: React.FC<Props> = ({ isOpen, onClose, onSave, cat
 							type="text"
 							value={form.name}
 							onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-							className="w-full rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+							className="w-full rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900 placeholder-gray-500"
 							placeholder="例如：结构设计"
 						/>
 					</div>
@@ -118,23 +118,24 @@ const CategoryManagementModal: React.FC<Props> = ({ isOpen, onClose, onSave, cat
 							value={form.description}
 							onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
 							rows={3}
-							className="w-full rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+							className="w-full rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900 placeholder-gray-500"
+							placeholder="分类描述"
 						/>
 					</div>
 					<div className="grid grid-cols-2 gap-4">
 						<div>
 							<label className="block text-sm font-medium mb-1">颜色</label>
-							<input type="text" value={form.color} onChange={(e) => setForm((p) => ({ ...p, color: e.target.value }))} className="w-full rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" />
+							<input type="text" value={form.color} onChange={(e) => setForm((p) => ({ ...p, color: e.target.value }))} className="w-full rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900 placeholder-gray-500" placeholder="#颜色代码" />
 						</div>
 						<div>
 							<label className="block text-sm font-medium mb-1">图标</label>
-							<input type="text" value={form.icon} onChange={(e) => setForm((p) => ({ ...p, icon: e.target.value }))} className="w-full rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" />
+							<input type="text" value={form.icon} onChange={(e) => setForm((p) => ({ ...p, icon: e.target.value }))} className="w-full rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900 placeholder-gray-500" placeholder="图标名称" />
 						</div>
 					</div>
 					<div className="grid grid-cols-2 gap-4">
 						<div>
 							<label className="block text-sm font-medium mb-1">排序</label>
-							<input type="number" value={form.sort_order ?? 0} onChange={(e) => setForm((p) => ({ ...p, sort_order: Number(e.target.value) }))} className="w-full rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" />
+							<input type="number" value={form.sort_order ?? 0} onChange={(e) => setForm((p) => ({ ...p, sort_order: Number(e.target.value) }))} className="w-full rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900 placeholder-gray-500" placeholder="排序数字" />
 						</div>
 						<div className="flex items-center mt-6">
 							<input id="active" type="checkbox" checked={form.is_active !== false} onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
