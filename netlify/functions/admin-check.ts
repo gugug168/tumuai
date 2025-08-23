@@ -2,6 +2,9 @@ import { Handler } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
 
 const handler: Handler = async (event) => {
+  const startTime = Date.now()
+  console.log('🔐 开始管理员权限验证...')
+  
   try {
     const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) as string
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
@@ -18,7 +21,10 @@ const handler: Handler = async (event) => {
     const supabase = createClient(supabaseUrl, serviceKey)
 
     // Verify token and get user id
+    const authStartTime = Date.now()
+    console.log('🔎 验证用户token...')
     const { data: userRes, error: userErr } = await supabase.auth.getUser(accessToken)
+    console.log(`✅ Token验证完成: ${Date.now() - authStartTime}ms`)
     if (userErr || !userRes?.user) {
       return { statusCode: 401, body: 'Invalid token' }
     }
@@ -26,6 +32,8 @@ const handler: Handler = async (event) => {
     const userId = userRes.user.id
     
     // 并行执行两个查询以提高性能
+    const dbStartTime = Date.now()
+    console.log('📊 执行并行数据库查询...')
     const [adminResult, countResult] = await Promise.all([
       // 查找现有管理员
       supabase
@@ -38,16 +46,19 @@ const handler: Handler = async (event) => {
         .from('admin_users')
         .select('id', { count: 'exact', head: true })
     ])
+    console.log(`⚙️ 并行查询完成: ${Date.now() - dbStartTime}ms`)
 
     const { data, error } = adminResult
     if (error) {
       return { statusCode: 500, body: error.message }
     }
     if (data) {
+      const totalTime = Date.now() - startTime
+      console.log(`✅ 管理员权限验证成功: ${totalTime}ms`)
       return {
         statusCode: 200,
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify({ ...data, _performance: { totalTime, hasParallelQuery: true } })
       }
     }
 
@@ -84,24 +95,30 @@ const handler: Handler = async (event) => {
           if (updateErr) {
             return { statusCode: 500, body: updateErr.message }
           }
+          const totalTime = Date.now() - startTime
+          console.log(`✅ 更新管理员成功: ${totalTime}ms`)
           return {
             statusCode: 200,
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(updated)
+            body: JSON.stringify({ ...updated, _performance: { totalTime, wasUpdated: true } })
           }
         }
         return { statusCode: 500, body: insErr.message }
       }
+      const totalTime = Date.now() - startTime
+      console.log(`✅ 创建管理员成功: ${totalTime}ms`)
       return {
         statusCode: 200,
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(created)
+        body: JSON.stringify({ ...created, _performance: { totalTime, wasCreated: true } })
       }
     }
 
     // 否则不是管理员
     return { statusCode: 403, body: 'Forbidden' }
   } catch (e: unknown) {
+    const totalTime = Date.now() - startTime
+    console.error(`❌ 管理员验证失败: ${totalTime}ms`, e)
     return { statusCode: 500, body: (e as Error)?.message || 'Unexpected error' }
   }
 }

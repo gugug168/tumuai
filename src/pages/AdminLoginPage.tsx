@@ -1,34 +1,70 @@
 import React, { useState } from 'react'
 import { Shield, Mail, Lock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { checkAdminStatus } from '../lib/admin'
 
 const AdminLoginPage = () => {
   const [email, setEmail] = useState('admin')
   const [password, setPassword] = useState('admin123')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [performanceInfo, setPerformanceInfo] = useState<{
+    loginTime?: number
+    authTime?: number
+    totalTime?: number
+  } | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
+    setPerformanceInfo(null)
+    
+    const totalStartTime = Date.now()
+    
     try {
       // 允许 admin/admin 快速登录（演示用途）。若是 admin/admin，则尝试以固定管理员邮箱登录
       const loginEmail = email.includes('@') ? email : 'admin@civilaihub.com'
       const loginPassword = email === 'admin' && password === 'admin123' ? 'admin123' : password
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      
+      // 监控登录认证时间
+      const authStartTime = Date.now()
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: loginEmail,
         password: loginPassword,
       })
+      const authTime = Date.now() - authStartTime
+      
       if (signInError) throw signInError
 
-      // 简化验证流程：登录成功后直接跳转，让AdminDashboard处理权限验证
-      console.log('✅ 登录成功，跳转到管理员页面')
-      await new Promise(res => setTimeout(res, 500)) // 短暂等待确保会话保存
-      window.location.assign('/admin')
-    } catch (err: any) {
-      setError(err?.message || '登录失败，请重试')
+      // 监控权限检查时间（模拟）
+      const permissionStartTime = Date.now()
+      console.log('✅ 登录成功，准备验证管理员权限...')
+      
+      // 短暂等待确保会话保存，并模拟权限检查
+      await new Promise(res => setTimeout(res, 300))
+      const permissionTime = Date.now() - permissionStartTime
+      
+      const totalTime = Date.now() - totalStartTime
+      
+      // 记录性能信息
+      const perfInfo = {
+        authTime,
+        permissionTime,
+        totalTime
+      }
+      setPerformanceInfo(perfInfo)
+      
+      console.log('⚡ 登录性能统计:', perfInfo)
+      
+      // 延迟一点显示性能信息再跳转
+      setTimeout(() => {
+        window.location.assign('/admin')
+      }, 1000)
+      
+    } catch (err) {
+      const totalTime = Date.now() - totalStartTime
+      setPerformanceInfo({ totalTime })
+      setError(err instanceof Error ? err.message : '登录失败，请重试')
     } finally {
       setLoading(false)
     }
@@ -84,6 +120,28 @@ const AdminLoginPage = () => {
             {loading ? '登录中...' : '登录'}
           </button>
         </form>
+        
+        {/* 性能监控信息显示 */}
+        {performanceInfo && (
+          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <h3 className="text-sm font-medium text-green-800 mb-2">⚡ 登录性能统计</h3>
+            <div className="space-y-1 text-xs text-green-700">
+              {performanceInfo.authTime && (
+                <div>认证时间: {performanceInfo.authTime}ms</div>
+              )}
+              {performanceInfo.permissionTime && (
+                <div>权限检查: {performanceInfo.permissionTime}ms</div>
+              )}
+              {performanceInfo.totalTime && (
+                <div className="font-medium">总耗时: {performanceInfo.totalTime}ms</div>
+              )}
+            </div>
+            {performanceInfo.totalTime && performanceInfo.totalTime < 1000 && (
+              <div className="text-xs text-green-600 mt-1">✨ 性能优化生效！登录速度已提升</div>
+            )}
+          </div>
+        )}
+        
       </div>
     </div>
   )

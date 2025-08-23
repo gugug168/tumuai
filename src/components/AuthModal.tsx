@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { X, Mail, Lock, User, Building, MapPin } from 'lucide-react'
+import { X, Mail, Lock, User } from 'lucide-react'
 import { signIn, signUp } from '../lib/auth'
 
 interface AuthModalProps {
@@ -55,8 +55,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
         alert('注册成功！请查看邮箱验证链接。')
         onClose()
       }
-    } catch (err: any) {
-      setError(err.message || '操作失败，请重试')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '操作失败，请重试')
     } finally {
       setLoading(false)
     }

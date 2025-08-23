@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, ArrowRight, Zap, Users, Shield } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 const Hero = () => {
   const [searchQuery, setSearchQuery] = React.useState('');

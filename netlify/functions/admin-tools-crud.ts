@@ -5,7 +5,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function handler(event, context) {
+export async function handler(event: any, _context: any) {
   // 处理OPTIONS预检请求
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -20,7 +20,7 @@ export async function handler(event, context) {
   }
 
   try {
-    const { action, data } = JSON.parse(event.body || '{}')
+    const { data } = JSON.parse(event.body || '{}')
     const authHeader = event.headers.authorization
     
     // 验证管理员权限
@@ -58,7 +58,7 @@ export async function handler(event, context) {
     let result
 
     switch (event.httpMethod) {
-      case 'GET':
+      case 'GET': {
         // 获取工具列表
         const { data: tools, error: toolsError } = await supabase
           .from('tools')
@@ -71,8 +71,9 @@ export async function handler(event, context) {
         if (toolsError) throw toolsError
         result = tools
         break
+      }
 
-      case 'POST':
+      case 'POST': {
         // 创建新工具
         const { data: newTool, error: createError } = await supabase
           .from('tools')
@@ -102,8 +103,9 @@ export async function handler(event, context) {
         if (createError) throw createError
         result = newTool
         break
+      }
 
-      case 'PUT':
+      case 'PUT': {
         // 更新工具
         const { data: updatedTool, error: updateError } = await supabase
           .from('tools')
@@ -130,8 +132,9 @@ export async function handler(event, context) {
         if (updateError) throw updateError
         result = updatedTool
         break
+      }
 
-      case 'DELETE':
+      case 'DELETE': {
         // 删除工具
         const { error: deleteError } = await supabase
           .from('tools')
@@ -141,6 +144,7 @@ export async function handler(event, context) {
         if (deleteError) throw deleteError
         result = { success: true, id: data.id }
         break
+      }
 
       default:
         return {

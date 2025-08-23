@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Star, ExternalLink, Heart, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, Heart } from 'lucide-react';
 
 const featuredTools = [
   {
@@ -110,17 +110,6 @@ const featuredTools = [
 ];
 
 const FeaturedTools = () => {
-  const scrollRef = React.useRef<HTMLDivElement>(null);
-
-  const scroll = (direction: 'left' | 'right') => {
-    if (scrollRef.current) {
-      const scrollAmount = 320;
-      scrollRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
-      });
-    }
-  };
 
   return (
     <section className="py-16 bg-white">

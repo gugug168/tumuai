@@ -22,7 +22,7 @@ const handler: Handler = async (event) => {
     const password = 'admin123'
 
     // Create or fetch user
-    const { data: userData, error: adminErr } = await supabase.auth.admin.createUser({
+    const { data: userData } = await supabase.auth.admin.createUser({
       email,
       password,
       email_confirm: true

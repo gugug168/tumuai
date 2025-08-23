@@ -26,16 +26,10 @@ import {
   getUsers,
   getToolsAdmin,
   getAdminLogs,
-  createTool,
-  updateTool,
   deleteTool,
   getCategories,
-  createCategory,
-  updateCategory,
   deleteCategory,
-  type AdminUser,
-  type ToolSubmission,
-  type AdminLog
+  type ToolSubmission
 } from '../lib/admin';
 import DatabaseRepair from '../components/DatabaseRepair';
 import ToolManagementModal from '../components/ToolManagementModal';
@@ -88,7 +82,6 @@ const AdminDashboard = () => {
   const [submissions, setSubmissions] = useState<ToolSubmission[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [tools, setTools] = useState<Tool[]>([]);
-  const [logs, setLogs] = useState<AdminLog[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -97,7 +90,6 @@ const AdminDashboard = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [showToolModal, setShowToolModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showSubmissionModal, setShowSubmissionModal] = useState<ToolSubmission | null>(null);
   const navigate = useNavigate();
 
   // 新增：立即进行权限检查

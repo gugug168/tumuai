@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { CheckCircle, XCircle, AlertCircle, Database, Wifi, Settings } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, Settings } from 'lucide-react';
 
 const DiagnosticPage = () => {
   const [diagnostics, setDiagnostics] = useState({

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Star, Eye, ExternalLink, Trash2 } from 'lucide-react';
+import { Heart, Star, ExternalLink, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserFavorites, removeFromFavorites } from '../lib/community';
 import AuthModal from '../components/AuthModal';

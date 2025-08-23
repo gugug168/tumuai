@@ -132,10 +132,10 @@ export async function getUserFavorites(userId?: string) {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: 'no-store',
         timeoutMs: 8000
-      }).catch(() => null as any)
+      }).catch(() => null)
       if (json) return json
     }
-  } catch (e) {
+  } catch {
     // 忽略，回退到直连
   }
 

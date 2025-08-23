@@ -5,7 +5,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function handler(event, context) {
+export async function handler(event: any, _context: any) {
   // 只允许POST请求
   if (event.httpMethod !== 'POST') {
     return {
@@ -65,7 +65,7 @@ export async function handler(event, context) {
     let result
 
     switch (action) {
-      case 'list':
+      case 'list': {
         const { data: categories, error: listError } = await supabase
           .from('categories')
           .select('*')
@@ -75,6 +75,7 @@ export async function handler(event, context) {
         if (listError) throw listError
         result = categories
         break
+      }
 
       case 'create':
         {
@@ -91,8 +92,8 @@ export async function handler(event, context) {
           if (insertResp.error) {
             const msg = insertResp.error.message || ''
             // 若后端无 slug 列，降级去掉 slug 重试
-            if (/column\s+\"slug\"/i.test(msg)) {
-              const payloadWithoutSlug: any = { ...payloadWithSlug }
+            if (/column\s+"slug"/i.test(msg)) {
+              const payloadWithoutSlug = { ...payloadWithSlug } as any
               delete payloadWithoutSlug.slug
               insertResp = await supabase.from('categories').insert([payloadWithoutSlug]).select().maybeSingle()
             }
@@ -128,8 +129,8 @@ export async function handler(event, context) {
             updated_at: new Date().toISOString()
           }
           let updateResp = await supabase.from('categories').update(payloadWithSlug).eq('id', data.id).select().maybeSingle()
-          if (updateResp.error && /column\s+\"slug\"/i.test(updateResp.error.message || '')) {
-            const payloadWithoutSlug: any = { ...payloadWithSlug }
+          if (updateResp.error && /column\s+"slug"/i.test(updateResp.error.message || '')) {
+            const payloadWithoutSlug = { ...payloadWithSlug } as any
             delete payloadWithoutSlug.slug
             updateResp = await supabase.from('categories').update(payloadWithoutSlug).eq('id', data.id).select().maybeSingle()
           }
@@ -138,7 +139,7 @@ export async function handler(event, context) {
         }
         break
 
-      case 'delete':
+      case 'delete': {
         const { error: deleteError } = await supabase
           .from('categories')
           .delete()
@@ -147,8 +148,9 @@ export async function handler(event, context) {
         if (deleteError) throw deleteError
         result = { success: true, id: data.id }
         break
+      }
 
-      case 'getToolsByCategory':
+      case 'getToolsByCategory': {
         const { data: tools, error: toolsError } = await supabase
           .from('tools')
           .select('id, name, category_id, status')
@@ -157,6 +159,7 @@ export async function handler(event, context) {
         if (toolsError) throw toolsError
         result = tools
         break
+      }
 
       default:
         return {

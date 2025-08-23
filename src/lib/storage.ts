@@ -13,7 +13,7 @@ export async function uploadToolLogo(file: File, toolName: string): Promise<stri
     const fileName = `${toolName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}_${Date.now()}.${fileExt}`;
     
     // 上传文件到 tool-logos bucket
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('tool-logos')
       .upload(fileName, file, {
         cacheControl: '3600',

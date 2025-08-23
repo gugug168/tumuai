@@ -5,7 +5,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function handler(event, context) {
+export async function handler(event: any, _context: any) {
   // 处理OPTIONS预检请求
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -84,7 +84,7 @@ export async function handler(event, context) {
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
       `
-    }).catch(e => console.log('Categories表已存在或无需修复'))
+    }).catch(() => console.log('Categories表已存在或无需修复'))
 
     // 2. 插入8个土木行业分类（生成 slug）
     console.log('插入8个土木行业分类...')
@@ -117,7 +117,7 @@ export async function handler(event, context) {
         ADD COLUMN IF NOT EXISTS reviewed_by UUID,
         ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP WITH TIME ZONE;
       `
-    }).catch(e => console.log('tool_submissions表字段已存在'))
+    }).catch(() => console.log('tool_submissions表字段已存在'))
 
     // 4. 修复tools表
     console.log('修复tools表...')
@@ -139,7 +139,7 @@ export async function handler(event, context) {
           END IF;
         END $$;
       `
-    }).catch(e => console.log('tools表字段已存在'))
+    }).catch(() => console.log('tools表字段已存在'))
 
     // 5. 创建修复函数
     console.log('创建修复函数...')
@@ -223,7 +223,7 @@ export async function handler(event, context) {
         END;
         $$ LANGUAGE plpgsql;
       `
-    }).catch(e => console.log('函数已存在'))
+    }).catch(() => console.log('函数已存在'))
 
     // 6. 验证修复结果
     const { data: categoriesCount } = await supabase
