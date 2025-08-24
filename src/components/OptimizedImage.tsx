@@ -84,9 +84,26 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     onError?.();
   };
 
+  // 安全的Base64编码函数（支持Unicode字符）
+  const safeBase64Encode = (str: string): string => {
+    try {
+      return btoa(unescape(encodeURIComponent(str)));
+    } catch (error) {
+      console.warn('Base64 encoding failed, using fallback:', error);
+      // 降级处理：使用不含特殊字符的占位符
+      const fallbackSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+        <rect width="400" height="300" fill="#f3f4f6"/>
+        <text x="200" y="150" text-anchor="middle" font-family="Arial" font-size="14" fill="#9ca3af">
+          Loading...
+        </text>
+      </svg>`;
+      return btoa(fallbackSvg);
+    }
+  };
+
   // 生成占位符
   const placeholderUrl = placeholder || 
-    `data:image/svg+xml;base64,${btoa(
+    `data:image/svg+xml;base64,${safeBase64Encode(
       `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
         <rect width="400" height="300" fill="#f3f4f6"/>
         <text x="200" y="150" text-anchor="middle" font-family="Arial" font-size="14" fill="#9ca3af">
