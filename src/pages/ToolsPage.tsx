@@ -11,7 +11,8 @@ import {
   Search
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getTools, type Tool } from '../lib/supabase';
+import { getToolsOptimized } from '../lib/supabase-optimized';
+import type { Tool } from '../types';
 import { apiRequestWithRetry } from '../lib/api';
 import { addToFavorites, removeFromFavorites, isFavorited } from '../lib/community';
 import AuthModal from '../components/AuthModal';
@@ -96,7 +97,7 @@ const ToolsPage = () => {
     setLoadError(null);
     setLoading(true);
     try {
-      const data = await apiRequestWithRetry(() => getTools(), 2, 1500);
+      const data = await apiRequestWithRetry(() => getToolsOptimized({ limit: 60 }), 2, 1500);
       setTools(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('加载工具失败:', error);

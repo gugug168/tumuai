@@ -70,7 +70,7 @@ const Hero = () => {
 
           {/* 赞助信息 */}
           <p className="text-sm text-gray-500">
-            Sponsored by <a href="#" className="text-blue-600 hover:underline">Civil Engineering Community</a>.
+            Sponsored by <span className="text-blue-600">Civil Engineering Community</span>.
           </p>
         </div>
       </div>

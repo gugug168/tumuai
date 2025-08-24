@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { User, Heart, Star, Settings, TrendingUp, Camera } from 'lucide-react';
+import { User, Heart, Star, Settings, TrendingUp, Camera, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateUserProfile } from '../lib/auth';
-import { useNavigate } from 'react-router-dom';
+import { getUserFavorites } from '../lib/community';
+import { useNavigate, Link } from 'react-router-dom';
 
 const ProfilePage = () => {
   const { user, profile, refreshProfile } = useAuth();
@@ -17,6 +18,8 @@ const ProfilePage = () => {
     website: '',
     location: ''
   });
+  const [favorites, setFavorites] = useState<any[]>([]);
+  const [loadingFavorites, setLoadingFavorites] = useState(false);
   const navigate = useNavigate();
 
   // 当profile更新时，更新editForm
@@ -40,6 +43,28 @@ const ProfilePage = () => {
       navigate('/');
     }
   }, [user, navigate]);
+
+  // 加载用户收藏数据
+  const loadFavorites = async () => {
+    if (!user) return;
+    try {
+      setLoadingFavorites(true);
+      const data = await getUserFavorites();
+      setFavorites(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('加载收藏失败:', error);
+      setFavorites([]);
+    } finally {
+      setLoadingFavorites(false);
+    }
+  };
+
+  // 当用户改变或激活收藏标签页时加载收藏数据
+  useEffect(() => {
+    if (user && activeTab === 'favorites') {
+      loadFavorites();
+    }
+  }, [user, activeTab]);
 
   // 如果用户未登录，不渲染页面内容
   if (!user) {
@@ -107,7 +132,7 @@ const ProfilePage = () => {
               {/* Stats */}
               <div className="flex justify-center md:justify-start space-x-6">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">0</div>
+                  <div className="text-2xl font-bold text-blue-600">{favorites.length}</div>
                   <div className="text-sm text-gray-500">收藏工具</div>
                 </div>
                 <div className="text-center">
@@ -159,10 +184,68 @@ const ProfilePage = () => {
             {activeTab === 'favorites' && (
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-6">我收藏的工具</h3>
-                <div className="text-center py-12">
-                  <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">还没有收藏任何工具</p>
-                </div>
+                {loadingFavorites ? (
+                  <div className="text-center py-12">
+                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-500">加载中...</p>
+                  </div>
+                ) : favorites.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 mb-4">还没有收藏任何工具</p>
+                    <Link to="/tools" className="text-blue-600 hover:text-blue-700 underline">
+                      去工具中心发现更多工具
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {favorites.slice(0, 6).map((favorite) => {
+                      const tool = favorite.tools;
+                      return (
+                        <div key={favorite.id} className="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-shadow">
+                          <div className="flex items-center space-x-3 mb-3">
+                            <img
+                              src={tool.logo_url || 'https://via.placeholder.com/40x40?text=Tool'}
+                              alt={tool.name}
+                              className="w-10 h-10 rounded-lg object-cover"
+                            />
+                            <div className="flex-1">
+                              <h4 className="font-medium text-gray-900 text-sm">{tool.name}</h4>
+                              <p className="text-xs text-gray-500">{tool.categories?.[0] || '工具'}</p>
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">{tool.tagline}</p>
+                          <div className="flex space-x-2">
+                            <Link
+                              to={`/tools/${tool.id}`}
+                              className="flex-1 bg-blue-600 text-white text-xs py-1.5 px-3 rounded text-center hover:bg-blue-700 transition-colors"
+                            >
+                              查看详情
+                            </Link>
+                            <a
+                              href={tool.website_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bg-gray-200 text-gray-700 text-xs py-1.5 px-2 rounded hover:bg-gray-300 transition-colors"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {favorites.length > 6 && (
+                  <div className="text-center mt-6">
+                    <Link
+                      to="/favorites"
+                      className="text-blue-600 hover:text-blue-700 underline"
+                    >
+                      查看全部收藏 ({favorites.length})
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
 

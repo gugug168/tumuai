@@ -14,7 +14,8 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { addToFavorites, removeFromFavorites, isFavorited, addToolReview, getToolReviews } from '../lib/community';
-import { getToolById, incrementToolViews, Tool } from '../lib/supabase';
+import { getToolById, incrementToolViews } from '../lib/supabase';
+import type { Tool } from '../types/index';
 
 interface Review {
   id: number;
@@ -36,7 +37,7 @@ const ToolDetailPage = () => {
   const [tool, setTool] = useState<Tool | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // const [showVideoModal, setShowVideoModal] = useState(false); // 暂时未使用
+  const [showVideoModal, setShowVideoModal] = useState(false);
   
   const toolIdAsString = toolId || '';
   
@@ -449,7 +450,7 @@ const ToolDetailPage = () => {
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">评论内容</label>
                   <textarea
-                    name="detailedDescription"
+                    name="comment"
                     value={newReview.comment}
                     onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
                     rows={4}
@@ -498,7 +499,7 @@ const ToolDetailPage = () => {
                             </div>
                             <span className="text-sm text-gray-500">{new Date(review.created_at).toLocaleDateString('zh-CN')}</span>
                           </div>
-                          <p className="text-gray-700 leading-relaxed">{review.content || review.comment}</p>
+                          <p className="text-gray-700 leading-relaxed">{review.content}</p>
                         </div>
                       </div>
                     </div>
