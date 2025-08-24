@@ -148,53 +148,7 @@ const ToolsPage = () => {
     setFavoriteStates(states);
   }, [user, tools]);
 
-  useEffect(() => {
-    loadTools(false);
-  }, [loadTools]);
-
-  useEffect(() => {
-    // 从URL参数初始化搜索
-    const searchQuery = searchParams.get('search');
-    if (searchQuery) {
-      setFilters(prev => ({ ...prev, search: searchQuery }));
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (tools.length > 0) {
-      applyFilters();
-    }
-  }, [tools, filters, applyFilters]);
-
-  useEffect(() => {
-    if (user && tools.length > 0) {
-      loadFavoriteStates();
-    }
-  }, [user, tools, loadFavoriteStates]);
-
-  // 离线状态监听
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOffline(false);
-      // 网络恢复时重新加载数据
-      if (tools.length === 0 && loadError) {
-        loadTools(true);
-      }
-    };
-    
-    const handleOffline = () => {
-      setIsOffline(true);
-    };
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [tools.length, loadError, loadTools]);
-
+  // 工具数据加载函数
   const loadTools = useCallback(async (autoRetry = false) => {
     setLoadError(null);
     setLoading(true);
@@ -229,6 +183,54 @@ const ToolsPage = () => {
       setLoading(false);
     }
   }, [isOffline]);
+
+  // 初始加载
+  useEffect(() => {
+    loadTools(false);
+  }, []);
+
+  useEffect(() => {
+    // 从URL参数初始化搜索
+    const searchQuery = searchParams.get('search');
+    if (searchQuery) {
+      setFilters(prev => ({ ...prev, search: searchQuery }));
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (tools.length > 0) {
+      applyFilters();
+    }
+  }, [tools, filters, applyFilters]);
+
+  useEffect(() => {
+    if (user && tools.length > 0) {
+      loadFavoriteStates();
+    }
+  }, [user, tools, loadFavoriteStates]);
+
+  // 离线状态监听
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      // 网络恢复时刷新页面重新加载
+      if (tools.length === 0 && loadError) {
+        window.location.reload();
+      }
+    };
+    
+    const handleOffline = () => {
+      setIsOffline(true);
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [tools.length, loadError]);
 
 
   const handleFilterChange = (type: string, value: string | string[]) => {
