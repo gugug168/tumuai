@@ -2,7 +2,7 @@
 export interface AppError {
   code: string;
   message: string;
-  details?: any;
+  details?: unknown;
   timestamp: string;
 }
 
@@ -19,7 +19,7 @@ export const ERROR_CODES = {
 } as const;
 
 // 创建标准化错误
-export function createAppError(code: string, message: string, details?: any): AppError {
+export function createAppError(code: string, message: string, details?: unknown): AppError {
   return {
     code,
     message,
@@ -29,7 +29,7 @@ export function createAppError(code: string, message: string, details?: any): Ap
 }
 
 // 解析错误信息
-export function parseError(error: any): AppError {
+export function parseError(error: unknown): AppError {
   // 网络相关错误
   if (error.code === 'ETIMEDOUT' || error.name === 'AbortError') {
     return createAppError(ERROR_CODES.TIMEOUT_ERROR, '请求超时，请检查网络连接', error);
@@ -78,10 +78,10 @@ export function parseError(error: any): AppError {
 }
 
 // 导入类型工具
-import type { ApiWrapper, AsyncResult } from './type-utils'
+import type { AsyncResult } from './type-utils'
 
 // 统一的 API 请求包装器 - 增强泛型支持
-export const apiRequest = async <TData, TError = AppError>(
+export const apiRequest = async <TData>(
   promise: Promise<TData>
 ): Promise<TData> => {
   try {

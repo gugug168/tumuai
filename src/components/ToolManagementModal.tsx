@@ -235,7 +235,7 @@ const ToolManagementModal: React.FC<ToolManagementModalProps> = ({
               </label>
               <select
                 value={formData.pricing}
-                onChange={(e) => setFormData(prev => ({ ...prev, pricing: e.target.value as any }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, pricing: e.target.value as 'Free' | 'Freemium' | 'Paid' | 'Trial' }))}
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
               >
                 <option value="Free">免费</option>

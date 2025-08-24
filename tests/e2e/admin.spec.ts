@@ -21,7 +21,7 @@ async function tryInjectToken(page) {
   // 优先使用直接提供的访问令牌
   if (SUPABASE_TOKEN) {
     await page.addInitScript(([k, v]) => {
-      try { localStorage.setItem(k, v) } catch {}
+      try { localStorage.setItem(k, v) } catch { /* ignore storage errors */ }
     }, [SB_LOCAL_KEY, JSON.stringify({ access_token: SUPABASE_TOKEN })])
     return true
   }
@@ -34,7 +34,7 @@ async function tryInjectToken(page) {
       const token = data.session?.access_token
       if (!token) throw new Error('No access token from Supabase')
       await page.addInitScript(([k, v]) => {
-        try { localStorage.setItem(k, v) } catch {}
+        try { localStorage.setItem(k, v) } catch { /* ignore storage errors */ }
       }, [SB_LOCAL_KEY, JSON.stringify({ access_token: token })])
       return true
     } catch {
@@ -68,7 +68,7 @@ async function uiLoginIfNeeded(page) {
 }
 
 test.beforeEach(async ({ page }) => {
-  const injected = await tryInjectToken(page)
+  await tryInjectToken(page)
   // 不抛错，让用例自行处理 UI 登录回退
 })
 

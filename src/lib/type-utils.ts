@@ -104,10 +104,10 @@ export interface MutationState<TData = unknown, TError = Error> {
 export type Awaited<T> = T extends PromiseLike<infer U> ? U : T
 
 /** 提取函数返回类型 */
-export type ReturnTypeOf<T> = T extends (...args: any[]) => infer R ? R : never
+export type ReturnTypeOf<T> = T extends (...args: unknown[]) => infer R ? R : never
 
 /** 提取函数参数类型 */
-export type Parameters<T> = T extends (...args: infer P) => any ? P : never
+export type Parameters<T> = T extends (...args: infer P) => unknown ? P : never
 
 /** 键值映射类型 */
 export type KeyValue<K extends PropertyKey, V> = Record<K, V>
@@ -173,7 +173,7 @@ export interface BaseComponentProps {
 }
 
 /** 转发Ref的组件Props */
-export type ForwardRefComponent<T, P = {}> = React.ForwardRefExoticComponent<
+export type ForwardRefComponent<T, P = Record<string, never>> = React.ForwardRefExoticComponent<
   React.PropsWithoutRef<P> & React.RefAttributes<T>
 >
 

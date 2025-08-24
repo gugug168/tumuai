@@ -80,7 +80,7 @@ const AdminDashboard = () => {
     totalCategories: 0
   });
   const [submissions, setSubmissions] = useState<ToolSubmission[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<Record<string, unknown>[]>([]);
   const [tools, setTools] = useState<Tool[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -167,9 +167,10 @@ const AdminDashboard = () => {
       ])
 
       console.log('🎉 管理数据加载流程结束（全部完成或达成硬性超时）');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error
       console.error('❌ 管理数据加载失败:', error);
-      setError(`管理数据加载失败: ${error.message || '请检查网络连接或联系技术支持'}`);
+      setError(`管理数据加载失败: ${err.message || '请检查网络连接或联系技术支持'}`);
     } finally {
       setLoading(false);
     }
@@ -763,7 +764,7 @@ const AdminDashboard = () => {
         isOpen={showToolModal || !!editingTool}
         onClose={() => { setShowToolModal(false); setEditingTool(null) }}
         onSave={() => { loadData() }}
-        tool={editingTool as any}
+        tool={editingTool || undefined}
         categories={categories.map(c => ({ id: c.id, name: c.name }))}
         mode={editingTool ? 'edit' : 'create'}
       />
@@ -772,7 +773,7 @@ const AdminDashboard = () => {
         isOpen={showCategoryModal || !!editingCategory}
         onClose={() => { setShowCategoryModal(false); setEditingCategory(null) }}
         onSave={() => { loadData() }}
-        category={editingCategory as any}
+        category={editingCategory || undefined}
         mode={editingCategory ? 'edit' : 'create'}
       />
     </div>

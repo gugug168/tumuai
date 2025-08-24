@@ -13,7 +13,7 @@ export interface CacheEntry<T> {
 }
 
 class ClientCache {
-  private cache = new Map<string, CacheEntry<any>>();
+  private cache = new Map<string, CacheEntry<unknown>>();
   private maxSize: number;
   
   constructor(maxSize: number = 100) {
@@ -21,7 +21,7 @@ class ClientCache {
   }
 
   // 生成缓存key
-  private generateKey(prefix: string, params: any = {}): string {
+  private generateKey(prefix: string, params: Record<string, unknown> = {}): string {
     const paramStr = Object.keys(params)
       .sort()
       .map(key => `${key}:${JSON.stringify(params[key])}`)
@@ -105,12 +105,12 @@ class ClientCache {
 export const globalCache = new ClientCache(200);
 
 // 缓存装饰器工厂
-export function withCache<T extends (...args: any[]) => Promise<any>>(
+export function withCache<T extends (...args: unknown[]) => Promise<unknown>>(
   fn: T,
   config: CacheConfig
 ): T {
-  return (async (...args: any[]) => {
-    const key = globalCache.generateKey(fn.name, args[0] || {});
+  return (async (...args: unknown[]) => {
+    const key = globalCache['generateKey'](fn.name, (args[0] as Record<string, unknown>) || {});
     
     // 尝试从缓存获取数据
     const cached = globalCache.get(key);

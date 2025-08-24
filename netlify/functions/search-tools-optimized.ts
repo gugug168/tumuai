@@ -1,9 +1,26 @@
 import { Handler } from '@netlify/functions'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
+
+// 定义Tool类型
+interface Tool {
+  id: string
+  name: string
+  tagline: string
+  description?: string | null
+  logo_url: string | null
+  categories: string[]
+  features: string[]
+  pricing: string
+  rating: number
+  views: number
+  upvotes: number
+  date_added: string
+  status?: string
+}
 
 // 🔍 搜索缓存管理
 interface SearchCacheItem {
-  data: any[]
+  data: Tool[]
   timestamp: number
   ttl: number
   queryFingerprint: string
@@ -14,7 +31,7 @@ class SearchCache {
   private readonly defaultTTL = 2 * 60 * 1000 // 2分钟TTL（搜索结果变化较快）
   private readonly maxCacheSize = 100 // 最大缓存条目数
   
-  get(key: string): any[] | null {
+  get(key: string): Tool[] | null {
     const item = this.cache.get(key)
     if (!item || Date.now() > item.timestamp + item.ttl) {
       if (item) this.cache.delete(key)
@@ -23,7 +40,7 @@ class SearchCache {
     return item.data
   }
   
-  set(key: string, data: any[], customTTL?: number): void {
+  set(key: string, data: Tool[], customTTL?: number): void {
     // 清理过期缓存
     this.cleanup()
     
@@ -50,7 +67,7 @@ class SearchCache {
     }
   }
   
-  private generateFingerprint(data: any[]): string {
+  private generateFingerprint(data: Tool[]): string {
     // 简单的数据指纹，用于验证缓存一致性
     return `${data.length}_${data[0]?.id || 'empty'}_${Date.now()}`
   }
@@ -106,7 +123,7 @@ function generateSearchCacheKey(params: {
 
 // 🎯 智能搜索算法
 async function executeOptimizedSearch(
-  supabase: any,
+  supabase: SupabaseClient,
   query: string,
   filters: {
     categories?: string[]
@@ -225,7 +242,7 @@ const handler: Handler = async (event) => {
     const method = event.httpMethod?.toUpperCase()
     
     // 支持POST请求的复杂搜索（从body解析）
-    let searchParams: any = {}
+    let searchParams: Record<string, unknown> = {}
     
     if (method === 'POST' && event.body) {
       try {
@@ -388,7 +405,8 @@ const handler: Handler = async (event) => {
       })
     }
     
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const error = err as Error
     console.error('❌ 搜索处理异常:', err)
     const responseTime = Date.now() - startTime
     
@@ -399,7 +417,7 @@ const handler: Handler = async (event) => {
       },
       body: JSON.stringify({
         error: 'Internal search error',
-        message: err?.message || 'Unexpected error',
+        message: error?.message || 'Unexpected error',
         timestamp: new Date().toISOString()
       })
     }

@@ -36,7 +36,7 @@ export interface CreateToolInput {
 }
 
 // 用于更新工具的类型
-export interface UpdateToolInput extends Partial<Omit<Tool, 'id' | 'created_at' | 'updated_at' | 'upvotes' | 'views' | 'rating' | 'review_count'>> {}
+export type UpdateToolInput = Partial<Omit<Tool, 'id' | 'created_at' | 'updated_at' | 'upvotes' | 'views' | 'rating' | 'review_count'>>
 
 // API响应类型
 export interface ApiResponse<T> {

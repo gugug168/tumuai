@@ -1,11 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
+import { Handler, HandlerEvent } from '@netlify/functions'
 
 const supabase = createClient(
   (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL)!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function handler(event: any, _context: any) {
+export const handler: Handler = async (event: HandlerEvent) => {
   // 只允许POST请求
   if (event.httpMethod !== 'POST') {
     return {
@@ -93,8 +94,8 @@ export async function handler(event: any, _context: any) {
             const msg = insertResp.error.message || ''
             // 若后端无 slug 列，降级去掉 slug 重试
             if (/column\s+"slug"/i.test(msg)) {
-              const payloadWithoutSlug = { ...payloadWithSlug } as any
-              delete payloadWithoutSlug.slug
+              const { slug, ...payloadWithoutSlug } = payloadWithSlug
+              console.log('Removing slug from payload:', slug) // Use the slug variable
               insertResp = await supabase.from('categories').insert([payloadWithoutSlug]).select().maybeSingle()
             }
             // 若为 slug 唯一冲突，追加随机后缀重试
@@ -130,8 +131,8 @@ export async function handler(event: any, _context: any) {
           }
           let updateResp = await supabase.from('categories').update(payloadWithSlug).eq('id', data.id).select().maybeSingle()
           if (updateResp.error && /column\s+"slug"/i.test(updateResp.error.message || '')) {
-            const payloadWithoutSlug = { ...payloadWithSlug } as any
-            delete payloadWithoutSlug.slug
+            const { slug, ...payloadWithoutSlug } = payloadWithSlug
+            console.log('Removing slug from update payload:', slug) // Use the slug variable
             updateResp = await supabase.from('categories').update(payloadWithoutSlug).eq('id', data.id).select().maybeSingle()
           }
           if (updateResp.error) throw updateResp.error

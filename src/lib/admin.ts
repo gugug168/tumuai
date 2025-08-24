@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import type { Tool } from '../types'
 
 export interface AdminUser {
   id: string
@@ -184,7 +185,7 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
       timeoutMs: 3000  // 从8秒缩短到3秒
     }).catch((err) => {
       console.log('⚠️ 服务端验证超时，使用直接查询方式:', err.message)
-      return null as any
+      return null
     })
     if (json) {
       // 如本地拿不到 userId，也直接信任服务端返回
@@ -222,7 +223,7 @@ export async function logAdminAction(
   action: string,
   targetType: string,
   targetId?: string,
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 ) {
   const admin = await checkAdminStatus()
   if (!admin) throw new Error('Unauthorized')
@@ -273,7 +274,7 @@ export async function getToolSubmissions(status?: string) {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
       timeoutMs: 8000
-    }).catch(() => null as any)
+    }).catch(() => null)
     const list = json?.submissions || []
     return status ? list.filter((it: { status?: string }) => it.status === status) : list
   } catch (error) {
@@ -368,7 +369,7 @@ export async function getUsers(page = 1, limit = 20) {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
       timeoutMs: 8000
-    }).catch(() => null as any)
+    }).catch(() => null)
     const list = json?.users || []
     const start = (page - 1) * limit
     return list.slice(start, start + limit)
@@ -386,7 +387,7 @@ export async function getToolsAdmin(page = 1, limit = 20) {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
       timeoutMs: 8000
-    }).catch(() => null as any)
+    }).catch(() => null)
     const list = json?.tools || []
     const start = (page - 1) * limit
     return list.slice(start, start + limit)
@@ -397,7 +398,7 @@ export async function getToolsAdmin(page = 1, limit = 20) {
 }
 
 // 更新工具信息
-export async function updateTool(toolId: string, updates: Partial<any>) {
+export async function updateTool(toolId: string, updates: Partial<Tool>) {
   const token = await ensureAccessToken()
   await postJSONWithTimeout('/.netlify/functions/admin-actions', {
     action: 'update_tool',
@@ -427,7 +428,7 @@ export async function getAdminLogs(page = 1, limit = 50) {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
       timeoutMs: 8000
-    }).catch(() => null as any)
+    }).catch(() => null)
     const list = json?.logs || []
     const start = (page - 1) * limit
     return list.slice(start, start + limit)
@@ -483,7 +484,7 @@ export async function createCategory(category: {
 }
 
 // 更新分类
-export async function updateCategory(id: string, updates: Partial<any>) {
+export async function updateCategory(id: string, updates: Partial<Record<string, unknown>>) {
   const token = await ensureAccessToken()
   return await postJSONWithTimeout('/.netlify/functions/admin-categories', {
     action: 'update',

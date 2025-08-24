@@ -27,12 +27,12 @@ const PageLoader = () => (
   </div>
 );
 
-// 路由预加载配置
-const routePreloadConfig = {
-  '/': () => import('./pages/HomePage'),
-  '/tools': () => import('./pages/ToolsPage'),
-  '/tools/:toolId': () => import('./pages/ToolDetailPage')
-};
+// 路由预加载配置 (暂时未使用，保留以备将来使用)
+// const routePreloadConfig = {
+//   '/': () => import('./pages/HomePage'),
+//   '/tools': () => import('./pages/ToolsPage'),
+//   '/tools/:toolId': () => import('./pages/ToolDetailPage')
+// };
 
 function App() {
   return (

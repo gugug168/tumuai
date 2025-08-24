@@ -1,11 +1,21 @@
 import { createClient } from '@supabase/supabase-js'
+import { Handler, HandlerEvent } from '@netlify/functions'
+
+interface CategoryData {
+  name: string
+  slug: string
+  description: string
+  color: string
+  icon: string
+  sort_order: number
+}
 
 const supabase = createClient(
   (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL)!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function handler(event: any, _context: any) {
+export const handler: Handler = async (event: HandlerEvent) => {
   // 处理OPTIONS预检请求
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -92,7 +102,7 @@ export async function handler(event: any, _context: any) {
       const base = (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
       return base && base !== '-' ? base : `c-${Math.random().toString(36).slice(2, 8)}`
     }
-    const categories = [
+    const categories: CategoryData[] = [
       { name: '结构设计', slug: toSlug('结构设计'), description: '建筑结构设计与分析工具', color: '#EF4444', icon: 'Building2', sort_order: 1 },
       { name: '建筑设计', slug: toSlug('建筑设计'), description: '建筑设计与建模软件', color: '#F97316', icon: 'Home', sort_order: 2 },
       { name: '施工管理', slug: toSlug('施工管理'), description: '项目管理和施工协调工具', color: '#10B981', icon: 'Construction', sort_order: 3 },
@@ -104,7 +114,7 @@ export async function handler(event: any, _context: any) {
     ]
 
     for (const category of categories) {
-      await supabase.from('categories').upsert(category as any, { onConflict: 'name' })
+      await supabase.from('categories').upsert(category, { onConflict: 'name' })
     }
 
     // 3. 修复tool_submissions表

@@ -55,7 +55,7 @@ class PerformanceMonitor {
       // 监听FID (First Input Delay)
       const fidObserver = new PerformanceObserver((entryList) => {
         const entries = entryList.getEntries();
-        entries.forEach((entry: any) => {
+        entries.forEach((entry: PerformanceEntry & { processingStart: number }) => {
           this.webVitals.FID = entry.processingStart - entry.startTime;
           this.recordMetric('FID', entry.processingStart - entry.startTime, 'ms', 'timing');
         });
@@ -67,7 +67,7 @@ class PerformanceMonitor {
       let clsValue = 0;
       const clsObserver = new PerformanceObserver((entryList) => {
         const entries = entryList.getEntries();
-        entries.forEach((entry: any) => {
+        entries.forEach((entry: PerformanceEntry & { value: number; hadRecentInput: boolean }) => {
           if (!entry.hadRecentInput) {
             clsValue += entry.value;
           }
@@ -250,7 +250,7 @@ class PerformanceMonitor {
   // 测量内存使用
   measureMemoryUsage() {
     if ('memory' in performance) {
-      const memory = (performance as any).memory;
+      const memory = (performance as { memory: { usedJSHeapSize: number; totalJSHeapSize: number; jsHeapSizeLimit: number } }).memory;
       this.recordMetric('memory_used', memory.usedJSHeapSize, 'bytes', 'gauge');
       this.recordMetric('memory_total', memory.totalJSHeapSize, 'bytes', 'gauge');
       this.recordMetric('memory_limit', memory.jsHeapSizeLimit, 'bytes', 'gauge');

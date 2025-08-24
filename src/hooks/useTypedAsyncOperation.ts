@@ -31,7 +31,7 @@ export interface AsyncOperationReturn<TData, TError = AppError> {
   readonly lastFetch: Date | null;
   
   // 操作方法
-  execute: (...args: any[]) => Promise<AsyncResult<TData, TError>>;
+  execute: (...args: unknown[]) => Promise<AsyncResult<TData, TError>>;
   retry: () => Promise<AsyncResult<TData, TError>>;
   reset: () => void;
   cancel: () => void;
@@ -47,7 +47,7 @@ export interface AsyncOperationReturn<TData, TError = AppError> {
 type OperationState<TData, TError> = AsyncState<TData, TError> & {
   isExecuting: boolean;
   abortController: AbortController | null;
-  lastArgs: any[] | null;
+  lastArgs: unknown[] | null;
 }
 
 /**
@@ -154,7 +154,7 @@ export function useTypedAsyncOperation<
       error: null,
       isExecuting: true,
       abortController,
-      lastArgs: args as any[]
+      lastArgs: args as unknown[]
     });
 
     try {
@@ -243,7 +243,7 @@ export function useTypedAsyncOperation<
 }
 
 // 数据获取专用Hook
-export function useTypedQuery<TData, TError = AppError>(
+export function useTypedQuery<TData>(
   queryFn: () => Promise<TData>,
   config: AsyncOperationConfig & {
     /** 是否在组件挂载时立即执行 */

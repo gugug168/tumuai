@@ -144,7 +144,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
           onError={handleError}
           // 预连接域名以优化加载速度
           {...(priority && {
-            fetchPriority: 'high' as any
+            fetchPriority: 'high' as const
           })}
         />
       )}

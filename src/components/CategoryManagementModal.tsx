@@ -80,8 +80,9 @@ const CategoryManagementModal: React.FC<Props> = ({ isOpen, onClose, onSave, cat
 			}
 			onSave()
 			onClose()
-		} catch (err: any) {
-			setError(err?.message || '保存失败')
+		} catch (err: unknown) {
+			const error = err as Error
+			setError(error?.message || '保存失败')
 		} finally {
 			setLoading(false)
 		}

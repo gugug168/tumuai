@@ -7,7 +7,7 @@ import AuthModal from '../components/AuthModal';
 
 const FavoritesPage = () => {
   const { user } = useAuth();
-  const [favorites, setFavorites] = useState<any[]>([]);
+  const [favorites, setFavorites] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -26,9 +26,10 @@ const FavoritesPage = () => {
     try {
       const data = await getUserFavorites();
       setFavorites(Array.isArray(data) ? data : []);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error
       console.error('加载收藏失败:', error);
-      setLoadError(error?.message || '加载收藏失败，请稍后重试');
+      setLoadError(err?.message || '加载收藏失败，请稍后重试');
     } finally {
       setLoading(false);
     }

@@ -38,7 +38,7 @@ const handler: Handler = async (event) => {
     }
 
     // 分组找出重复项
-    const nameGroups: { [key: string]: any[] } = {}
+    const nameGroups: Record<string, Array<{id: string; name: string; created_at: string}>> = {}
     
     duplicates?.forEach(tool => {
       if (!nameGroups[tool.name]) {
@@ -48,7 +48,7 @@ const handler: Handler = async (event) => {
     })
 
     const duplicateGroups = Object.entries(nameGroups)
-      .filter(([_, tools]) => tools.length > 1)
+      .filter(([, tools]) => tools.length > 1)
       .map(([name, tools]) => ({
         name,
         count: tools.length,
@@ -70,7 +70,7 @@ const handler: Handler = async (event) => {
 
     // 清理重复项（保留最早创建的）
     let deletedCount = 0
-    const deletedTools: any[] = []
+    const deletedTools: Array<{id: string; name: string; created_at: string}> = []
 
     for (const group of duplicateGroups) {
       const toolsToDelete = group.tools.slice(1) // 保留第一个，删除其余的
@@ -102,11 +102,12 @@ const handler: Handler = async (event) => {
       })
     }
 
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const error = err as Error
     console.error('清理数据库时出错:', err)
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err?.message || 'Unexpected error' })
+      body: JSON.stringify({ error: error?.message || 'Unexpected error' })
     }
   }
 }

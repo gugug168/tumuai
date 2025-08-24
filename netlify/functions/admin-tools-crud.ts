@@ -1,11 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
+import { Handler, HandlerEvent } from '@netlify/functions'
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function handler(event: any, _context: any) {
+export const handler: Handler = async (event: HandlerEvent) => {
   // 处理OPTIONS预检请求
   if (event.httpMethod === 'OPTIONS') {
     return {

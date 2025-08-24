@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { parseError, type AppError, ERROR_CODES } from '../lib/api';
-import type { AsyncResult, AsyncState } from '../lib/type-utils';
+// import type { AsyncResult, AsyncState } from '../lib/type-utils'; // 暂时未使用
 
 export interface ErrorState {
   hasError: boolean;

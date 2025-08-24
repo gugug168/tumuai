@@ -38,8 +38,9 @@ const DiagnosticPage = () => {
         const { count, error } = await supabase.from('tools').select('id', { count: 'exact', head: true });
         if (error) throw error;
         return { status: 'success', message: `连接成功，工具表约 ${count || 0} 条记录` };
-      } catch (error: any) {
-        return { status: 'error', message: `连接失败: ${error.message}` };
+      } catch (error: unknown) {
+        const err = error as Error
+        return { status: 'error', message: `连接失败: ${err.message}` };
       }
     };
 

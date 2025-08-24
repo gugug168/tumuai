@@ -57,10 +57,11 @@ const handler: Handler = async (event) => {
       },
       body: JSON.stringify(data)
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const error = err as Error
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err?.message || 'Unexpected error' })
+      body: JSON.stringify({ error: error?.message || 'Unexpected error' })
     }
   }
 }

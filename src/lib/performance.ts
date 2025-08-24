@@ -3,7 +3,7 @@ export interface PerformanceMetric {
   name: string
   duration: number
   timestamp: number
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 }
 
 class PerformanceMonitor {
@@ -20,7 +20,7 @@ class PerformanceMonitor {
   /**
    * 结束计时并记录指标
    */
-  end(name: string, details?: Record<string, any>): PerformanceMetric {
+  end(name: string, details?: Record<string, unknown>): PerformanceMetric {
     const startTime = this.activeTimers.get(name)
     if (!startTime) {
       throw new Error(`未找到名为 "${name}" 的计时器`)
@@ -116,10 +116,10 @@ export const ADMIN_PERFORMANCE_METRICS = {
 /**
  * 包装异步函数以自动监控性能
  */
-export function withPerformanceMonitoring<T extends any[], R>(
+export function withPerformanceMonitoring<T extends unknown[], R>(
   name: string,
   fn: (...args: T) => Promise<R>,
-  getDetails?: (...args: T) => Record<string, any>
+  getDetails?: (...args: T) => Record<string, unknown>
 ): (...args: T) => Promise<R> {
   return async (...args: T): Promise<R> => {
     performanceMonitor.start(name)

@@ -18,7 +18,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // 🚀 客户端缓存管理器
 class ClientCache {
   private cache = new Map<string, {
-    data: any
+    data: unknown
     timestamp: number
     ttl: number
     stale: boolean
@@ -124,7 +124,7 @@ const apiMetrics: ApiMetrics = {
 }
 
 // 🔧 工具函数
-function generateCacheKey(endpoint: string, params?: Record<string, any>): string {
+function generateCacheKey(endpoint: string, params?: Record<string, unknown>): string {
   if (!params) return endpoint
   
   // 排序参数以确保缓存键一致性
@@ -135,7 +135,7 @@ function generateCacheKey(endpoint: string, params?: Record<string, any>): strin
         acc[key] = params[key]
       }
       return acc
-    }, {} as Record<string, any>)
+    }, {} as Record<string, unknown>)
   
   return `${endpoint}:${JSON.stringify(sortedParams)}`
 }
@@ -256,9 +256,9 @@ export async function getToolsOptimized(params?: {
           .order('id', { ascending: false }) // 稳定排序
           .limit(limit)
         
-        const { data, error } = await queryBuilder
+        const { data, error: dbError } = await queryBuilder
         
-        if (error) throw error
+        if (dbError) throw dbError
         
         console.log('✅ 通过Supabase直连获取工具')
         return data as Tool[]
@@ -323,11 +323,11 @@ export async function getToolByIdOptimized(id: string): Promise<Tool | null> {
 export async function incrementToolViewsOptimized(id: string): Promise<number | null> {
   try {
     // 优先尝试使用数据库函数
-    const { data, error } = await supabase.rpc('increment_tool_views', {
+    const { data, error: rpcError } = await supabase.rpc('increment_tool_views', {
       tool_id_param: id
     })
     
-    if (!error && typeof data === 'number') {
+    if (!rpcError && typeof data === 'number') {
       console.log(`📊 工具 ${id} 浏览量+1: ${data}`)
       
       // 使缓存失效
@@ -445,11 +445,11 @@ export async function searchToolsOptimized(
           queryBuilder = queryBuilder.eq('pricing', filters.pricing)
         }
         
-        const { data, error } = await queryBuilder
+        const { data, error: searchError } = await queryBuilder
           .order('upvotes', { ascending: false })
           .order('id', { ascending: false })
         
-        if (error) throw error
+        if (searchError) throw searchError
         
         console.log('✅ 通过Supabase直连搜索')
         return data as Tool[]
@@ -469,7 +469,7 @@ export async function getCategoriesOptimized() {
       console.log('🔍 获取分类数据...')
       
       try {
-        let { data, error } = await supabase
+        let { data, error: categoriesError } = await supabase
           .from('categories')
           .select('*')
           .eq('is_active', true)
@@ -477,17 +477,17 @@ export async function getCategoriesOptimized() {
           .order('name', { ascending: true })
         
         // 如果is_active字段不存在，回退查询
-        if (error && error.message.includes('is_active')) {
+        if (categoriesError && categoriesError.message.includes('is_active')) {
           const result = await supabase
             .from('categories')
             .select('*')
             .order('name', { ascending: true })
           
           data = result.data
-          error = result.error
+          categoriesError = result.error
         }
         
-        if (error) throw error
+        if (categoriesError) throw categoriesError
         
         console.log(`✅ 获取分类成功: ${data?.length || 0}个分类`)
         return data || []
@@ -544,8 +544,7 @@ export const cacheUtils = {
   }
 }
 
-// 导出原有函数（向后兼容）
-export { supabase }
+// 导出类型（向后兼容）
 export type { Tool } from '../types'
 
 // 🚀 替换原有函数的优化版本

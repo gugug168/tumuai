@@ -76,8 +76,9 @@ const handler: Handler = async (event) => {
     }
 
     return { statusCode: 200, body: 'Admin ready' }
-  } catch (err: any) {
-    return { statusCode: 500, body: err?.message || 'Unexpected error' }
+  } catch (err: unknown) {
+    const error = err as Error
+    return { statusCode: 500, body: error?.message || 'Unexpected error' }
   }
 }
 

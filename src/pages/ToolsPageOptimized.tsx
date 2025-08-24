@@ -25,8 +25,8 @@ import AuthModal from '../components/AuthModal';
 import OptimizedImage from '../components/OptimizedImage';
 
 // 虚拟滚动配置
-const ITEM_HEIGHT = 120; // 列表项高度
-const BUFFER_SIZE = 5; // 缓冲区大小
+// const ITEM_HEIGHT = 120; // 列表项高度 (暂时未使用)
+// const BUFFER_SIZE = 5; // 缓冲区大小 (暂时未使用)
 const PAGE_SIZE = 20; // 每页加载数量
 
 // 工具卡片组件 - 使用memo优化重渲染

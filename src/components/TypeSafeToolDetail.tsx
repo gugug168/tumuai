@@ -117,7 +117,6 @@ ToolHeader.displayName = 'ToolHeader';
 
 // 评论区组件
 const ReviewSection: React.FC<ReviewSectionProps> = React.memo(({ 
-  toolId, 
   reviews, 
   onSubmitReview, 
   loading = false 
@@ -145,7 +144,7 @@ const ReviewSection: React.FC<ReviewSectionProps> = React.memo(({
         touched: {},
         isSubmitting: false
       }));
-    } catch (error) {
+    } catch {
       setFormState(prev => ({ ...prev, isSubmitting: false }));
     }
   };
@@ -276,19 +275,7 @@ export const TypeSafeToolDetail: React.FC<ToolDetailProps> = ({
 }) => {
   const { toolId } = useParams<ToolDetailParams>();
 
-  // 类型安全的参数验证
-  if (!isValidToolId(toolId) && !toolOverride) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">参数错误</h2>
-          <p className="text-gray-600">无效的工具ID</p>
-        </div>
-      </div>
-    );
-  }
-
-  // 数据获取
+  // 所有 hooks 必须在条件判断之前
   const toolQuery = useTypedQuery(
     async () => {
       if (toolOverride) return toolOverride;
@@ -305,7 +292,6 @@ export const TypeSafeToolDetail: React.FC<ToolDetailProps> = ({
     }
   );
 
-  // 评论提交mutation
   const reviewMutation = useTypedMutation(
     async (reviewData: ReviewFormData) => {
       if (!toolQuery.data?.id) throw new Error('No tool selected');
@@ -317,23 +303,21 @@ export const TypeSafeToolDetail: React.FC<ToolDetailProps> = ({
     },
     {
       onSuccess: () => {
-        // 重新获取工具数据以更新评论
         toolQuery.refetch();
       }
     }
   );
 
-  // 浏览量更新
+  const mockReviews: ToolReview[] = useMemo(() => [], []);
+
   React.useEffect(() => {
     if (toolQuery.data?.id && !toolOverride) {
       incrementToolViews(toolQuery.data.id);
     }
   }, [toolQuery.data?.id, toolOverride]);
 
-  // 事件处理器
   const handleFavoriteClick: ClickEventHandler = React.useCallback((event) => {
     event.preventDefault();
-    // TODO: 实现收藏功能
     console.log('Toggle favorite for tool:', toolQuery.data?.id);
   }, [toolQuery.data?.id]);
 
@@ -346,7 +330,19 @@ export const TypeSafeToolDetail: React.FC<ToolDetailProps> = ({
 
   const handleSubmitReview = React.useCallback(async (reviewData: ReviewFormData) => {
     await reviewMutation.mutate(reviewData);
-  }, [reviewMutation.mutate]);
+  }, [reviewMutation]);
+
+  // 类型安全的参数验证
+  if (!isValidToolId(toolId) && !toolOverride) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">参数错误</h2>
+          <p className="text-gray-600">无效的工具ID</p>
+        </div>
+      </div>
+    );
+  }
 
   // 加载状态
   if (toolQuery.loading) {
@@ -381,9 +377,6 @@ export const TypeSafeToolDetail: React.FC<ToolDetailProps> = ({
   }
 
   const tool = toolQuery.data;
-  
-  // Mock reviews data - 在实际应用中应该从API获取
-  const mockReviews: ToolReview[] = useMemo(() => [], []);
 
   return (
     <div 

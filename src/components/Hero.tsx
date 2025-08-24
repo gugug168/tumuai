@@ -1,14 +1,16 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 
 const Hero = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = React.useState('');
   
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      // 跳转到工具中心页面并传递搜索参数
-      window.location.href = `/tools?search=${encodeURIComponent(searchQuery.trim())}`;
+      // 使用React Router跳转到工具中心页面并传递搜索参数
+      navigate(`/tools?search=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
 

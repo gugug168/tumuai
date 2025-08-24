@@ -36,7 +36,7 @@ const ToolDetailPage = () => {
   const [tool, setTool] = useState<Tool | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showVideoModal, setShowVideoModal] = useState(false);
+  // const [showVideoModal, setShowVideoModal] = useState(false); // 暂时未使用
   
   const toolIdAsString = toolId || '';
   

@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 
 // 图标映射
-const iconMap: Record<string, React.ComponentType<any>> = {
+const iconMap: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
   'Brain': Brain,
   'Wrench': Wrench,
   'Layers': Layers,

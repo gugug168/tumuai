@@ -51,8 +51,9 @@ const handler: Handler = async (event) => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(data || [])
     }
-  } catch (e: any) {
-    return { statusCode: 500, body: e?.message || 'Unexpected error' }
+  } catch (e: unknown) {
+    const error = e as Error
+    return { statusCode: 500, body: error?.message || 'Unexpected error' }
   }
 }
 

@@ -28,17 +28,17 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // 导出Tool类型从统一类型文件
 export type { Tool } from '../types'
 
-// 类型守卫函数
-function isValidTool(obj: unknown): obj is Tool {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    'id' in obj &&
-    'name' in obj &&
-    'tagline' in obj &&
-    'website_url' in obj
-  )
-}
+// 类型守卫函数 (暂时未使用)
+// function isValidTool(obj: unknown): obj is Tool {
+//   return (
+//     typeof obj === 'object' &&
+//     obj !== null &&
+//     'id' in obj &&
+//     'name' in obj &&
+//     'tagline' in obj &&
+//     'website_url' in obj
+//   )
+// }
 
 // 获取所有工具 - 增强类型安全
 export async function getTools(limit = 60): Promise<Tool[]> {

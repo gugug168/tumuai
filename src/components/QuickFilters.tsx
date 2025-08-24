@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Calendar, Sparkles, Heart, Users, Chrome, Smartphone } from 'lucide-react';
 
 const quickFilters = [
@@ -11,6 +12,34 @@ const quickFilters = [
 ];
 
 const QuickFilters = () => {
+  const navigate = useNavigate();
+
+  const handleFilterClick = (filterId: string) => {
+    // 根据筛选器ID跳转到工具页面并应用相应筛选
+    switch (filterId) {
+      case 'today':
+        navigate('/tools?sortBy=date_added&sortOrder=desc');
+        break;
+      case 'latest':
+        navigate('/tools?category=AI结构设计&sortBy=date_added&sortOrder=desc');
+        break;
+      case 'favorites':
+        navigate('/tools?sortBy=upvotes&sortOrder=desc');
+        break;
+      case 'popular':
+        navigate('/tools?sortBy=views&sortOrder=desc');
+        break;
+      case 'browser':
+        navigate('/tools?search=插件&sortBy=upvotes&sortOrder=desc');
+        break;
+      case 'apps':
+        navigate('/tools?search=应用&sortBy=upvotes&sortOrder=desc');
+        break;
+      default:
+        navigate('/tools');
+    }
+  };
+
   return (
     <section className="py-8 bg-white border-t border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -20,7 +49,8 @@ const QuickFilters = () => {
             return (
               <button
                 key={filter.id}
-                className={`${filter.color} text-white px-6 py-3 rounded-full font-medium hover:opacity-90 transition-opacity flex items-center space-x-2`}
+                onClick={() => handleFilterClick(filter.id)}
+                className={`${filter.color} text-white px-6 py-3 rounded-full font-medium hover:opacity-90 transition-opacity flex items-center space-x-2 hover:scale-105 transform transition-transform`}
               >
                 <IconComponent className="w-4 h-4" />
                 <span>{filter.label}</span>

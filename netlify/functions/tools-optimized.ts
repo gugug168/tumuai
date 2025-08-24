@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 
 // 🚀 内存缓存实现（适合Netlify Functions短时间缓存）
 interface CacheItem {
-  data: any
+  data: unknown
   timestamp: number
   ttl: number
 }
@@ -63,13 +63,13 @@ const CACHE_CONFIG = {
 }
 
 // 🎯 生成缓存键
-function generateCacheKey(params: Record<string, any>): string {
+function generateCacheKey(params: Record<string, unknown>): string {
   const sortedParams = Object.keys(params)
     .sort()
     .reduce((acc, key) => {
       acc[key] = params[key]
       return acc
-    }, {} as Record<string, any>)
+    }, {} as Record<string, unknown>)
   
   return `tools:${JSON.stringify(sortedParams)}`
 }
@@ -244,7 +244,8 @@ const handler: Handler = async (event) => {
       },
       body: JSON.stringify(data || [])
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const error = err as Error
     console.error('❌ Unexpected error:', err)
     const responseTime = Date.now() - startTime
     
@@ -255,7 +256,7 @@ const handler: Handler = async (event) => {
       },
       body: JSON.stringify({ 
         error: 'Internal server error',
-        message: err?.message || 'Unexpected error',
+        message: error?.message || 'Unexpected error',
         timestamp: new Date().toISOString()
       })
     }

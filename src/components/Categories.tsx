@@ -22,7 +22,7 @@ import { getCategories } from '../lib/supabase';
 import { apiRequestWithRetry } from '../lib/api';
 
 // 图标映射
-const iconMap: Record<string, React.ComponentType<any>> = {
+const iconMap: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
   'Building2': Building2,
   'Calculator': Calculator,
   'Wrench': Wrench,
