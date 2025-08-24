@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Heart } from 'lucide-react';
+import OptimizedImage from './OptimizedImage';
 
 const featuredTools = [
   {
@@ -131,10 +132,13 @@ const FeaturedTools = () => {
             >
               {/* Tool Logo */}
               <div className="flex-shrink-0">
-                <img
+                <OptimizedImage
                   src={tool.image}
                   alt={tool.name}
-                  className="w-12 h-12 rounded-lg object-cover"
+                  className="w-12 h-12 rounded-lg"
+                  priority={true}
+                  lazyLoad={false}
+                  sizes="48px"
                 />
               </div>
 

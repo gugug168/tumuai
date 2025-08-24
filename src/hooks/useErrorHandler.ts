@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { parseError, type AppError, ERROR_CODES } from '../lib/api';
+import type { AsyncResult, AsyncState } from '../lib/type-utils';
 
 export interface ErrorState {
   hasError: boolean;

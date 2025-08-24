@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import type { Tool, ToolSearchFilters } from '../types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -24,29 +25,23 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // 临时禁用RLS的客户端配置
 // 注意：前端不再创建额外的 admin 客户端，以避免多 GoTrueClient 警告和不必要的权限暴露。
 
-// 工具数据类型定义
-export interface Tool {
-  id: string
-  name: string
-  tagline: string
-  description?: string
-  website_url: string
-  logo_url?: string
-  categories: string[]
-  features: string[]
-  pricing: 'Free' | 'Freemium' | 'Paid' | 'Trial'
-  featured: boolean
-  date_added: string
-  upvotes: number
-  views: number
-  rating: number
-  review_count: number
-  created_at: string
-  updated_at: string
+// 导出Tool类型从统一类型文件
+export type { Tool } from '../types'
+
+// 类型守卫函数
+function isValidTool(obj: unknown): obj is Tool {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'id' in obj &&
+    'name' in obj &&
+    'tagline' in obj &&
+    'website_url' in obj
+  )
 }
 
-// 获取所有工具
-export async function getTools(limit = 60) {
+// 获取所有工具 - 增强类型安全
+export async function getTools(limit = 60): Promise<Tool[]> {
   try {
     // 优先走 Netlify Functions，降低 RLS/跨域影响
     const resp = await fetch(`/.netlify/functions/tools?limit=${limit}`, { cache: 'no-store' })
@@ -122,20 +117,48 @@ export async function getLatestTools() {
 // 根据ID获取工具详情
 export async function getToolById(id: string) {
   try {
+    console.log(`🔍 开始获取工具详情: ${id}`)
+    
+    // 优先使用 Netlify Functions，避免RLS权限问题
+    try {
+      const resp = await fetch(`/.netlify/functions/tool-detail/${id}`, { 
+        cache: 'no-store' 
+      })
+      
+      if (resp.ok) {
+        const data = await resp.json()
+        console.log('✅ 通过Netlify Functions获取工具详情成功:', data.name)
+        return data as Tool
+      } else if (resp.status === 404) {
+        console.log('❌ 工具未找到:', id)
+        return null
+      } else {
+        console.warn('⚠️ Netlify Functions获取失败，状态码:', resp.status)
+        // 继续执行兜底逻辑
+      }
+    } catch (fetchError) {
+      console.warn('⚠️ Netlify Functions请求异常:', fetchError)
+      // 继续执行兜底逻辑
+    }
+    
+    // 兜底：直接连接 Supabase
+    console.log('🔄 使用Supabase直连获取工具详情...')
     const { data, error } = await supabase
       .from('tools')
       .select('*')
       .eq('id', id)
+      .eq('status', 'published')  // 确保只获取已发布的工具
       .single()
 
     if (error) {
-      console.error(`Error fetching tool with id ${id}:`, error)
+      console.error(`❌ Supabase获取工具详情失败 ${id}:`, error)
       return null
     }
 
+    console.log('✅ 通过Supabase直连获取工具详情成功:', data.name)
     return data as Tool
   } catch (error) {
-    console.error(`Unexpected error fetching tool with id ${id}:`, error)
+    console.error(`❌ 获取工具详情异常 ${id}:`, error)
     return null
   }
 }
@@ -143,9 +166,22 @@ export async function getToolById(id: string) {
 // 增加工具浏览量
 export async function incrementToolViews(id: string) {
   try {
+    // 先获取当前浏览量
+    const { data: currentTool, error: fetchError } = await supabase
+      .from('tools')
+      .select('views')
+      .eq('id', id)
+      .single()
+
+    if (fetchError) {
+      console.error('Error fetching current views:', fetchError)
+      return
+    }
+
+    // 更新浏览量
     const { error } = await supabase
       .from('tools')
-      .update({ views: (supabase as any).sql`views + 1` })
+      .update({ views: (currentTool?.views || 0) + 1 })
       .eq('id', id)
 
     if (error) {
@@ -156,12 +192,11 @@ export async function incrementToolViews(id: string) {
   }
 }
 
-// 搜索工具
-export async function searchTools(query: string, filters?: {
-  categories?: string[]
-  features?: string[]
-  pricing?: string
-}) {
+// 搜索工具 - 使用严格类型
+export async function searchTools(
+  query: string, 
+  filters?: ToolSearchFilters
+): Promise<Tool[]> {
   try {
     let queryBuilder = supabase
       .from('tools')

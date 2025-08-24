@@ -36,54 +36,39 @@ const ToolDetailPage = () => {
   const [tool, setTool] = useState<Tool | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showVideoModal, setShowVideoModal] = useState(false);
   
   const toolIdAsString = toolId || '';
   
-  // 将数据库工具数据适配为组件需要的格式
-  const adaptedTool = tool ? {
-    id: tool.id,
-    name: tool.name,
-    logo: tool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=200',
-    category: tool.categories?.[0] || '工具',
-    website: tool.website_url,
-    shortDescription: tool.tagline,
-    detailedDescription: tool.description || tool.tagline,
-    images: [
-      tool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=800'
-    ],
-    videoUrl: '',
-    features: tool.features || [],
-    pricing: [
-      {
-        plan: tool.pricing === 'Free' ? '免费版' : tool.pricing === 'Freemium' ? '免费版' : '基础版',
-        price: tool.pricing === 'Free' ? '¥0' : '联系我们',
-        period: tool.pricing === 'Free' ? '永久' : '月',
-        features: ['基础功能', '标准支持']
-      }
-    ],
-    rating: tool.rating || 0,
-    reviews: tool.review_count || 0,
-    views: tool.views || 0,
-    tags: tool.categories || [],
-    addedDate: tool.date_added ? tool.date_added.split('T')[0] : '',
-    lastUpdated: tool.updated_at ? tool.updated_at.split('T')[0] : ''
-  } : null;
+  // 相关工具推荐数据（临时硬编码，实际应该从API获取）
+  const relatedTools = [
+    {
+      id: '1',
+      name: 'BIM智能建模',
+      category: 'BIM软件',
+      description: '利用AI技术自动生成BIM模型',
+      logo: 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=200',
+      rating: 4.6
+    },
+    {
+      id: '2',
+      name: '智能造价估算',
+      category: '效率工具',
+      description: '基于历史数据的工程造价快速估算',
+      logo: 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=200',
+      rating: 4.7
+    },
+    {
+      id: '3',
+      name: 'CAD智能绘图',
+      category: '效率工具',
+      description: '基于自然语言的CAD绘图工具',
+      logo: 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=200',
+      rating: 4.4
+    }
+  ];
   
-  useEffect(() => {
-    if (toolIdAsString) {
-      loadToolData();
-    }
-  }, [toolIdAsString, loadToolData]);
-
-  useEffect(() => {
-    if (tool) {
-      checkFavoriteStatus();
-      loadReviews();
-      // 增加浏览量
-      incrementToolViews(toolIdAsString);
-    }
-  }, [tool, toolIdAsString, checkFavoriteStatus, loadReviews]);
-
+  // 定义所有callback函数在useEffect之前
   const loadToolData = useCallback(async () => {
     try {
       setLoading(true);
@@ -128,6 +113,51 @@ const ToolDetailPage = () => {
       setLoadingReviews(false);
     }
   }, [toolIdAsString]);
+
+  // 将数据库工具数据适配为组件需要的格式
+  const adaptedTool = tool ? {
+    id: tool.id,
+    name: tool.name,
+    logo: tool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=200',
+    category: tool.categories?.[0] || '工具',
+    website: tool.website_url,
+    shortDescription: tool.tagline,
+    detailedDescription: tool.description || tool.tagline,
+    images: [
+      tool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=800'
+    ],
+    videoUrl: '',
+    features: tool.features || [],
+    pricing: [
+      {
+        plan: tool.pricing === 'Free' ? '免费版' : tool.pricing === 'Freemium' ? '免费版' : '基础版',
+        price: tool.pricing === 'Free' ? '¥0' : '联系我们',
+        period: tool.pricing === 'Free' ? '永久' : '月',
+        features: ['基础功能', '标准支持']
+      }
+    ],
+    rating: tool.rating || 0,
+    reviews: tool.review_count || 0,
+    views: tool.views || 0,
+    tags: tool.categories || [],
+    addedDate: tool.date_added ? tool.date_added.split('T')[0] : '',
+    lastUpdated: tool.updated_at ? tool.updated_at.split('T')[0] : ''
+  } : null;
+  
+  useEffect(() => {
+    if (toolIdAsString) {
+      loadToolData();
+    }
+  }, [toolIdAsString, loadToolData]);
+
+  useEffect(() => {
+    if (tool) {
+      checkFavoriteStatus();
+      loadReviews();
+      // 增加浏览量
+      incrementToolViews(toolIdAsString);
+    }
+  }, [tool, toolIdAsString, checkFavoriteStatus, loadReviews]);
 
   if (loading) {
     return (

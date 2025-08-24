@@ -77,8 +77,13 @@ export function parseError(error: any): AppError {
   return createAppError(ERROR_CODES.UNKNOWN_ERROR, '发生未知错误，请重试', error);
 }
 
-// 统一的 API 请求包装器
-export const apiRequest = async <T>(promise: Promise<T>): Promise<T> => {
+// 导入类型工具
+import type { ApiWrapper, AsyncResult } from './type-utils'
+
+// 统一的 API 请求包装器 - 增强泛型支持
+export const apiRequest = async <TData, TError = AppError>(
+  promise: Promise<TData>
+): Promise<TData> => {
   try {
     const response = await promise;
     return response;
@@ -86,6 +91,20 @@ export const apiRequest = async <T>(promise: Promise<T>): Promise<T> => {
     const appError = parseError(error);
     console.error('API请求失败:', appError);
     throw new Error(appError.message);
+  }
+};
+
+// 安全的API请求包装器，返回Result类型
+export const safeApiRequest = async <TData, TError = AppError>(
+  promise: Promise<TData>
+): Promise<AsyncResult<TData, TError>> => {
+  try {
+    const data = await promise;
+    return { success: true, data, error: null };
+  } catch (error) {
+    const appError = parseError(error) as TError;
+    console.error('API请求失败:', appError);
+    return { success: false, data: null, error: appError };
   }
 };
 

@@ -15,6 +15,7 @@ import { getTools, type Tool } from '../lib/supabase';
 import { apiRequestWithRetry } from '../lib/api';
 import { addToFavorites, removeFromFavorites, isFavorited } from '../lib/community';
 import AuthModal from '../components/AuthModal';
+import OptimizedImage from '../components/OptimizedImage';
 
 const categories = [
   'AI结构设计',
@@ -449,10 +450,13 @@ const ToolsPage = () => {
                   <>
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center space-x-3">
-                        <img
+                        <OptimizedImage
                           src={tool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=100'}
                           alt={tool.name}
-                          className="w-12 h-12 rounded-lg object-cover"
+                          className="w-12 h-12 rounded-lg"
+                          priority={false}
+                          lazyLoad={true}
+                          sizes="48px"
                         />
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
@@ -519,10 +523,13 @@ const ToolsPage = () => {
                   // List View
                   <>
                     <div className="flex items-center space-x-4 flex-1">
-                      <img
+                      <OptimizedImage
                         src={tool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=100'}
                         alt={tool.name}
-                        className="w-16 h-16 rounded-lg object-cover"
+                        className="w-16 h-16 rounded-lg"
+                        priority={false}
+                        lazyLoad={true}
+                        sizes="64px"
                       />
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
