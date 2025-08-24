@@ -57,11 +57,13 @@ async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?
     if (authError || !userRes?.user?.id) return null
     
     const userId = userRes.user.id
-    const { data, error } = await supabase
+    const { data: initialData, error } = await supabase
       .from('admin_users')
       .select('id,user_id')
       .eq('user_id', userId)
       .maybeSingle()
+    
+    let data = initialData
     
     if (error || !data) {
       // 若管理员表为空，自动引导当前用户为 super_admin，避免首次 403 卡死
