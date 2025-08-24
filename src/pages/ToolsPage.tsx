@@ -8,7 +8,12 @@ import {
   Filter,
   Grid,
   List,
-  Search
+  Search,
+  WifiOff,
+  RefreshCw,
+  AlertCircle,
+  Wifi,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getToolsOptimized } from '../lib/supabase-optimized';
@@ -61,6 +66,8 @@ const ToolsPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [favoriteStates, setFavoriteStates] = useState<{[key: string]: boolean}>({});
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [retryCount, setRetryCount] = useState(0);
   
   // 筛选状态
   const [filters, setFilters] = useState({
@@ -71,58 +78,7 @@ const ToolsPage = () => {
     sortBy: 'upvotes'
   });
 
-  useEffect(() => {
-    loadTools();
-  }, []);
-
-  useEffect(() => {
-    // 从URL参数初始化搜索
-    const searchQuery = searchParams.get('search');
-    if (searchQuery) {
-      setFilters(prev => ({ ...prev, search: searchQuery }));
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    applyFilters();
-  }, [applyFilters]);
-
-  useEffect(() => {
-    if (user) {
-      loadFavoriteStates();
-    }
-  }, [user, loadFavoriteStates]);
-
-  const loadTools = async () => {
-    setLoadError(null);
-    setLoading(true);
-    try {
-      const data = await apiRequestWithRetry(() => getToolsOptimized({ limit: 60 }), 2, 1500);
-      setTools(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('加载工具失败:', error);
-      setLoadError(error instanceof Error ? error.message : '加载失败，请稍后重试');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadFavoriteStates = useCallback(async () => {
-    if (!user) return;
-    
-    const states: {[key: string]: boolean} = {};
-    for (const tool of tools) {
-      try {
-        const favorited = await isFavorited(tool.id);
-        states[tool.id] = favorited;
-      } catch (error) {
-        console.error('检查收藏状态失败:', error);
-        states[tool.id] = false;
-      }
-    }
-    setFavoriteStates(states);
-  }, [user, tools]);
-
+  // 筛选逻辑函数
   const applyFilters = useCallback(() => {
     let filtered = [...tools];
 
@@ -174,6 +130,106 @@ const ToolsPage = () => {
 
     setFilteredTools(filtered);
   }, [tools, filters]);
+
+  // 收藏状态加载函数
+  const loadFavoriteStates = useCallback(async () => {
+    if (!user) return;
+    
+    const states: {[key: string]: boolean} = {};
+    for (const tool of tools) {
+      try {
+        const favorited = await isFavorited(tool.id);
+        states[tool.id] = favorited;
+      } catch (error) {
+        console.error('检查收藏状态失败:', error);
+        states[tool.id] = false;
+      }
+    }
+    setFavoriteStates(states);
+  }, [user, tools]);
+
+  useEffect(() => {
+    loadTools(false);
+  }, [loadTools]);
+
+  useEffect(() => {
+    // 从URL参数初始化搜索
+    const searchQuery = searchParams.get('search');
+    if (searchQuery) {
+      setFilters(prev => ({ ...prev, search: searchQuery }));
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (tools.length > 0) {
+      applyFilters();
+    }
+  }, [tools, filters, applyFilters]);
+
+  useEffect(() => {
+    if (user && tools.length > 0) {
+      loadFavoriteStates();
+    }
+  }, [user, tools, loadFavoriteStates]);
+
+  // 离线状态监听
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      // 网络恢复时重新加载数据
+      if (tools.length === 0 && loadError) {
+        loadTools(true);
+      }
+    };
+    
+    const handleOffline = () => {
+      setIsOffline(true);
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [tools.length, loadError, loadTools]);
+
+  const loadTools = useCallback(async (autoRetry = false) => {
+    setLoadError(null);
+    setLoading(true);
+    if (!autoRetry) {
+      setRetryCount(prev => prev + 1);
+    }
+    
+    try {
+      const data = await apiRequestWithRetry(() => getToolsOptimized({ limit: 60 }), 3, 2000);
+      setTools(Array.isArray(data) ? data : []);
+      setRetryCount(0); // 成功后重置重试计数
+    } catch (error) {
+      console.error('加载工具失败:', error);
+      
+      // 错误分类和用户友好的错误信息
+      let errorMessage = '加载失败，请稍后重试';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('网络') || error.message.includes('fetch')) {
+          errorMessage = isOffline ? '网络连接已断开，请检查网络设置' : '网络连接不稳定，正在重试...';
+        } else if (error.message.includes('404')) {
+          errorMessage = '服务暂时不可用，请稍后再试';
+        } else if (error.message.includes('500')) {
+          errorMessage = '服务器繁忙，请稍后再试';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setLoadError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, [isOffline]);
+
 
   const handleFilterChange = (type: string, value: string | string[]) => {
     setFilters(prev => ({
@@ -259,8 +315,78 @@ const ToolsPage = () => {
             发现最适合土木工程师的AI工具和效率工具
           </p>
           {loadError && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
-              {loadError}
+            <div className="mt-4 p-4 border rounded-lg">
+              {/* 智能错误状态组件 */}
+              <div className="flex items-start space-x-3">
+                {/* 状态图标 */}
+                <div className="flex-shrink-0 mt-1">
+                  {isOffline ? (
+                    <WifiOff className="w-5 h-5 text-red-500" />
+                  ) : loading ? (
+                    <RefreshCw className="w-5 h-5 text-blue-500 animate-spin" />
+                  ) : retryCount > 0 ? (
+                    <Clock className="w-5 h-5 text-orange-500" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 text-red-500" />
+                  )}
+                </div>
+                
+                {/* 错误信息和状态 */}
+                <div className="flex-1 min-w-0">
+                  <div className={`text-sm font-medium ${
+                    isOffline ? 'text-red-700' :
+                    loading ? 'text-blue-700' :
+                    retryCount > 0 ? 'text-orange-700' : 'text-red-700'
+                  }`}>
+                    {isOffline ? '网络离线' : 
+                     loading ? '正在加载...' :
+                     retryCount > 0 ? `正在重试 (第${retryCount}次)` : '加载失败'}
+                  </div>
+                  
+                  <div className={`text-sm mt-1 ${
+                    isOffline ? 'text-red-600 bg-red-50' :
+                    loading ? 'text-blue-600 bg-blue-50' :
+                    retryCount > 0 ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50'
+                  } p-2 rounded`}>
+                    {loadError}
+                  </div>
+                  
+                  {/* 重试计数和进度提示 */}
+                  {retryCount > 0 && !loading && (
+                    <div className="mt-2 text-xs text-orange-600 flex items-center space-x-1">
+                      <Clock className="w-3 h-3" />
+                      <span>系统将在几秒后自动重试</span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* 操作按钮 */}
+                <div className="flex-shrink-0">
+                  {isOffline ? (
+                    <div className="flex flex-col space-y-2">
+                      <button
+                        onClick={() => window.location.reload()}
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        <Wifi className="w-3 h-3 mr-1" />
+                        检查网络
+                      </button>
+                    </div>
+                  ) : !loading && (
+                    <button
+                      onClick={() => {
+                        setRetryCount(0);
+                        loadTools(false);
+                      }}
+                      disabled={loading}
+                      className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <RefreshCw className={`w-3 h-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                      {retryCount > 0 ? '立即重试' : '重试'}
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>

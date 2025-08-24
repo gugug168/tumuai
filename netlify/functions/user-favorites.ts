@@ -23,7 +23,7 @@ const handler: Handler = async (event) => {
     const userId = userRes.user.id
 
     const { data, error } = await supabase
-      .from('tool_favorites')
+      .from('user_favorites')
       .select(`
         id,
         user_id,

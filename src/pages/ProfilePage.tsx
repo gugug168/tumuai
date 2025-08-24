@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { updateUserProfile } from '../lib/auth';
 import { getUserFavorites } from '../lib/community';
 import { useNavigate, Link } from 'react-router-dom';
+import type { Tool } from '../types';
 
 const ProfilePage = () => {
   const { user, profile, refreshProfile } = useAuth();
@@ -18,7 +19,7 @@ const ProfilePage = () => {
     website: '',
     location: ''
   });
-  const [favorites, setFavorites] = useState<any[]>([]);
+  const [favorites, setFavorites] = useState<Tool[]>([]);
   const [loadingFavorites, setLoadingFavorites] = useState(false);
   const navigate = useNavigate();
 
