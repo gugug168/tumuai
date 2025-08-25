@@ -1,2 +1,0 @@
-id,user_id,role,permissions,created_at,updated_at
-a0942861-3cba-4d47-8afb-ee4c6f457689,44d96eb6-6cd0-49dc-9c36-ad909f0d3e46,admin,"{""tools"":true,""users"":true,""categories"":true,""submissions"":true}",2025-08-17 13:14:28.349164+00,2025-08-17 13:14:28.349164+00

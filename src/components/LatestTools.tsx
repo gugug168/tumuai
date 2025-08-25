@@ -1,167 +1,36 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, ExternalLink, Heart, Eye, Clock } from 'lucide-react';
-
-const latestTools = [
-  {
-    id: 1,
-    name: '智能钢筋配筋',
-    description: '基于AI的钢筋配筋优化工具，自动计算最优配筋方案',
-    category: 'AI结构设计',
-    rating: 4.5,
-    reviews: 23,
-    views: 456,
-    image: 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=300',
-    tags: ['钢筋配筋', 'AI优化'],
-    pricing: '¥199/月',
-    addedDate: '2024-01-20'
-  },
-  {
-    id: 2,
-    name: '混凝土强度预测',
-    description: '利用机器学习预测混凝土强度发展趋势',
-    category: '岩土工程',
-    rating: 4.3,
-    reviews: 18,
-    views: 342,
-    image: 'https://images.pexels.com/photos/3862379/pexels-photo-3862379.jpeg?auto=compress&cs=tinysrgb&w=300',
-    tags: ['强度预测', '机器学习'],
-    pricing: '免费',
-    addedDate: '2024-01-19'
-  },
-  {
-    id: 3,
-    name: '施工安全监控',
-    description: '基于计算机视觉的施工现场安全监控系统',
-    category: '智能施工管理',
-    rating: 4.7,
-    reviews: 34,
-    views: 678,
-    image: 'https://images.pexels.com/photos/3862365/pexels-photo-3862365.jpeg?auto=compress&cs=tinysrgb&w=300',
-    tags: ['安全监控', '计算机视觉'],
-    pricing: '¥599/月',
-    addedDate: '2024-01-18'
-  },
-  {
-    id: 4,
-    name: 'BIM碰撞检测',
-    description: '智能BIM模型碰撞检测和冲突解决方案',
-    category: 'BIM软件',
-    rating: 4.6,
-    reviews: 41,
-    views: 523,
-    image: 'https://images.pexels.com/photos/3862130/pexels-photo-3862130.jpeg?auto=compress&cs=tinysrgb&w=300',
-    tags: ['碰撞检测', 'BIM'],
-    pricing: '¥299/月',
-    addedDate: '2024-01-17'
-  },
-  {
-    id: 5,
-    name: '工程量智能计算',
-    description: '基于图纸识别的工程量自动计算工具',
-    category: '效率工具',
-    rating: 4.4,
-    reviews: 29,
-    views: 445,
-    image: 'https://images.pexels.com/photos/3862385/pexels-photo-3862385.jpeg?auto=compress&cs=tinysrgb&w=300',
-    tags: ['工程量', '图纸识别'],
-    pricing: '¥159/月',
-    addedDate: '2024-01-16'
-  },
-  {
-    id: 6,
-    name: '地基承载力分析',
-    description: '智能地基承载力分析和基础设计优化',
-    category: '岩土工程',
-    rating: 4.5,
-    reviews: 26,
-    views: 389,
-    image: 'https://images.pexels.com/photos/3862388/pexels-photo-3862388.jpeg?auto=compress&cs=tinysrgb&w=300',
-    tags: ['地基分析', '基础设计'],
-    pricing: '¥249/月',
-    addedDate: '2024-01-15'
-  },
-  {
-    id: 7,
-    name: '项目进度预测',
-    description: 'AI驱动的项目进度预测和风险评估工具',
-    category: '项目管理',
-    rating: 4.2,
-    reviews: 19,
-    views: 312,
-    image: 'https://images.pexels.com/photos/3862390/pexels-photo-3862390.jpeg?auto=compress&cs=tinysrgb&w=300',
-    tags: ['进度预测', '风险评估'],
-    pricing: '¥399/月',
-    addedDate: '2024-01-14'
-  },
-  {
-    id: 8,
-    name: '结构健康监测',
-    description: '基于传感器数据的结构健康状态监测系统',
-    category: 'AI结构设计',
-    rating: 4.6,
-    reviews: 37,
-    views: 567,
-    image: 'https://images.pexels.com/photos/3862392/pexels-photo-3862392.jpeg?auto=compress&cs=tinysrgb&w=300',
-    tags: ['健康监测', '传感器'],
-    pricing: '¥799/月',
-    addedDate: '2024-01-13'
-  },
-  {
-    id: 9,
-    name: '智能排水设计',
-    description: '基于AI的城市排水系统智能设计工具',
-    category: '效率工具',
-    rating: 4.3,
-    reviews: 22,
-    views: 398,
-    image: 'https://images.pexels.com/photos/3862394/pexels-photo-3862394.jpeg?auto=compress&cs=tinysrgb&w=300',
-    tags: ['排水设计', '城市规划'],
-    pricing: '¥299/月',
-    addedDate: '2024-01-12'
-  },
-  {
-    id: 10,
-    name: '材料成本优化',
-    description: '智能材料选择和成本优化分析工具',
-    category: '效率工具',
-    rating: 4.4,
-    reviews: 31,
-    views: 476,
-    image: 'https://images.pexels.com/photos/3862396/pexels-photo-3862396.jpeg?auto=compress&cs=tinysrgb&w=300',
-    tags: ['成本优化', '材料选择'],
-    pricing: '¥199/月',
-    addedDate: '2024-01-11'
-  },
-  {
-    id: 11,
-    name: '桥梁设计助手',
-    description: 'AI辅助的桥梁结构设计和优化工具',
-    category: 'AI结构设计',
-    rating: 4.7,
-    reviews: 45,
-    views: 623,
-    image: 'https://images.pexels.com/photos/3862398/pexels-photo-3862398.jpeg?auto=compress&cs=tinysrgb&w=300',
-    tags: ['桥梁设计', 'AI辅助'],
-    pricing: '¥499/月',
-    addedDate: '2024-01-10'
-  },
-  {
-    id: 12,
-    name: '施工质量检测',
-    description: '基于图像识别的施工质量自动检测系统',
-    category: '智能施工管理',
-    rating: 4.5,
-    reviews: 28,
-    views: 412,
-    image: 'https://images.pexels.com/photos/3862400/pexels-photo-3862400.jpeg?auto=compress&cs=tinysrgb&w=300',
-    tags: ['质量检测', '图像识别'],
-    pricing: '¥399/月',
-    addedDate: '2024-01-09'
-  }
-];
+import { getToolsOptimized } from '../lib/supabase-optimized';
+import type { Tool } from '../types';
 
 const LatestTools = () => {
+  const [latestTools, setLatestTools] = useState<Tool[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchLatestTools = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getToolsOptimized({
+        sortBy: 'date_added',
+        sortOrder: 'desc',
+        limit: 12
+      });
+      setLatestTools(Array.isArray(data) ? data : []);
+    } catch (err) {
+      const error = err as Error;
+      setError(error?.message || '获取工具失败');
+      console.error('获取最新工具失败:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLatestTools();
+  }, []);
   return (
     <section className="py-16 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -174,7 +43,40 @@ const LatestTools = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {/* 错误状态 */}
+        {error && (
+          <div className="text-center py-12">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+              <p className="text-red-600 mb-4">加载失败: {error}</p>
+              <button 
+                onClick={fetchLatestTools}
+                className="btn-primary px-6 py-2"
+              >
+                重新加载
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 加载状态 */}
+        {loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 12 }).map((_, index) => (
+              <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden animate-pulse">
+                <div className="w-full h-40 bg-gray-200"></div>
+                <div className="p-4">
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded mb-3"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 工具列表 */}
+        {!loading && !error && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {latestTools.map((tool) => (
             <div
               key={tool.id}
@@ -183,7 +85,7 @@ const LatestTools = () => {
               {/* Tool Image */}
               <div className="relative overflow-hidden">
                 <img
-                  src={tool.image}
+                  src={tool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=300'}
                   alt={tool.name}
                   className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"
                 />
@@ -213,23 +115,23 @@ const LatestTools = () => {
                 </div>
 
                 <p className="text-gray-600 text-sm mb-3 leading-relaxed line-clamp-2">
-                  {tool.description}
+                  {tool.tagline}
                 </p>
 
                 <div className="mb-3">
                   <span className="tag-primary px-2 py-1 rounded-md text-xs font-medium">
-                    {tool.category}
+                    {tool.categories?.[0] || '未分类'}
                   </span>
                 </div>
 
-                {/* Tags */}
+                {/* Features as Tags */}
                 <div className="flex flex-wrap gap-1 mb-3">
-                  {tool.tags.map((tag, index) => (
+                  {tool.features?.slice(0, 3).map((feature, index) => (
                     <span
                       key={index}
                       className="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-xs"
                     >
-                      {tag}
+                      {feature}
                     </span>
                   ))}
                 </div>
@@ -239,15 +141,15 @@ const LatestTools = () => {
                   <div className="flex items-center space-x-3 text-xs text-gray-500">
                     <div className="flex items-center space-x-1">
                       <Eye className="w-3 h-3" />
-                      <span>{tool.views}</span>
+                      <span>{tool.views || 0}</span>
                     </div>
                     <div className="flex items-center space-x-1">
                       <Star className="w-3 h-3" />
-                      <span>{tool.reviews}</span>
+                      <span>{tool.review_count || 0}</span>
                     </div>
                   </div>
                   <span className="text-xs font-medium text-accent-600">
-                    {tool.pricing}
+                    {tool.pricing || '免费'}
                   </span>
                 </div>
 
@@ -262,13 +164,17 @@ const LatestTools = () => {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        )}
 
-        <div className="text-center mt-12">
-          <button className="btn-secondary px-8 py-3">
-            查看更多最新工具
-          </button>
-        </div>
+        {/* 查看更多按钮 */}
+        {!loading && !error && latestTools.length > 0 && (
+          <div className="text-center mt-12">
+            <button className="btn-secondary px-8 py-3">
+              查看更多最新工具
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

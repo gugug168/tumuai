@@ -14,7 +14,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { addToFavorites, removeFromFavorites, isFavorited, addToolReview, getToolReviews } from '../lib/community';
-import { getToolById, incrementToolViews } from '../lib/supabase';
+import { getToolById, incrementToolViews, getTools } from '../lib/supabase';
 import type { Tool } from '../types/index';
 
 interface Review {
@@ -40,33 +40,46 @@ const ToolDetailPage = () => {
   
   const toolIdAsString = toolId || '';
   
-  // 相关工具推荐数据（临时硬编码，实际应该从API获取）
-  const relatedTools = [
-    {
-      id: '1',
-      name: 'BIM智能建模',
-      category: 'BIM软件',
-      description: '利用AI技术自动生成BIM模型',
-      logo: 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=200',
-      rating: 4.6
-    },
-    {
-      id: '2',
-      name: '智能造价估算',
-      category: '效率工具',
-      description: '基于历史数据的工程造价快速估算',
-      logo: 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=200',
-      rating: 4.7
-    },
-    {
-      id: '3',
-      name: 'CAD智能绘图',
-      category: '效率工具',
-      description: '基于自然语言的CAD绘图工具',
-      logo: 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=200',
-      rating: 4.4
+  // 相关工具推荐数据（动态从API获取）
+  interface RelatedTool {
+    id: string;
+    name: string;
+    category: string;
+    description: string;
+    logo: string;
+    rating: number;
+  }
+  const [relatedTools, setRelatedTools] = useState<RelatedTool[]>([]);
+  const [loadingRelated, setLoadingRelated] = useState(true);
+  
+  const fetchRelatedTools = async (currentCategory: string, currentToolId: string) => {
+    try {
+      // 获取所有工具数据
+      const allTools = await getTools(100); // 获取更多工具以便筛选
+      
+      // 筛选同分类的工具，排除当前工具
+      const relatedToolsData = allTools
+        .filter(tool => 
+          tool.categories.includes(currentCategory) && 
+          tool.id !== currentToolId
+        )
+        .sort((a, b) => b.rating - a.rating) // 按评分降序排序
+        .slice(0, 3) // 只取前3个
+        .map(tool => ({
+          id: tool.id,
+          name: tool.name,
+          category: tool.categories[0] || currentCategory,
+          description: tool.tagline,
+          logo: tool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=200',
+          rating: tool.rating
+        }));
+      
+      return relatedToolsData;
+    } catch (error) {
+      console.error('获取相关工具失败:', error);
+      return [];
     }
-  ];
+  };
   
   // 定义所有callback函数在useEffect之前
   const loadToolData = useCallback(async () => {
@@ -158,6 +171,25 @@ const ToolDetailPage = () => {
       incrementToolViews(toolIdAsString);
     }
   }, [tool, toolIdAsString, checkFavoriteStatus, loadReviews]);
+
+  useEffect(() => {
+    if (adaptedTool) {
+      const loadRelatedTools = async () => {
+        try {
+          setLoadingRelated(true);
+          const related = await fetchRelatedTools(adaptedTool.category, adaptedTool.id);
+          setRelatedTools(related);
+        } catch (error) {
+          console.error('获取相关工具失败:', error);
+          setRelatedTools([]);
+        } finally {
+          setLoadingRelated(false);
+        }
+      };
+      
+      loadRelatedTools();
+    }
+  }, [adaptedTool]);
 
   if (loading) {
     return (
@@ -589,44 +621,56 @@ const ToolDetailPage = () => {
 
         {/* 相关工具推荐 */}
         <div className="mt-12">
-          <div className="card p-8">
-            <h2 className="text-2xl font-bold text-primary-800 mb-6">相关工具推荐</h2>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">相关工具推荐</h2>
             <p className="text-gray-600 mb-6">与当前工具同属"{adaptedTool.category}"分类的其他优质工具</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {relatedTools.map((relatedTool) => (
-                <Link
-                  key={relatedTool.id}
-                  to={`/tools/${relatedTool.id}`}
-                  className="group card p-4 hover:shadow-md transition-shadow relative"
-                >
-                  {/* 收藏按钮 */}
-                  <button className="absolute top-3 right-3 bg-white/90 p-1.5 rounded-full hover:bg-white transition-colors">
-                    <Heart className="w-3 h-3 text-gray-600 hover:text-red-500" />
-                  </button>
-                  
-                  <div className="flex items-center space-x-3 mb-3">
-                    <img
-                      src={relatedTool.logo}
-                      alt={relatedTool.name}
-                      className="w-12 h-12 rounded-lg object-cover"
-                    />
-                    <div>
-                      <h3 className="font-semibold text-primary-800 group-hover:text-accent-600 transition-colors">
-                        {relatedTool.name}
-                      </h3>
-                      <span className="tag-primary text-xs">
-                        {relatedTool.category}
-                      </span>
+            
+            {loadingRelated ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="ml-2 text-gray-600">加载相关工具中...</span>
+              </div>
+            ) : relatedTools.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                暂时没有找到相关工具
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {relatedTools.map((relatedTool) => (
+                  <Link
+                    key={relatedTool.id}
+                    to={`/tools/${relatedTool.id}`}
+                    className="group bg-gray-50 rounded-lg p-4 hover:shadow-md transition-shadow relative border border-gray-200"
+                  >
+                    {/* 收藏按钮 */}
+                    <button className="absolute top-3 right-3 bg-white/90 p-1.5 rounded-full hover:bg-white transition-colors">
+                      <Heart className="w-3 h-3 text-gray-600 hover:text-red-500" />
+                    </button>
+                    
+                    <div className="flex items-center space-x-3 mb-3">
+                      <img
+                        src={relatedTool.logo}
+                        alt={relatedTool.name}
+                        className="w-12 h-12 rounded-lg object-cover"
+                      />
+                      <div>
+                        <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                          {relatedTool.name}
+                        </h3>
+                        <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">
+                          {relatedTool.category}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-3">{relatedTool.description}</p>
-                  <div className="flex items-center space-x-1">
-                    <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                    <span className="text-sm text-gray-600">{relatedTool.rating}</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
+                    <p className="text-sm text-gray-600 mb-3">{relatedTool.description}</p>
+                    <div className="flex items-center space-x-1">
+                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                      <span className="text-sm text-gray-600">{relatedTool.rating}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

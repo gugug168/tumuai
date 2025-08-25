@@ -1,9 +1,0 @@
-id,name,slug,description,color,icon,sort_order,is_active,tools_count,created_at,updated_at
-28f23ce3-fc2c-45e9-bf3d-a045bc813e73,测量工具,surveying-tools,工程测量、地形测量、施工放样工具,#F59E0B,map-pin,4,true,0,2025-08-17 12:41:54.493274+00,2025-08-17 12:41:54.493274+00
-47d8a791-f7b5-435f-bbc3-c243d6bde8ea,造价软件,cost-estimation,工程造价、预算、结算相关软件,#8B5CF6,dollar-sign,5,true,0,2025-08-17 12:41:54.493274+00,2025-08-17 12:41:54.493274+00
-5d2ac038-edfb-46f0-b2ca-fe401554e9c6,协同办公,collaboration-tools,团队协作、项目管理、沟通工具,#F97316,users,8,true,0,2025-08-17 12:41:54.493274+00,2025-08-17 12:41:54.493274+00
-74598fd5-63f4-4719-8982-01f469f0ebe5,检测试验,testing-inspection,材料检测、工程质量检测工具,#06B6D4,microscope,6,true,0,2025-08-17 12:41:54.493274+00,2025-08-17 12:41:54.493274+00
-80aaac46-9cb5-4273-9137-8ea5a1fb3e17,施工管理,construction-management,施工项目管理、进度管理、质量管理,#10B981,hard-hat,3,true,0,2025-08-17 12:41:54.493274+00,2025-08-17 12:41:54.493274+00
-8ad93f65-e1c3-4341-a0bc-4a845c892af5,设计软件,design-software,CAD、BIM、3D建模等设计相关软件,#3B82F6,pen-tool,1,true,0,2025-08-17 12:41:54.493274+00,2025-08-17 12:41:54.493274+00
-96686a92-8cce-457e-9fd6-7c6d8412129c,结构计算,structural-analysis,结构分析、计算与验算工具,#EF4444,calculator,2,true,0,2025-08-17 12:41:54.493274+00,2025-08-17 12:41:54.493274+00
-e1698d13-82bb-46c9-9995-890283e34202,文档管理,document-management,工程文档、图纸管理、资料管理,#84CC16,file-text,7,true,0,2025-08-17 12:41:54.493274+00,2025-08-17 12:41:54.493274+00

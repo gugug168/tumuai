@@ -15,29 +15,44 @@ const QuickFilters = () => {
   const navigate = useNavigate();
 
   const handleFilterClick = (filterId: string) => {
-    // 根据筛选器ID跳转到工具页面并应用相应筛选
+    // 统一使用URLSearchParams对象构建查询参数
+    const queryParams = new URLSearchParams();
+    
     switch (filterId) {
       case 'today':
-        navigate('/tools?sortBy=date_added&sortOrder=desc');
+        queryParams.set('sortBy', 'date_added');
+        queryParams.set('sortOrder', 'desc');
         break;
       case 'latest':
-        navigate('/tools?category=AI结构设计&sortBy=date_added&sortOrder=desc');
+        queryParams.set('category', 'AI结构设计');
+        queryParams.set('sortBy', 'date_added');
+        queryParams.set('sortOrder', 'desc');
         break;
       case 'favorites':
-        navigate('/tools?sortBy=upvotes&sortOrder=desc');
+        queryParams.set('sortBy', 'upvotes');
+        queryParams.set('sortOrder', 'desc');
         break;
       case 'popular':
-        navigate('/tools?sortBy=views&sortOrder=desc');
+        queryParams.set('sortBy', 'views');
+        queryParams.set('sortOrder', 'desc');
         break;
       case 'browser':
-        navigate('/tools?search=插件&sortBy=upvotes&sortOrder=desc');
+        queryParams.set('search', '插件');
+        queryParams.set('sortBy', 'upvotes');
+        queryParams.set('sortOrder', 'desc');
         break;
       case 'apps':
-        navigate('/tools?search=应用&sortBy=upvotes&sortOrder=desc');
+        queryParams.set('search', '应用');
+        queryParams.set('sortBy', 'upvotes');
+        queryParams.set('sortOrder', 'desc');
         break;
       default:
+        // 无参数，直接跳转
         navigate('/tools');
+        return;
     }
+    
+    navigate(`/tools?${queryParams.toString()}`);
   };
 
   return (

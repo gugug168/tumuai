@@ -87,22 +87,29 @@ export interface AuthState {
   loading: boolean
 }
 
-// 评论系统类型
+// 评论系统类型 - 增强版
 export interface ToolReview {
-  readonly id: number
+  readonly id: string
   tool_id: string
   user_id: string
-  rating: 1 | 2 | 3 | 4 | 5
-  content: string
+  rating: number
+  title?: string
+  content?: string
+  helpful_count: number
   readonly created_at: string
   readonly updated_at: string
-  user_profiles?: Pick<UserProfile, 'id' | 'full_name' | 'avatar_url'>
+  user_profiles?: {
+    username?: string
+    full_name?: string
+    avatar_url?: string
+  }
 }
 
 export interface CreateReviewInput {
   tool_id: string
   rating: ToolReview['rating']
-  content: string
+  title?: string
+  content?: string
 }
 
 // 分类系统类型
@@ -209,4 +216,57 @@ export interface MutationState {
   loading: boolean
   error: AppError | null
   success: boolean
+}
+
+// 管理员日志类型
+export interface AdminLog {
+  readonly id: string
+  action: string
+  details: string
+  user_id: string
+  resource_type: string
+  resource_id: string
+  readonly timestamp: string
+  ip_address?: string
+  user_agent?: string
+}
+
+// 数据库修复结果类型
+export interface DatabaseRepairResult {
+  success: boolean
+  message: string
+  details?: {
+    tablesFixed: string[]
+    recordsUpdated: number
+    errors: string[]
+  }
+  timestamp: string
+}
+
+// 更严格的API查询参数类型
+export interface ToolsQueryParams {
+  limit?: number
+  sortBy?: 'date_added' | 'upvotes' | 'views' | 'rating' | 'name'
+  sortOrder?: 'asc' | 'desc'
+  category?: string
+  search?: string
+  pricing?: Tool['pricing']
+  featured?: boolean
+}
+
+// 工具统计信息类型
+export interface ToolStats {
+  favoritesCount: number
+  reviewCount: number
+  averageRating: number
+  commentsCount: number
+}
+
+// 用户收藏类型
+export interface UserFavorite {
+  readonly id: string
+  user_id: string
+  tool_id: string
+  readonly created_at: string
+  tools?: Tool
 }

@@ -12,6 +12,7 @@
     "test:e2e:headed": "playwright test --headed --project=chromium"
   },
   "dependencies": {
+    "@supabase/mcp-server-supabase": "^0.4.5",
     "@supabase/supabase-js": "^2.54.0",
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.2",
