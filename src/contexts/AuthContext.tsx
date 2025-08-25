@@ -91,6 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 监听认证状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('🔄 认证状态变化:', event)
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)
@@ -98,10 +99,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           // 获取用户资料
           try {
+            console.log('📄 获取用户资料...')
             const profileData = await getUserProfile(session.user.id)
             setProfile(profileData)
+            console.log('✅ 用户资料加载完成')
           } catch (error) {
-            console.error('Error fetching profile:', error)
+            console.error('❌ 用户资料加载失败:', error)
             setProfile(null)
           }
         } else {
@@ -113,12 +116,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  // 当用户登录时获取资料
-  useEffect(() => {
-    if (user && !profile) {
-      refreshProfile()
-    }
-  }, [user, profile])
+  // 移除重复的useEffect，避免双重调用getUserProfile
+  // 用户资料现在在认证状态变化时直接获取，提升登录响应速度
 
   const value = {
     user,

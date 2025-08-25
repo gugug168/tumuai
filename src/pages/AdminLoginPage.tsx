@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Shield, Mail, Lock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { checkAdminStatus } from '../lib/admin'
 
 const AdminLoginPage = () => {
   const [email, setEmail] = useState('admin')
@@ -36,12 +37,17 @@ const AdminLoginPage = () => {
       
       if (signInError) throw signInError
 
-      // 监控权限检查时间（模拟）
+      // 监控权限检查时间
       const permissionStartTime = Date.now()
       console.log('✅ 登录成功，准备验证管理员权限...')
       
-      // 短暂等待确保会话保存，并模拟权限检查
-      await new Promise(res => setTimeout(res, 300))
+      // 验证管理员权限
+      const adminStatus = await checkAdminStatus()
+      if (!adminStatus) {
+        throw new Error('您不是管理员用户，无法访问管理后台。请联系系统管理员申请权限。')
+      }
+      console.log('✅ 管理员权限验证成功:', adminStatus.role)
+      
       const permissionTime = Date.now() - permissionStartTime
       
       const totalTime = Date.now() - totalStartTime
