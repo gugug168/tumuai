@@ -9,10 +9,10 @@ import ErrorBoundary from './components/ErrorBoundary';
 // 首页和工具页面 - 保持直接导入以确保快速加载
 import HomePage from './pages/HomePage';
 import ToolsPage from './pages/ToolsPage';
+import SubmitToolPage from './pages/SubmitToolPage'; // 改为直接导入以避免动态加载问题
 
 // 其他页面使用懒加载 - 显著减少初始bundle大小
 const ToolDetailPage = React.lazy(() => import('./pages/ToolDetailPage'));
-const SubmitToolPage = React.lazy(() => import('./pages/SubmitToolPage'));
 const AboutPage = React.lazy(() => import('./pages/AboutPage'));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
 const FavoritesPage = React.lazy(() => import('./pages/FavoritesPage'));
