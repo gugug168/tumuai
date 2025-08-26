@@ -162,16 +162,22 @@ export async function getUserFavorites(userId?: string) {
   if (!targetUserId) throw new Error('用户未登录')
 
   try {
-    // 走服务端函数，提升稳定性与速度
-    if (accessToken) {
-      const json = await fetchJSONWithTimeout('/.netlify/functions/user-favorites', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        cache: 'no-store',
-        timeoutMs: 15000,
-        retries: 2,
-        retryDelay: 1500
-      }).catch(() => null)
-      if (json) return json
+    // 直接从Supabase查询用户收藏
+    if (accessToken && userId) {
+      try {
+        const { data, error } = await supabase
+          .from('user_favorites')
+          .select(`
+            tool_id,
+            tools:tool_id (*)
+          `)
+          .eq('user_id', userId)
+        
+        if (error) throw error
+        return data?.map(item => item.tools).filter(Boolean) || []
+      } catch (error) {
+        console.warn('⚠️ 从Supabase获取收藏失败:', error)
+      }
     }
   } catch {
     // 忽略，回退到直连

@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo } from 'react';
 import { AlertCircle, RefreshCw, Home } from 'lucide-react';
+import { handleCriticalError } from '../lib/cache-cleanup';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -33,6 +34,13 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       error,
       errorInfo
     });
+
+    // 尝试自动恢复关键错误
+    const wasHandled = handleCriticalError(error);
+    if (wasHandled) {
+      console.log('🔄 错误已通过自动恢复机制处理');
+      return; // 自动恢复会处理页面刷新
+    }
 
     // 生产环境中可以发送错误报告到监控服务
     if (process.env.NODE_ENV === 'production') {

@@ -97,15 +97,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false)
 
         if (session?.user) {
-          // 获取用户资料
+          // 获取用户资料 - 强化错误处理防止应用崩溃
           try {
             console.log('📄 获取用户资料...')
             const profileData = await getUserProfile(session.user.id)
             setProfile(profileData)
             console.log('✅ 用户资料加载完成')
           } catch (error) {
-            console.error('❌ 用户资料加载失败:', error)
+            console.warn('⚠️ 用户资料加载失败，继续应用初始化:', error)
+            // 即使profile加载失败，也要确保应用正常运行
             setProfile(null)
+            // 不抛出错误，防止阻塞应用启动
           }
         } else {
           setProfile(null)
@@ -126,6 +128,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     signOut,
     refreshProfile
+  }
+
+  // 在认证加载期间显示加载状态
+  if (loading) {
+    return (
+      <AuthContext.Provider value={value}>
+        <div className="min-h-screen bg-white flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">初始化应用...</p>
+          </div>
+        </div>
+      </AuthContext.Provider>
+    )
   }
 
   return (

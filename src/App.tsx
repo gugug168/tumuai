@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
-import LoadingSpinner from './components/LoadingSpinner';
+import PageLoader from './components/PageLoader';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // 首页和工具页面 - 保持直接导入以确保快速加载
@@ -29,7 +29,7 @@ function App() {
             <Header />
             <main className="flex-1">
               <ErrorBoundary>
-                <Suspense fallback={<LoadingSpinner size="lg" message="页面加载中..." />}>
+                <Suspense fallback={<PageLoader message="页面加载中..." />}>
                   <Routes>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/tools" element={<ToolsPage />} />

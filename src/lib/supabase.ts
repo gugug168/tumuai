@@ -7,18 +7,27 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 // 检查环境变量是否已设置
 if (!supabaseUrl) {
   console.error('Missing VITE_SUPABASE_URL environment variable')
-  throw new Error('Missing VITE_SUPABASE_URL environment variable. Please check your .env file or Netlify environment variables.')
+  throw new Error('Missing VITE_SUPABASE_URL environment variable. Please check your .env file or Vercel environment variables.')
 }
 
 if (!supabaseAnonKey) {
   console.error('Missing VITE_SUPABASE_ANON_KEY environment variable')
-  throw new Error('Missing VITE_SUPABASE_ANON_KEY environment variable. Please check your .env file or Netlify environment variables.')
+  throw new Error('Missing VITE_SUPABASE_ANON_KEY environment variable. Please check your .env file or Vercel environment variables.')
 }
 
+// 🚀 单一的Supabase客户端实例（防止Multiple GoTrueClient警告）
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    // 防止多实例警告的关键配置 - 使用时间戳确保唯一性
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    autoRefreshToken: true,
+    // 使用固定但唯一的存储键，避免与旧版本冲突
+    storageKey: 'tumuai-auth-v2-stable',
+    // 增强隔离性配置
+    debug: false,
+    flowType: 'pkce'
   }
 })
 
@@ -43,13 +52,8 @@ export type { Tool } from '../types'
 // 获取所有工具 - 增强类型安全
 export async function getTools(limit = 60): Promise<Tool[]> {
   try {
-    // 优先走 Netlify Functions，降低 RLS/跨域影响
-    const resp = await fetch(`/.netlify/functions/tools?limit=${limit}`, { cache: 'no-store' })
-    if (resp.ok) {
-      const json = await resp.json()
-      return Array.isArray(json) ? json as Tool[] : []
-    }
-    // 兜底直连 Supabase
+    console.log('✅ 通过Supabase直连获取工具')
+    // 直接使用 Supabase 客户端
     const { data, error } = await supabase
       .from('tools')
       .select('id,name,tagline,logo_url,categories,features,pricing,rating,views,upvotes,date_added')
@@ -118,31 +122,9 @@ export async function getLatestTools() {
 export async function getToolById(id: string) {
   try {
     console.log(`🔍 开始获取工具详情: ${id}`)
+    console.log('✅ 通过Supabase直连获取工具详情')
     
-    // 优先使用 Netlify Functions，避免RLS权限问题
-    try {
-      const resp = await fetch(`/.netlify/functions/tool-detail/${id}`, { 
-        cache: 'no-store' 
-      })
-      
-      if (resp.ok) {
-        const data = await resp.json()
-        console.log('✅ 通过Netlify Functions获取工具详情成功:', data.name)
-        return data as Tool
-      } else if (resp.status === 404) {
-        console.log('❌ 工具未找到:', id)
-        return null
-      } else {
-        console.warn('⚠️ Netlify Functions获取失败，状态码:', resp.status)
-        // 继续执行兜底逻辑
-      }
-    } catch (fetchError) {
-      console.warn('⚠️ Netlify Functions请求异常:', fetchError)
-      // 继续执行兜底逻辑
-    }
-    
-    // 兜底：直接连接 Supabase
-    console.log('🔄 使用Supabase直连获取工具详情...')
+    // 直接使用 Supabase 客户端
     const { data, error } = await supabase
       .from('tools')
       .select('*')

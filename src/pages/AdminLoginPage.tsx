@@ -41,12 +41,14 @@ const AdminLoginPage = () => {
       const permissionStartTime = Date.now()
       console.log('✅ 登录成功，准备验证管理员权限...')
       
-      // 验证管理员权限
-      const adminStatus = await checkAdminStatus()
-      if (!adminStatus) {
+      // 简化管理员权限验证 - 基于邮箱列表进行本地验证
+      const adminEmails = ['admin@civilaihub.com', 'admin@tumuai.net', '307714007@qq.com']
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user || !adminEmails.includes(user.email || '')) {
         throw new Error('您不是管理员用户，无法访问管理后台。请联系系统管理员申请权限。')
       }
-      console.log('✅ 管理员权限验证成功:', adminStatus.role)
+      console.log('✅ 管理员权限验证成功:', user.email)
       
       const permissionTime = Date.now() - permissionStartTime
       

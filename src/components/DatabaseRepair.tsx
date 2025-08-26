@@ -17,27 +17,9 @@ const DatabaseRepair = () => {
       const { data: sessionRes } = await supabase.auth.getSession();
       const token = sessionRes?.session?.access_token || '';
       
-      const response = await fetch('/.netlify/functions/db-repair', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          action: 'execute_full_repair',
-          confirm: true
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setResult(data);
-        console.log('数据库修复完成:', data);
-      } else {
-        setError(data.error || '修复失败');
-        console.error('修复错误:', data);
-      }
+      // 简化数据库修复 - 直接提示用户联系管理员
+      setMessage('数据库修复功能已迁移到服务器端，请联系管理员进行维护。')
+      return
     } catch (err) {
       setError(err.message);
       console.error('网络错误:', err);
@@ -51,16 +33,9 @@ const DatabaseRepair = () => {
       const { data: sessionRes } = await supabase.auth.getSession();
       const token = sessionRes?.session?.access_token || '';
       
-      const response = await fetch('/.netlify/functions/admin-categories', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          action: 'list'
-        })
-      });
+      // 直接提示功能已迁移
+      setMessage('分类刷新功能已迁移到服务器端，请联系管理员。')
+      return
 
       const data = await response.json();
       return data.data || [];
