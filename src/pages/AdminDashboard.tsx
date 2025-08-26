@@ -288,8 +288,12 @@ const AdminDashboard = () => {
   };
 
   const filteredSubmissions = submissions.filter(submission => {
-    const matchesSearch = submission.tool_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         submission.tagline.toLowerCase().includes(searchTerm.toLowerCase());
+    const toolName = submission.tool_name || '';
+    const tagline = submission.tagline || '';
+    const searchTermLower = searchTerm.toLowerCase();
+    
+    const matchesSearch = toolName.toLowerCase().includes(searchTermLower) ||
+                         tagline.toLowerCase().includes(searchTermLower);
     const matchesStatus = filterStatus === 'all' || submission.status === filterStatus;
     return matchesSearch && matchesStatus;
   });

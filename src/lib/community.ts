@@ -99,28 +99,38 @@ export async function addToFavorites(toolId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('用户未登录')
 
-  // 检查是否已经收藏
-  const { data: existing } = await supabase
-    .from('user_favorites')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('tool_id', toolId)
-    .single()
+  try {
+    // 检查是否已经收藏
+    const { data: existing } = await supabase
+      .from('user_favorites')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('tool_id', toolId)
+      .maybeSingle() // 使用 maybeSingle 而不是 single
 
-  if (existing) {
-    throw new Error('已经收藏过此工具')
+    if (existing) {
+      throw new Error('已经收藏过此工具')
+    }
+    
+    const { data, error } = await supabase
+      .from('user_favorites')
+      .insert([{
+        user_id: user.id,
+        tool_id: toolId
+      }])
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    // 如果是"已经收藏"的错误，直接抛出
+    if (error instanceof Error && error.message === '已经收藏过此工具') {
+      throw error
+    }
+    console.error('收藏工具失败:', error)
+    throw new Error('收藏失败，请重试')
   }
-  const { data, error } = await supabase
-    .from('user_favorites')
-    .insert([{
-      user_id: user.id,
-      tool_id: toolId
-    }])
-    .select()
-    .single()
-
-  if (error) throw error
-  return data
 }
 
 // 取消收藏
@@ -142,15 +152,23 @@ export async function isFavorited(toolId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return false
 
-  const { data, error } = await supabase
-    .from('user_favorites')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('tool_id', toolId)
-    .single()
+  try {
+    const { data, error } = await supabase
+      .from('user_favorites')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('tool_id', toolId)
+      .maybeSingle() // 使用 maybeSingle 而不是 single
 
-  if (error && error.code !== 'PGRST116') throw error
-  return !!data
+    if (error) {
+      console.warn('检查收藏状态时出错:', error)
+      return false
+    }
+    return !!data
+  } catch (error) {
+    console.warn('检查收藏状态失败:', error)
+    return false
+  }
 }
 
 // 获取用户收藏的工具

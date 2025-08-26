@@ -218,7 +218,92 @@ export async function deleteTools(toolIds: string[]) {
   if (error) throw error
 }
 
-// 其他管理函数 - 暂时禁用，抛出友好错误信息
+// 实现管理员函数 - 调用Netlify Functions
+export async function getUsers(page = 1, limit = 20) {
+  try {
+    const response = await fetch('/netlify/functions/admin-datasets', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${await ensureAccessToken()}`
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const data = await response.json()
+    return data.users || []
+  } catch (error) {
+    console.error('获取用户列表失败:', error)
+    return []
+  }
+}
+
+export async function getToolsAdmin(page = 1, limit = 20) {
+  try {
+    const response = await fetch('/netlify/functions/admin-tools-crud', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${await ensureAccessToken()}`
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const data = await response.json()
+    return data.tools || []
+  } catch (error) {
+    console.error('获取工具列表失败:', error)
+    return []
+  }
+}
+
+export async function getAdminLogs(page = 1, limit = 50) {
+  try {
+    const response = await fetch('/netlify/functions/admin-datasets?type=logs', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${await ensureAccessToken()}`
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const data = await response.json()
+    return data.logs || []
+  } catch (error) {
+    console.error('获取管理员日志失败:', error)
+    return []
+  }
+}
+
+export async function getCategories() {
+  try {
+    const response = await fetch('/netlify/functions/admin-categories', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${await ensureAccessToken()}`
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const data = await response.json()
+    return data.data || []
+  } catch (error) {
+    console.error('获取分类列表失败:', error)
+    return []
+  }
+}
+
+// 其他暂时禁用的管理函数
 const createUnavailableFunction = (functionName: string) => {
   return () => {
     throw new Error(`${functionName} 功能暂时不可用，请联系管理员`)
@@ -227,7 +312,6 @@ const createUnavailableFunction = (functionName: string) => {
 
 export const approveToolSubmissionDirect = createUnavailableFunction('工具直接审批')
 export const rejectToolSubmissionDirect = createUnavailableFunction('工具直接拒绝')
-export const getUsers = createUnavailableFunction('获取用户列表')
 export const getToolsMetrics = createUnavailableFunction('获取工具指标')
 export const getCategoriesMetrics = createUnavailableFunction('获取分类指标') 
 export const deleteTool = createUnavailableFunction('删除工具')
@@ -237,6 +321,3 @@ export const createCategory = createUnavailableFunction('创建分类')
 export const updateCategory = createUnavailableFunction('更新分类')
 export const deleteCategory = createUnavailableFunction('删除分类')
 export const createToolByAPI = createUnavailableFunction('通过API创建工具')
-export const getToolsAdmin = createUnavailableFunction('获取管理员工具')
-export const getAdminLogs = createUnavailableFunction('获取管理员日志')
-export const getCategories = createUnavailableFunction('获取分类列表')
