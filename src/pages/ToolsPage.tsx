@@ -16,9 +16,8 @@ import {
   Clock
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getToolsOptimized } from '../lib/supabase-optimized';
+import { getTools } from '../lib/supabase';
 import type { Tool } from '../types';
-import { apiRequestWithRetry } from '../lib/api';
 import { addToFavorites, removeFromFavorites, isFavorited } from '../lib/community';
 import AuthModal from '../components/AuthModal';
 import OptimizedImage from '../components/OptimizedImage';
@@ -148,7 +147,7 @@ const ToolsPage = () => {
     setFavoriteStates(states);
   }, [user, tools]);
 
-  // 工具数据加载函数
+  // 工具数据加载函数 - 简化版本，直接调用getTools避免复杂的重试逻辑
   const loadTools = useCallback(async (autoRetry = false) => {
     setLoadError(null);
     setLoading(true);
@@ -157,11 +156,14 @@ const ToolsPage = () => {
     }
     
     try {
-      const data = await apiRequestWithRetry(() => getToolsOptimized({ limit: 60 }), 3, 2000);
+      console.log('🔄 开始加载工具数据...');
+      // 直接调用getTools，避免使用可能有问题的apiRequestWithRetry
+      const data = await getTools(60);
+      console.log('✅ 工具数据加载成功:', data.length, '个工具');
       setTools(Array.isArray(data) ? data : []);
       setRetryCount(0); // 成功后重置重试计数
     } catch (error) {
-      console.error('加载工具失败:', error);
+      console.error('❌ 加载工具失败:', error);
       
       // 错误分类和用户友好的错误信息
       let errorMessage = '加载失败，请稍后重试';
