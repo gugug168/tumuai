@@ -15,7 +15,8 @@ import {
   Tag,
   RefreshCw,
   ExternalLink,
-  Wrench
+  Wrench,
+  Settings
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -93,6 +94,7 @@ const AdminDashboard = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [showToolModal, setShowToolModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showSubmissionModal, setShowSubmissionModal] = useState<ToolSubmission | null>(null);
   const navigate = useNavigate();
 
   // 新增：立即进行权限检查

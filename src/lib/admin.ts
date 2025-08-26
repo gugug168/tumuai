@@ -38,35 +38,52 @@ async function ensureAccessToken() {
   return session?.access_token || null
 }
 
-// 检查用户是否为管理员 - 保持原有实现
+// 检查用户是否为管理员 - 增强版本，更加健壮
 export async function checkAdminStatus(): Promise<AdminUser | null> {
-  const { data: userRes } = await supabase.auth.getUser()
-  const userId = userRes?.user?.id || null
-  console.log('🔍 检查用户登录状态:', userRes?.user?.email)
-
-  const token = await ensureAccessToken()
-  if (!token) {
-    console.log('❌ 未获取到 token')
-    return null
-  }
-
   try {
-    // 简化管理员权限检查 - 直接使用Supabase客户端而不依赖Netlify Functions
-    const adminEmails = ['admin@civilaihub.com', 'admin@tumuai.net', '307714007@qq.com']
-    const { data: { user } } = await supabase.auth.getUser()
+    console.log('🔍 开始检查管理员权限...')
     
-    if (!user || !adminEmails.includes(user.email || '')) {
-      console.log('❌ 非管理员用户:', user?.email)
+    // 首先尝试获取当前用户信息
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError) {
+      console.log('❌ 获取用户信息失败:', userError)
+      return null
+    }
+    
+    if (!user) {
+      console.log('❌ 用户未登录')
+      return null
+    }
+    
+    console.log('🔍 检查用户登录状态:', user.email)
+    
+    // 检查用户邮箱是否在管理员列表中
+    const adminEmails = ['admin@civilaihub.com', 'admin@tumuai.net', '307714007@qq.com']
+    const isAdmin = adminEmails.includes(user.email || '')
+    
+    if (!isAdmin) {
+      console.log('❌ 非管理员用户:', user.email)
+      return null
+    }
+    
+    // 获取会话信息以确保用户会话有效
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
+      console.log('❌ 无效的用户会话:', sessionError?.message || '会话不存在')
       return null
     }
     
     console.log('✅ 管理员权限验证成功:', user.email)
+    
     return {
       user_id: user.id,
       email: user.email,
       role: 'admin',
       is_super_admin: user.email === '307714007@qq.com'
     } as AdminUser
+    
   } catch (error) {
     console.error('❌ 管理员权限检查异常:', error)
     return null
