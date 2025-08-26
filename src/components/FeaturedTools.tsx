@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Heart } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
-import { getToolsOptimized } from '../lib/supabase-optimized';
+import { getFeaturedTools } from '../lib/supabase';
 import { apiRequestWithRetry } from '../lib/api';
 import type { Tool } from '../types/index';
 
@@ -22,14 +22,7 @@ const FeaturedTools = () => {
         setError(null);
         
         // 使用apiRequestWithRetry包装获取精选工具
-        const fetchedTools = await apiRequestWithRetry(() => 
-          getToolsOptimized({ 
-            limit: 8, 
-            featured: true, 
-            sortBy: 'upvotes', 
-            sortOrder: 'desc' 
-          })
-        );
+        const fetchedTools = await apiRequestWithRetry(() => getFeaturedTools());
         
         setTools(fetchedTools);
         console.log('✅ 成功加载精选工具:', fetchedTools.length + '个');

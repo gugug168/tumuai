@@ -32,21 +32,13 @@ export default defineConfig({
           'vendor-ui': ['lucide-react'],
           'vendor-supabase': ['@supabase/supabase-js'],
           
-          // 页面组件分块
+          // 只手动分割直接导入的页面组件
           'pages-main': [
             './src/pages/HomePage.tsx',
-            './src/pages/ToolsPage.tsx',
-            './src/pages/ToolDetailPage.tsx'
-          ],
-          'pages-secondary': [
-            './src/pages/AboutPage.tsx',
-            './src/pages/ProfilePage.tsx',
-            './src/pages/FavoritesPage.tsx'
-          ],
-          'pages-admin': [
-            './src/pages/AdminDashboard.tsx',
-            './src/pages/AdminLoginPage.tsx'
+            './src/pages/ToolsPage.tsx'
           ]
+          // 移除React.lazy懒加载的页面，让Vite自动处理它们的代码分割
+          // ToolDetailPage, SubmitToolPage, AboutPage等将作为独立chunk被动态加载
         },
         
         // 资源文件命名

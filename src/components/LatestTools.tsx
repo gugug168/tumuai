@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, ExternalLink, Heart, Eye, Clock } from 'lucide-react';
-import { getToolsOptimized } from '../lib/supabase-optimized';
+import { getLatestTools } from '../lib/supabase';
 import type { Tool } from '../types';
 
 const LatestTools = () => {
@@ -13,11 +13,7 @@ const LatestTools = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getToolsOptimized({
-        sortBy: 'date_added',
-        sortOrder: 'desc',
-        limit: 12
-      });
+      const data = await getLatestTools();
       setLatestTools(Array.isArray(data) ? data : []);
     } catch (err) {
       const error = err as Error;
