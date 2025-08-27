@@ -1,5 +1,5 @@
 // 缓存兼容层 - 保持向后兼容，同时逐步迁移到统一缓存管理器
-import { unifiedCache, UNIFIED_CACHE_CONFIGS, CacheOptions } from './unified-cache-manager';
+import { unifiedCache, useUnifiedCache, UNIFIED_CACHE_CONFIGS, CacheOptions } from './unified-cache-manager';
 
 // 旧的接口兼容实现
 export interface LegacyCacheConfig {
@@ -156,8 +156,8 @@ export const persistentCache = new PersistentCache();
 
 // 兼容的useCache hook - 映射到新hook
 export function useCache() {
-  // 导入新的hook但保持旧的接口
-  const { fetchWithCache, invalidate, isLoading, getStats } = require('./unified-cache-manager').useUnifiedCache();
+  // 导入新的hook但保持旧的接口 - 修复为ES模块导入
+  const { fetchWithCache, invalidate, isLoading, getStats } = useUnifiedCache();
 
   // 包装为旧接口格式
   const get = <T>(key: string): T | null => {
