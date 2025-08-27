@@ -104,12 +104,8 @@ const AdminDashboard = () => {
         console.log('🔐 开始权限验证...');
         setAuthChecking(true);
         
-        // 设置10秒超时
-        const timeout = new Promise<boolean>((resolve) => 
-          setTimeout(() => resolve(false), 10000)
-        );
-        
-        const adminStatus = await Promise.race([checkAdminStatus(), timeout]);
+        // 直接调用checkAdminStatus，不使用超时竞争
+        const adminStatus = await checkAdminStatus();
         
         if (!adminStatus) {
           console.error('❌ 权限验证失败，重定向到登录页');
@@ -137,15 +133,12 @@ const AdminDashboard = () => {
       console.log('🔄 开始加载管理数据...');
       
       // 检查管理员权限
-      const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
-      const adminStatus = await Promise.race([checkAdminStatus(), timeout]);
+      const adminStatus = await checkAdminStatus();
       
-      if (adminStatus === null) {
-        console.warn('⚠️ 管理员校验超时，继续加载数据由后端函数再次鉴权');
-      } else if (!adminStatus) {
+      if (!adminStatus) {
         console.error('❌ 用户不是管理员');
         setError('您没有管理员权限，无法访问此页面');
-        navigate('/');
+        navigate('/admin-login');
         return;
       }
       

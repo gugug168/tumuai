@@ -228,21 +228,54 @@ export async function addToolReview(toolId: string, review: {
   title?: string
   content?: string
 }) {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('用户未登录')
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('用户未登录')
 
-  const { data, error } = await supabase
-    .from('tool_reviews')
-    .insert([{
-      user_id: user.id,
-      tool_id: toolId,
-      ...review
-    }])
-    .select()
-    .single()
+    // 验证评分范围
+    if (review.rating < 1 || review.rating > 5) {
+      throw new Error('评分必须在1-5分之间')
+    }
 
-  if (error) throw error
-  return data
+    // 验证内容长度
+    if (review.content && review.content.length > 2000) {
+      throw new Error('评价内容不能超过2000字符')
+    }
+
+    if (review.title && review.title.length > 100) {
+      throw new Error('评价标题不能超过100字符')
+    }
+
+    const { data, error } = await supabase
+      .from('tool_reviews')
+      .insert([{
+        user_id: user.id,
+        tool_id: toolId,
+        rating: review.rating,
+        title: review.title?.trim() || null,
+        content: review.content?.trim() || null
+      }])
+      .select()
+      .single()
+
+    if (error) {
+      console.error('评价提交失败:', error)
+      if (error.code === '23505') {
+        throw new Error('您已经评价过此工具')
+      } else if (error.code === '42501') {
+        throw new Error('没有权限发表评价，请检查登录状态')
+      } else {
+        throw new Error('评价提交失败，请稍后重试')
+      }
+    }
+    
+    return data
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error('评价提交失败，请稍后重试')
+  }
 }
 
 // 获取工具评价
@@ -266,29 +299,56 @@ export async function getToolReviews(toolId: string) {
 
 // 添加工具评论
 export async function addToolComment(toolId: string, content: string, parentId?: string) {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('用户未登录')
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('用户未登录')
 
-  const { data, error } = await supabase
-    .from('tool_comments')
-    .insert([{
-      user_id: user.id,
-      tool_id: toolId,
-      content,
-      parent_id: parentId
-    }])
-    .select(`
-      *,
-      user_profiles (
-        username,
-        full_name,
-        avatar_url
-      )
-    `)
-    .single()
+    // 验证内容长度
+    if (!content || content.trim().length === 0) {
+      throw new Error('评论内容不能为空')
+    }
+    
+    if (content.length > 1000) {
+      throw new Error('评论内容不能超过1000字符')
+    }
 
-  if (error) throw error
-  return data
+    const { data, error } = await supabase
+      .from('tool_comments')
+      .insert([{
+        user_id: user.id,
+        tool_id: toolId,
+        content: content.trim(),
+        parent_id: parentId || null
+      }])
+      .select(`
+        *,
+        user_profiles (
+          username,
+          full_name,
+          avatar_url
+        )
+      `)
+      .single()
+
+    if (error) {
+      console.error('评论提交失败:', error)
+      // 提供用户友好的错误信息
+      if (error.code === '23505') {
+        throw new Error('重复评论，请勿重复提交')
+      } else if (error.code === '42501') {
+        throw new Error('没有权限发表评论，请检查登录状态')
+      } else {
+        throw new Error('评论提交失败，请稍后重试')
+      }
+    }
+    
+    return data
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error('评论提交失败，请稍后重试')
+  }
 }
 
 // 获取工具评论
