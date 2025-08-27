@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Shield, Mail, Lock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { checkAdminStatus } from '../lib/admin'
+import { ADMIN_CONFIG } from '../lib/config'
 
 const AdminLoginPage = () => {
   const [email, setEmail] = useState('admin')
@@ -24,8 +25,8 @@ const AdminLoginPage = () => {
     
     try {
       // 允许 admin/admin 快速登录（演示用途）。若是 admin/admin，则尝试以固定管理员邮箱登录
-      const loginEmail = email.includes('@') ? email : 'admin@civilaihub.com'
-      const loginPassword = email === 'admin' && password === 'admin123' ? 'admin123' : password
+      const loginEmail = email.includes('@') ? email : ADMIN_CONFIG.defaultLoginEmail
+      const loginPassword = email === 'admin' && password === ADMIN_CONFIG.defaultPassword ? ADMIN_CONFIG.defaultPassword : password
       
       // 监控登录认证时间
       const authStartTime = Date.now()
@@ -42,10 +43,9 @@ const AdminLoginPage = () => {
       console.log('✅ 登录成功，准备验证管理员权限...')
       
       // 简化管理员权限验证 - 基于邮箱列表进行本地验证
-      const adminEmails = ['admin@civilaihub.com', 'admin@tumuai.net', '307714007@qq.com']
       const { data: { user } } = await supabase.auth.getUser()
       
-      if (!user || !adminEmails.includes(user.email || '')) {
+      if (!user || !ADMIN_CONFIG.emails.includes(user.email || '')) {
         throw new Error('您不是管理员用户，无法访问管理后台。请联系系统管理员申请权限。')
       }
       console.log('✅ 管理员权限验证成功:', user.email)

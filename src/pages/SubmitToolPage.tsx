@@ -2,24 +2,7 @@ import React, { useState } from 'react';
 import { Upload, Link as LinkIcon, Tag, DollarSign, Image, FileText, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { uploadToolLogo, validateImageFile } from '../lib/storage';
-
-const categories = [
-  'AI结构设计',
-  '智能施工管理',
-  'BIM软件',
-  '效率工具',
-  '岩土工程',
-  '项目管理',
-  '资料管理',
-  '图纸处理'
-];
-
-const pricingOptions = [
-  { value: 'free', label: '完全免费' },
-  { value: 'freemium', label: '提供免费版' },
-  { value: 'paid', label: '付费' },
-  { value: 'trial', label: '免费试用' }
-];
+import { FALLBACK_CATEGORIES, SUBMIT_PRICING_OPTIONS } from '../lib/config';
 
 const SubmitToolPage = () => {
   const [formData, setFormData] = useState({
@@ -352,7 +335,7 @@ const SubmitToolPage = () => {
                   选择分类 * <span className="text-gray-500">(可多选)</span>
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {categories.map((category) => (
+                  {FALLBACK_CATEGORIES.map((category) => (
                     <label key={category} className="flex items-center">
                       <input
                         type="checkbox"
@@ -405,7 +388,7 @@ const SubmitToolPage = () => {
                     } bg-white text-gray-900`}
                   >
                     <option value="">请选择定价模式</option>
-                    {pricingOptions.map((option) => (
+                    {SUBMIT_PRICING_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>

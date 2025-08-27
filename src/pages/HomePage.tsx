@@ -5,7 +5,7 @@ import CategoryBrowser from '../components/CategoryBrowser';
 import QuickFilters from '../components/QuickFilters';
 import Newsletter from '../components/Newsletter';
 
-const HomePage = () => {
+const HomePage = React.memo(() => {
   return (
     <div>
       <Hero />
@@ -15,6 +15,8 @@ const HomePage = () => {
       <Newsletter />
     </div>
   );
-};
+});
+
+HomePage.displayName = 'HomePage';
 
 export default HomePage;

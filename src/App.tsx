@@ -5,6 +5,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import PageLoader from './components/PageLoader';
 import ErrorBoundary from './components/ErrorBoundary';
+import { ToastProvider } from './components/Toast';
 
 // 首页和工具页面 - 保持直接导入以确保快速加载
 import HomePage from './pages/HomePage';
@@ -23,8 +24,9 @@ const AdminLoginPage = React.lazy(() => import('./pages/AdminLoginPage'));
 function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <Router>
+      <ToastProvider position="top-right" maxToasts={3}>
+        <AuthProvider>
+          <Router>
           <div className="min-h-screen bg-white flex flex-col">
             <Header />
             <main className="flex-1">
@@ -47,8 +49,9 @@ function App() {
             </main>
             <Footer />
           </div>
-        </Router>
-      </AuthProvider>
+          </Router>
+        </AuthProvider>
+      </ToastProvider>
     </ErrorBoundary>
   );
 }

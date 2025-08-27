@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { ADMIN_CONFIG } from './config'
 
 // 基本类型定义
 export interface AdminUser {
@@ -59,8 +60,7 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
     console.log('🔍 检查用户登录状态:', user.email)
     
     // 检查用户邮箱是否在管理员列表中
-    const adminEmails = ['admin@civilaihub.com', 'admin@tumuai.net', '307714007@qq.com']
-    const isAdmin = adminEmails.includes(user.email || '')
+    const isAdmin = ADMIN_CONFIG.emails.includes(user.email || '')
     
     if (!isAdmin) {
       console.log('❌ 非管理员用户:', user.email)
@@ -81,7 +81,7 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
       user_id: user.id,
       email: user.email,
       role: 'admin',
-      is_super_admin: user.email === '307714007@qq.com'
+      is_super_admin: user.email === ADMIN_CONFIG.superAdminEmail
     } as AdminUser
     
   } catch (error) {

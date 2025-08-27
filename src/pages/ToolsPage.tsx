@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { 
   Star, 
@@ -20,46 +20,15 @@ import { getTools, getCategories } from '../lib/supabase';
 import type { Tool } from '../types';
 import { addToFavorites, removeFromFavorites, isFavorited } from '../lib/community';
 import AuthModal from '../components/AuthModal';
-import OptimizedImage from '../components/OptimizedImage';
+import ToolCard from '../components/ToolCard';
+import { useCache } from '../hooks/useCache';
+import { usePerformance } from '../hooks/usePerformance';
+import { FALLBACK_CATEGORIES, FALLBACK_FEATURES, PRICING_OPTIONS, SORT_OPTIONS } from '../lib/config';
 
-// 硬编码分类作为后备选项
-const fallbackCategories = [
-  'AI结构设计',
-  'BIM软件', 
-  '智能施工管理',
-  '效率工具',
-  '岩土工程',
-  '项目管理'
-];
-
-const features = [
-  'AI优化',
-  '参数化设计',
-  '自动生成',
-  '智能分析',
-  '云端协作',
-  '实时计算'
-];
-
-const pricingOptions = [
-  { value: 'Free', label: '免费' },
-  { value: 'Freemium', label: '免费增值' },
-  { value: 'Paid', label: '付费' },
-  { value: 'Trial', label: '试用' }
-];
-
-const sortOptions = [
-  { value: 'upvotes', label: '最受欢迎' },
-  { value: 'date_added', label: '最新收录' },
-  { value: 'rating', label: '评分最高' },
-  { value: 'views', label: '浏览最多' }
-];
-
-const ToolsPage = () => {
+const ToolsPage = React.memo(() => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tools, setTools] = useState<Tool[]>([]);
-  const [filteredTools, setFilteredTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -70,6 +39,10 @@ const ToolsPage = () => {
   const [retryCount, setRetryCount] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
   
+  // 性能监控和缓存hooks
+  const { fetchWithCache, clearCache } = useCache();
+  const { recordApiCall, recordInteraction, getMetrics, printReport } = usePerformance('ToolsPage');
+  
   // 筛选状态
   const [filters, setFilters] = useState({
     search: searchParams.get('search') || '',
@@ -79,8 +52,14 @@ const ToolsPage = () => {
     sortBy: 'upvotes'
   });
 
-  // 筛选逻辑函数
-  const applyFilters = useCallback(() => {
+  // 筛选逻辑函数 - 使用useMemo优化性能
+  const filteredTools = useMemo(() => {
+    recordInteraction('filter_tools', { filterCount: Object.keys(filters).filter(key => 
+      key === 'search' ? filters[key] : 
+      Array.isArray(filters[key]) ? filters[key].length > 0 : 
+      Boolean(filters[key])
+    ).length });
+
     let filtered = [...tools];
 
     // 搜索筛选
@@ -129,8 +108,8 @@ const ToolsPage = () => {
       }
     });
 
-    setFilteredTools(filtered);
-  }, [tools, filters]);
+    return filtered;
+  }, [tools, filters, recordInteraction]);
 
   // 收藏状态加载函数
   const loadFavoriteStates = useCallback(async () => {
@@ -149,7 +128,7 @@ const ToolsPage = () => {
     setFavoriteStates(states);
   }, [user, tools]);
 
-  // 工具数据加载函数 - 简化版本，直接调用getTools避免复杂的重试逻辑
+  // 工具数据加载函数 - 使用缓存优化
   const loadTools = useCallback(async (autoRetry = false) => {
     setLoadError(null);
     setLoading(true);
@@ -159,11 +138,18 @@ const ToolsPage = () => {
     
     try {
       console.log('🔄 开始加载工具数据...');
-      // 直接调用getTools，避免使用可能有问题的apiRequestWithRetry
-      const data = await getTools(60);
+      
+      // 使用缓存API调用，5分钟缓存，1分钟stale-while-revalidate
+      const data = await recordApiCall('load_tools', async () => {
+        return await fetchWithCache('tools_list', 
+          () => getTools(60),
+          { ttl: 5 * 60 * 1000, staleWhileRevalidate: 60 * 1000 }
+        );
+      }, { autoRetry, retryCount });
+      
       console.log('✅ 工具数据加载成功:', data.length, '个工具');
       setTools(Array.isArray(data) ? data : []);
-      setRetryCount(0); // 成功后重置重试计数
+      setRetryCount(0);
     } catch (error) {
       console.error('❌ 加载工具失败:', error);
       
@@ -186,13 +172,19 @@ const ToolsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [isOffline]);
+  }, [isOffline, fetchWithCache, recordApiCall, retryCount]);
 
-  // 获取分类数据
+  // 获取分类数据 - 使用缓存优化
   const loadCategories = useCallback(async () => {
     try {
       console.log('🔍 开始获取分类数据...')
-      const categoriesData = await getCategories()
+      
+      const categoriesData = await recordApiCall('load_categories', async () => {
+        return await fetchWithCache('categories_list',
+          () => getCategories(),
+          { ttl: 10 * 60 * 1000 } // 10分钟缓存
+        );
+      });
       
       if (categoriesData && Array.isArray(categoriesData) && categoriesData.length > 0) {
         const categoryNames = categoriesData.map(cat => cat.name).filter(Boolean)
@@ -200,13 +192,13 @@ const ToolsPage = () => {
         console.log('✅ 分类数据加载成功:', categoryNames.length + '个分类')
       } else {
         console.log('⚠️ 数据库无分类数据，使用后备分类')
-        setCategories(fallbackCategories)
+        setCategories([...FALLBACK_CATEGORIES])
       }
     } catch (error) {
       console.error('❌ 获取分类失败，使用后备分类:', error)
-      setCategories(fallbackCategories)
+      setCategories([...FALLBACK_CATEGORIES])
     }
-  }, [])
+  }, [fetchWithCache, recordApiCall])
 
   // 初始加载
   useEffect(() => {
@@ -222,11 +214,6 @@ const ToolsPage = () => {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    if (tools.length > 0) {
-      applyFilters();
-    }
-  }, [tools, filters, applyFilters]);
 
   useEffect(() => {
     if (user && tools.length > 0) {
@@ -283,13 +270,15 @@ const ToolsPage = () => {
     }));
   };
 
-  const handleFavoriteToggle = async (toolId: string) => {
+  const handleFavoriteToggle = useCallback(async (toolId: string) => {
     if (!user) {
       setShowAuthModal(true);
       return;
     }
 
     try {
+      recordInteraction('favorite_toggle', { toolId, previousState: favoriteStates[toolId] });
+      
       const currentState = favoriteStates[toolId];
       if (currentState) {
         await removeFromFavorites(toolId);
@@ -302,7 +291,7 @@ const ToolsPage = () => {
       console.error('收藏操作失败:', error);
       alert('操作失败，请重试');
     }
-  };
+  }, [user, favoriteStates, recordInteraction]);
 
   const clearFilters = () => {
     setFilters({
@@ -461,7 +450,7 @@ const ToolsPage = () => {
                 onChange={(e) => handleFilterChange('sortBy', e.target.value)}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
               >
-                {sortOptions.map(option => (
+                {SORT_OPTIONS.map(option => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -512,7 +501,7 @@ const ToolsPage = () => {
                 <div>
                   <h4 className="text-sm font-medium text-gray-900 mb-3">功能特性</h4>
                   <div className="space-y-2">
-                    {features.map(feature => (
+                    {FALLBACK_FEATURES.map(feature => (
                       <label key={feature} className="flex items-center">
                         <input
                           type="checkbox"
@@ -530,7 +519,7 @@ const ToolsPage = () => {
                 <div>
                   <h4 className="text-sm font-medium text-gray-900 mb-3">定价模式</h4>
                   <div className="space-y-2">
-                    {pricingOptions.map(option => (
+                    {PRICING_OPTIONS.map(option => (
                       <label key={option.value} className="flex items-center">
                         <input
                           type="radio"
@@ -563,13 +552,21 @@ const ToolsPage = () => {
         </div>
 
         {/* Results Summary */}
-        <div className="mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <p className="text-gray-600">
             找到 <span className="font-semibold text-gray-900">{filteredTools.length}</span> 个工具
             {filters.search && (
               <span> 包含 "<span className="font-semibold">{filters.search}</span>"</span>
             )}
           </p>
+          {process.env.NODE_ENV === 'development' && (
+            <button
+              onClick={() => printReport()}
+              className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600"
+            >
+              📊 性能报告
+            </button>
+          )}
         </div>
 
         {/* Tools Grid/List */}
@@ -593,150 +590,13 @@ const ToolsPage = () => {
             : 'space-y-4'
           }>
             {filteredTools.map((tool) => (
-              <div
+              <ToolCard
                 key={tool.id}
-                className={`bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-300 overflow-hidden group ${
-                  viewMode === 'list' ? 'flex items-center p-6' : 'p-6'
-                }`}
-              >
-                {viewMode === 'grid' ? (
-                  // Grid View
-                  <>
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <OptimizedImage
-                          src={tool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=100'}
-                          alt={tool.name}
-                          className="w-12 h-12 rounded-lg"
-                          priority={false}
-                          lazyLoad={true}
-                          sizes="48px"
-                        />
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                            {tool.name}
-                          </h3>
-                          <div className="flex items-center space-x-1">
-                            <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                            <span className="text-sm text-gray-600">{tool.rating}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleFavoriteToggle(tool.id)}
-                        className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                      >
-                        <Heart className={`w-5 h-5 ${favoriteStates[tool.id] ? 'fill-current text-red-500' : ''}`} />
-                      </button>
-                    </div>
-
-                    <p className="text-gray-600 text-sm mb-4 leading-relaxed">
-                      {tool.tagline}
-                    </p>
-
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {tool.categories.slice(0, 2).map((category, index) => (
-                        <span key={index} className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
-                          {category}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-sm font-medium text-green-600">
-                        {tool.pricing === 'Free' ? '完全免费' : 
-                         tool.pricing === 'Freemium' ? '提供免费版' :
-                         tool.pricing === 'Paid' ? '付费' : '免费试用'}
-                      </span>
-                      <div className="flex items-center space-x-3 text-xs text-gray-500">
-                        <div className="flex items-center space-x-1">
-                          <Eye className="w-3 h-3" />
-                          <span>{tool.views}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex space-x-2">
-                      <Link
-                        to={`/tools/${tool.id}`}
-                        className="flex-1 bg-blue-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors text-center"
-                      >
-                        查看详情
-                      </Link>
-                      <a
-                        href={tool.website_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="bg-gray-100 text-gray-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </div>
-                  </>
-                ) : (
-                  // List View
-                  <>
-                    <div className="flex items-center space-x-4 flex-1">
-                      <OptimizedImage
-                        src={tool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=100'}
-                        alt={tool.name}
-                        className="w-16 h-16 rounded-lg"
-                        priority={false}
-                        lazyLoad={true}
-                        sizes="64px"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                            {tool.name}
-                          </h3>
-                          <div className="flex items-center space-x-1">
-                            <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                            <span className="text-sm text-gray-600">{tool.rating}</span>
-                          </div>
-                        </div>
-                        <p className="text-gray-600 mb-2">{tool.tagline}</p>
-                        <div className="flex items-center space-x-4">
-                          <div className="flex flex-wrap gap-2">
-                            {tool.categories.slice(0, 3).map((category, index) => (
-                              <span key={index} className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
-                                {category}
-                              </span>
-                            ))}
-                          </div>
-                          <span className="text-sm font-medium text-green-600">
-                            {tool.pricing === 'Free' ? '完全免费' : 
-                             tool.pricing === 'Freemium' ? '提供免费版' :
-                             tool.pricing === 'Paid' ? '付费' : '免费试用'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <button
-                        onClick={() => handleFavoriteToggle(tool.id)}
-                        className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                      >
-                        <Heart className={`w-5 h-5 ${favoriteStates[tool.id] ? 'fill-current text-red-500' : ''}`} />
-                      </button>
-                      <Link
-                        to={`/tools/${tool.id}`}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                      >
-                        查看详情
-                      </Link>
-                      <a
-                        href={tool.website_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="bg-gray-100 text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition-colors"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </div>
-                  </>
-                )}
-              </div>
+                tool={tool}
+                isFavorited={favoriteStates[tool.id] || false}
+                onFavoriteToggle={handleFavoriteToggle}
+                viewMode={viewMode}
+              />
             ))}
           </div>
         )}
@@ -750,6 +610,8 @@ const ToolsPage = () => {
       />
     </div>
   );
-};
+});
+
+ToolsPage.displayName = 'ToolsPage';
 
 export default ToolsPage;

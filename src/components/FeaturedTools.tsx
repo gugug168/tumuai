@@ -1,41 +1,53 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Heart } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
 import { getFeaturedTools } from '../lib/supabase';
 import { apiRequestWithRetry } from '../lib/api';
+import { useCache } from '../hooks/useCache';
+import { usePerformance } from '../hooks/usePerformance';
 import type { Tool } from '../types/index';
 
 // 已移除硬编码的featuredTools数组，现在使用动态数据
 
-const FeaturedTools = () => {
+const FeaturedTools = React.memo(() => {
   // 状态管理
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // 性能监控和缓存hooks
+  const { fetchWithCache } = useCache();
+  const { recordApiCall, recordInteraction } = usePerformance('FeaturedTools');
 
-  // 实现工具数据获取逻辑
+  // 优化的数据获取逻辑 - 使用缓存和性能监控
+  const fetchFeaturedTools = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // 使用缓存API调用，3分钟缓存，30秒stale-while-revalidate
+      const fetchedTools = await recordApiCall('fetch_featured_tools', async () => {
+        return await fetchWithCache('featured_tools',
+          () => apiRequestWithRetry(() => getFeaturedTools()),
+          { ttl: 3 * 60 * 1000, staleWhileRevalidate: 30 * 1000 }
+        );
+      });
+      
+      setTools(Array.isArray(fetchedTools) ? fetchedTools : []);
+      console.log('✅ 成功加载精选工具:', fetchedTools.length + '个');
+    } catch (error) {
+      console.error('❌ 加载精选工具失败:', error);
+      setError(error instanceof Error ? error.message : '加载精选工具失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchWithCache, recordApiCall]);
+
+  // 初始加载
   useEffect(() => {
-    const fetchFeaturedTools = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // 使用apiRequestWithRetry包装获取精选工具
-        const fetchedTools = await apiRequestWithRetry(() => getFeaturedTools());
-        
-        setTools(fetchedTools);
-        console.log('✅ 成功加载精选工具:', fetchedTools.length + '个');
-      } catch (error) {
-        console.error('❌ 加载精选工具失败:', error);
-        setError(error instanceof Error ? error.message : '加载精选工具失败');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchFeaturedTools();
-  }, []);
+  }, [fetchFeaturedTools]);
 
   return (
     <section className="py-16 bg-white">
@@ -61,7 +73,10 @@ const FeaturedTools = () => {
           <div className="text-center py-8">
             <p className="text-red-600">加载失败: {error}</p>
             <button 
-              onClick={() => window.location.reload()} 
+              onClick={() => {
+                recordInteraction('retry_featured_tools');
+                fetchFeaturedTools();
+              }} 
               className="mt-2 text-blue-600 hover:underline"
             >
               重新加载
@@ -76,7 +91,10 @@ const FeaturedTools = () => {
               <div className="text-center py-8">
                 <p className="text-gray-600">暂无精选工具数据</p>
                 <button 
-                  onClick={() => window.location.reload()} 
+                  onClick={() => {
+                    recordInteraction('retry_featured_tools');
+                    fetchFeaturedTools();
+                  }} 
                   className="mt-2 text-blue-600 hover:underline"
                 >
                   重新加载
@@ -128,12 +146,16 @@ const FeaturedTools = () => {
                   </div>
                   <span className="text-xs text-gray-500">{tool.pricing || '免费'}</span>
                 </div>
-                <button className="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                <button 
+                  className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                  onClick={() => recordInteraction('favorite_click', { toolId: tool.id, toolName: tool.name })}
+                >
                   <Heart className="w-5 h-5" />
                 </button>
                 <Link
                   to={`/tools/${tool.id}`}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors inline-block"
+                  onClick={() => recordInteraction('view_tool_detail', { toolId: tool.id, toolName: tool.name })}
                 >
                   查看
                 </Link>
@@ -146,6 +168,8 @@ const FeaturedTools = () => {
       </div>
     </section>
   );
-};
+});
+
+FeaturedTools.displayName = 'FeaturedTools';
 
 export default FeaturedTools;
