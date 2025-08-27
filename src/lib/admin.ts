@@ -39,35 +39,12 @@ async function ensureAccessToken() {
   return session?.access_token || null
 }
 
-// 检查用户是否为管理员 - 增强版本，更加健壮
+// 检查用户是否为管理员 - 使用服务端验证
 export async function checkAdminStatus(): Promise<AdminUser | null> {
   try {
     console.log('🔍 开始检查管理员权限...')
     
-    // 首先尝试获取当前用户信息
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    if (userError) {
-      console.log('❌ 获取用户信息失败:', userError)
-      return null
-    }
-    
-    if (!user) {
-      console.log('❌ 用户未登录')
-      return null
-    }
-    
-    console.log('🔍 检查用户登录状态:', user.email)
-    
-    // 检查用户邮箱是否在管理员列表中
-    const isAdmin = ADMIN_CONFIG.emails.includes(user.email || '')
-    
-    if (!isAdmin) {
-      console.log('❌ 非管理员用户:', user.email)
-      return null
-    }
-    
-    // 获取会话信息以确保用户会话有效
+    // 获取当前用户会话
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     
     if (sessionError || !session) {
@@ -75,14 +52,37 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
       return null
     }
     
-    console.log('✅ 管理员权限验证成功:', user.email)
+    // 调用服务端权限验证API
+    const response = await fetch('/netlify/functions/admin-auth-check', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.log('❌ 服务端权限验证失败:', errorData.error)
+      return null
+    }
+    
+    const data = await response.json()
+    
+    if (!data.isAdmin) {
+      console.log('❌ 用户不是管理员')
+      return null
+    }
+    
+    console.log('✅ 管理员权限验证成功:', data.user.email)
     
     return {
-      user_id: user.id,
-      email: user.email,
-      role: 'admin',
-      is_super_admin: user.email === ADMIN_CONFIG.superAdminEmail
-    } as AdminUser
+      user_id: data.user.user_id,
+      email: data.user.email,
+      role: data.user.role,
+      is_super_admin: data.user.is_super_admin,
+      permissions: data.user.permissions
+    } as AdminUser & { permissions?: any }
     
   } catch (error) {
     console.error('❌ 管理员权限检查异常:', error)

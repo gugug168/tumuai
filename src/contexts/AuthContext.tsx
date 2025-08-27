@@ -1,15 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { getUserProfile, type UserProfile } from '../lib/auth'
 
 interface AuthContextType {
   user: User | null
   session: Session | null
-  profile: UserProfile | null
   loading: boolean
   signOut: () => Promise<void>
-  refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -25,26 +22,13 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
-  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
-
-  const refreshProfile = async () => {
-    if (user) {
-      try {
-        const profileData = await getUserProfile(user.id)
-        setProfile(profileData)
-      } catch (error) {
-        console.error('Error fetching profile:', error)
-      }
-    }
-  }
 
   const signOut = async () => {
     try {
       // 先清除本地状态（立即响应UI）
       setUser(null)
       setSession(null)
-      setProfile(null)
       
       // 然后执行Supabase登出
       const { error } = await supabase.auth.signOut()
@@ -90,44 +74,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // 监听认证状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log('🔄 认证状态变化:', event)
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)
-
-        if (session?.user) {
-          // 获取用户资料 - 强化错误处理防止应用崩溃
-          try {
-            console.log('📄 获取用户资料...')
-            const profileData = await getUserProfile(session.user.id)
-            setProfile(profileData)
-            console.log('✅ 用户资料加载完成')
-          } catch (error) {
-            console.warn('⚠️ 用户资料加载失败，继续应用初始化:', error)
-            // 即使profile加载失败，也要确保应用正常运行
-            setProfile(null)
-            // 不抛出错误，防止阻塞应用启动
-          }
-        } else {
-          setProfile(null)
-        }
       }
     )
 
     return () => subscription.unsubscribe()
   }, [])
 
-  // 移除重复的useEffect，避免双重调用getUserProfile
-  // 用户资料现在在认证状态变化时直接获取，提升登录响应速度
-
   const value = {
     user,
     session,
-    profile,
     loading,
-    signOut,
-    refreshProfile
+    signOut
   }
 
   // 在认证加载期间显示加载状态

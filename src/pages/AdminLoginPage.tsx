@@ -1,12 +1,11 @@
 import React, { useState } from 'react'
 import { Shield, Mail, Lock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { checkAdminStatus } from '../lib/admin'
 import { ADMIN_CONFIG } from '../lib/config'
 
 const AdminLoginPage = () => {
-  const [email, setEmail] = useState('admin')
-  const [password, setPassword] = useState('admin123')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [performanceInfo, setPerformanceInfo] = useState<{
@@ -24,15 +23,21 @@ const AdminLoginPage = () => {
     const totalStartTime = Date.now()
     
     try {
-      // 允许 admin/admin 快速登录（演示用途）。若是 admin/admin，则尝试以固定管理员邮箱登录
-      const loginEmail = email.includes('@') ? email : ADMIN_CONFIG.defaultLoginEmail
-      const loginPassword = email === 'admin' && password === ADMIN_CONFIG.defaultPassword ? ADMIN_CONFIG.defaultPassword : password
+      // 验证输入
+      if (!email || !password) {
+        throw new Error('请输入邮箱和密码')
+      }
+      
+      // 验证邮箱格式
+      if (!email.includes('@')) {
+        throw new Error('请输入有效的邮箱地址')
+      }
       
       // 监控登录认证时间
       const authStartTime = Date.now()
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: loginEmail,
-        password: loginPassword,
+        email: email,
+        password: password,
       })
       const authTime = Date.now() - authStartTime
       
@@ -97,7 +102,7 @@ const AdminLoginPage = () => {
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin 或 邮箱"
+                placeholder="请输入管理员邮箱"
                 className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
                 data-testid="admin-email-input"
                 autoComplete="username"
@@ -112,7 +117,7 @@ const AdminLoginPage = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="admin 或 实际密码"
+                placeholder="请输入密码"
                 className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
                 data-testid="admin-password-input"
                 autoComplete="current-password"

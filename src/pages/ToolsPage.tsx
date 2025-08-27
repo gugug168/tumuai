@@ -1,10 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo, useDeferredValue, useTransition, useId } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
-  Star, 
-  ExternalLink, 
-  Heart, 
-  Eye, 
   Filter,
   Grid,
   List,
@@ -52,6 +48,11 @@ const ToolsPage = React.memo(() => {
     sortBy: 'upvotes'
   });
 
+  // React 18优化：使用useDeferredValue优化搜索体验
+  const deferredSearch = useDeferredValue(filters.search);
+  const [isPending, startTransition] = useTransition();
+  const searchId = useId();
+
   // 筛选逻辑函数 - 使用useMemo优化性能
   const filteredTools = useMemo(() => {
     recordInteraction('filter_tools', { filterCount: Object.keys(filters).filter(key => 
@@ -62,29 +63,29 @@ const ToolsPage = React.memo(() => {
 
     let filtered = [...tools];
 
-    // 搜索筛选
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
+    // 搜索筛选 - 使用deferred值优化性能
+    if (deferredSearch) {
+      const searchLower = deferredSearch.toLowerCase();
       filtered = filtered.filter(tool => 
         tool.name.toLowerCase().includes(searchLower) ||
         tool.tagline.toLowerCase().includes(searchLower) ||
         tool.description?.toLowerCase().includes(searchLower) ||
-        tool.categories.some(cat => cat.toLowerCase().includes(searchLower)) ||
-        tool.features.some(feat => feat.toLowerCase().includes(searchLower))
+        (tool.categories || []).some(cat => cat?.toLowerCase().includes(searchLower)) ||
+        (tool.features || []).some(feat => feat?.toLowerCase().includes(searchLower))
       );
     }
 
-    // 分类筛选
+    // 分类筛选 - 添加空值保护
     if (filters.categories.length > 0) {
       filtered = filtered.filter(tool =>
-        filters.categories.some(category => tool.categories.includes(category))
+        filters.categories.some(category => (tool.categories || []).includes(category))
       );
     }
 
-    // 功能筛选
+    // 功能筛选 - 添加空值保护  
     if (filters.features.length > 0) {
       filtered = filtered.filter(tool =>
-        filters.features.some(feature => tool.features.includes(feature))
+        filters.features.some(feature => (tool.features || []).includes(feature))
       );
     }
 
@@ -109,7 +110,7 @@ const ToolsPage = React.memo(() => {
     });
 
     return filtered;
-  }, [tools, filters, recordInteraction]);
+  }, [tools, deferredSearch, filters.categories, filters.features, filters.pricing, filters.sortBy]);
 
   // 收藏状态加载函数
   const loadFavoriteStates = useCallback(async () => {
@@ -245,12 +246,18 @@ const ToolsPage = React.memo(() => {
   }, [tools.length, loadError]);
 
 
-  const handleFilterChange = (type: string, value: string | string[]) => {
-    setFilters(prev => ({
-      ...prev,
-      [type]: value
-    }));
-  };
+  // 优化的筛选处理函数 - 使用startTransition标记非紧急更新
+  const handleFilterChange = useCallback((type: string, value: string | string[]) => {
+    if (type === 'search') {
+      // 搜索输入立即更新（紧急更新）
+      setFilters(prev => ({ ...prev, [type]: value }));
+    } else {
+      // 其他筛选使用transition（非紧急更新）
+      startTransition(() => {
+        setFilters(prev => ({ ...prev, [type]: value }));
+      });
+    }
+  }, [startTransition]);
 
   const handleCategoryToggle = (category: string) => {
     setFilters(prev => ({
@@ -415,12 +422,19 @@ const ToolsPage = React.memo(() => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
+                  id={searchId}
                   type="text"
                   value={filters.search}
                   onChange={(e) => handleFilterChange('search', e.target.value)}
                   placeholder="搜索工具名称、功能、分类..."
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
+                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
                 />
+                {/* 加载指示器 */}
+                {isPending && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <RefreshCw className="animate-spin text-gray-400 w-4 h-4" />
+                  </div>
+                )}
               </div>
             </div>
 

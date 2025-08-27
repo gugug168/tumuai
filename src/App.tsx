@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { AppProviders } from './contexts/AppProviders';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import PageLoader from './components/PageLoader';
@@ -25,7 +25,7 @@ function App() {
   return (
     <ErrorBoundary>
       <ToastProvider position="top-right" maxToasts={3}>
-        <AuthProvider>
+        <AppProviders>
           <Router>
           <div className="min-h-screen bg-white flex flex-col">
             <Header />
@@ -50,7 +50,7 @@ function App() {
             <Footer />
           </div>
           </Router>
-        </AuthProvider>
+        </AppProviders>
       </ToastProvider>
     </ErrorBoundary>
   );

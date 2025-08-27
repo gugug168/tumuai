@@ -1,15 +1,10 @@
 // 全局配置文件 - 统一管理所有硬编码配置
 
-// 管理员配置
+// 管理员配置 - 从环境变量获取
 export const ADMIN_CONFIG = {
-  emails: [
-    'admin@civilaihub.com', 
-    'admin@tumuai.net', 
-    '307714007@qq.com'
-  ],
-  superAdminEmail: '307714007@qq.com',
-  defaultLoginEmail: 'admin@civilaihub.com',
-  defaultPassword: 'admin123'
+  emails: import.meta.env.VITE_ADMIN_EMAILS?.split(',') || [],
+  superAdminEmail: import.meta.env.VITE_SUPER_ADMIN_EMAIL || '',
+  // 移除所有硬编码凭证
 } as const
 
 // 定价选项配置 - 统一格式
@@ -75,6 +70,7 @@ export const APP_CONFIG = {
 // API端点配置  
 export const API_ENDPOINTS = {
   netlifyFunctions: {
+    adminAuthCheck: '/netlify/functions/admin-auth-check', // 新增：服务端权限验证
     adminCheck: '/netlify/functions/admin-check',
     adminDatasets: '/netlify/functions/admin-datasets', 
     adminCategories: '/netlify/functions/admin-categories',
