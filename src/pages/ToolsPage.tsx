@@ -16,13 +16,14 @@ import {
   Clock
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getTools } from '../lib/supabase';
+import { getTools, getCategories } from '../lib/supabase';
 import type { Tool } from '../types';
 import { addToFavorites, removeFromFavorites, isFavorited } from '../lib/community';
 import AuthModal from '../components/AuthModal';
 import OptimizedImage from '../components/OptimizedImage';
 
-const categories = [
+// 硬编码分类作为后备选项
+const fallbackCategories = [
   'AI结构设计',
   'BIM软件', 
   '智能施工管理',
@@ -67,6 +68,7 @@ const ToolsPage = () => {
   const [favoriteStates, setFavoriteStates] = useState<{[key: string]: boolean}>({});
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [retryCount, setRetryCount] = useState(0);
+  const [categories, setCategories] = useState<string[]>([]);
   
   // 筛选状态
   const [filters, setFilters] = useState({
@@ -186,10 +188,31 @@ const ToolsPage = () => {
     }
   }, [isOffline]);
 
+  // 获取分类数据
+  const loadCategories = useCallback(async () => {
+    try {
+      console.log('🔍 开始获取分类数据...')
+      const categoriesData = await getCategories()
+      
+      if (categoriesData && Array.isArray(categoriesData) && categoriesData.length > 0) {
+        const categoryNames = categoriesData.map(cat => cat.name).filter(Boolean)
+        setCategories(categoryNames)
+        console.log('✅ 分类数据加载成功:', categoryNames.length + '个分类')
+      } else {
+        console.log('⚠️ 数据库无分类数据，使用后备分类')
+        setCategories(fallbackCategories)
+      }
+    } catch (error) {
+      console.error('❌ 获取分类失败，使用后备分类:', error)
+      setCategories(fallbackCategories)
+    }
+  }, [])
+
   // 初始加载
   useEffect(() => {
     loadTools(false);
-  }, []);
+    loadCategories();
+  }, [loadCategories]);
 
   useEffect(() => {
     // 从URL参数初始化搜索

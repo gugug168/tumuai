@@ -314,10 +314,114 @@ export const approveToolSubmissionDirect = createUnavailableFunction('工具直�
 export const rejectToolSubmissionDirect = createUnavailableFunction('工具直接拒绝')
 export const getToolsMetrics = createUnavailableFunction('获取工具指标')
 export const getCategoriesMetrics = createUnavailableFunction('获取分类指标') 
-export const deleteTool = createUnavailableFunction('删除工具')
-export const updateTool = createUnavailableFunction('更新工具')
-export const addCategory = createUnavailableFunction('添加分类')
-export const createCategory = createUnavailableFunction('创建分类')
-export const updateCategory = createUnavailableFunction('更新分类')
-export const deleteCategory = createUnavailableFunction('删除分类')
+// 更新工具
+export async function updateTool(toolId: string, updates: Partial<Tool>) {
+  try {
+    const { data, error } = await supabase
+      .from('tools')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', toolId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('❌ 更新工具失败:', error)
+    throw error
+  }
+}
+
+// 删除单个工具
+export async function deleteTool(toolId: string) {
+  try {
+    const { error } = await supabase
+      .from('tools')
+      .delete()
+      .eq('id', toolId)
+
+    if (error) throw error
+  } catch (error) {
+    console.error('❌ 删除工具失败:', error)
+    throw error
+  }
+}
+// 创建分类
+export async function createCategory(category: {
+  name: string
+  slug?: string
+  description?: string
+  color?: string
+  icon?: string
+  parent_id?: string
+  sort_order?: number
+  is_active?: boolean
+}) {
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .insert([{
+        ...category,
+        slug: category.slug || category.name.toLowerCase().replace(/\s+/g, '-'),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }])
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('❌ 创建分类失败:', error)
+    throw error
+  }
+}
+
+// 更新分类  
+export async function updateCategory(id: string, updates: Partial<{
+  name: string
+  slug: string
+  description: string
+  color: string
+  icon: string
+  parent_id: string
+  sort_order: number
+  is_active: boolean
+}>) {
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('❌ 更新分类失败:', error)
+    throw error
+  }
+}
+
+// 删除分类
+export async function deleteCategory(id: string) {
+  try {
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+  } catch (error) {
+    console.error('❌ 删除分类失败:', error)
+    throw error
+  }
+}
 export const createToolByAPI = createUnavailableFunction('通过API创建工具')
