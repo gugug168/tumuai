@@ -1,5 +1,5 @@
 // 统一缓存管理器 - 整合内存缓存、持久化缓存和请求去重
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import { APP_CONFIG } from './config';
 
 // 缓存条目接口
@@ -412,7 +412,7 @@ export function useUnifiedCache() {
   }, []);
 
   // 组件卸载时清理
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       Object.values(abortControllersRef.current).forEach(controller => {
         controller.abort();

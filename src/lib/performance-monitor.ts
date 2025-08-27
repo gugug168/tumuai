@@ -1,4 +1,6 @@
 // 性能监控和分析工具
+import { useEffect } from 'react';
+
 export interface PerformanceMetric {
   name: string;
   value: number;
@@ -338,7 +340,7 @@ export const performanceMonitor = new PerformanceMonitor();
 export function usePerformanceMonitor(componentName: string) {
   const startTime = performance.now();
   
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       const renderTime = performance.now() - startTime;
       performanceMonitor.measureComponentRender(componentName, renderTime);
