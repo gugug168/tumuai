@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Shield, Mail, Lock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { ADMIN_CONFIG } from '../lib/config'
+import { checkAdminStatus } from '../lib/admin'
 
 const AdminLoginPage = () => {
   const [email, setEmail] = useState('')
@@ -47,33 +47,14 @@ const AdminLoginPage = () => {
       const permissionStartTime = Date.now()
       console.log('✅ 登录成功，准备验证管理员权限...')
       
-      // 使用服务端API进行管理员权限验证
-      const { data: { session } } = await supabase.auth.getSession()
+      // 使用checkAdminStatus函数进行权限验证（包含API和兜底机制）
+      const adminStatus = await checkAdminStatus()
       
-      if (!session?.access_token) {
-        throw new Error('获取访问令牌失败，请重新登录')
-      }
-      
-      const response = await fetch('/api/admin-auth-check', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-      
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || '权限验证失败，您不是管理员用户')
-      }
-      
-      const adminData = await response.json()
-      
-      if (!adminData.isAdmin) {
+      if (!adminStatus) {
         throw new Error('您不是管理员用户，无法访问管理后台。请联系系统管理员申请权限。')
       }
       
-      console.log('✅ 管理员权限验证成功:', adminData.user.email)
+      console.log('✅ 管理员权限验证成功:', adminStatus.email)
       
       const permissionTime = Date.now() - permissionStartTime
       
@@ -81,8 +62,8 @@ const AdminLoginPage = () => {
       
       // 记录性能信息
       const perfInfo = {
-        authTime,
-        permissionTime,
+        loginTime: authTime,
+        authTime: permissionTime,
         totalTime
       }
       setPerformanceInfo(perfInfo)
@@ -159,11 +140,11 @@ const AdminLoginPage = () => {
           <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
             <h3 className="text-sm font-medium text-green-800 mb-2">⚡ 登录性能统计</h3>
             <div className="space-y-1 text-xs text-green-700">
-              {performanceInfo.authTime && (
-                <div>认证时间: {performanceInfo.authTime}ms</div>
+              {performanceInfo.loginTime && (
+                <div>认证时间: {performanceInfo.loginTime}ms</div>
               )}
-              {performanceInfo.permissionTime && (
-                <div>权限检查: {performanceInfo.permissionTime}ms</div>
+              {performanceInfo.authTime && (
+                <div>权限检查: {performanceInfo.authTime}ms</div>
               )}
               {performanceInfo.totalTime && (
                 <div className="font-medium">总耗时: {performanceInfo.totalTime}ms</div>
