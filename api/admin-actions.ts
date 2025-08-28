@@ -1,5 +1,5 @@
-import { Handler } from '@netlify/functions'
 import { createClient, PostgrestError } from '@supabase/supabase-js'
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 interface AdminUser {
   id: string
@@ -90,32 +90,32 @@ async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?
   }
 }
 
-const handler: Handler = async (event) => {
+export default async function handler(request: VercelRequest, response: VercelResponse) {
   try {
-    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) as string
+    const supabaseUrl = process.env.VITE_SUPABASE_URL as string
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
     
     if (!supabaseUrl || !serviceKey) {
       console.error('Missing Supabase configuration')
-      return { statusCode: 500, body: JSON.stringify({ error: 'Server configuration error' }) }
+      return response.status(500).json({ error: 'Server configuration error' })
     }
 
-    const authHeader = event.headers.authorization || event.headers.Authorization
-    const accessToken = authHeader?.replace(/^Bearer\s+/i, '')
+    const authHeader = request.headers.authorization || request.headers.Authorization
+    const accessToken = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '') : ''
     const admin = await verifyAdmin(supabaseUrl, serviceKey, accessToken)
     
     if (!admin) {
-      return { statusCode: 403, body: JSON.stringify({ error: 'Forbidden' }) }
+      return response.status(403).json({ error: 'Forbidden' })
     }
 
     const supabase = createClient(supabaseUrl, serviceKey)
-    const method = event.httpMethod.toUpperCase()
+    const method = request.method?.toUpperCase()
     
     if (method !== 'POST') {
-      return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) }
+      return response.status(405).json({ error: 'Method Not Allowed' })
     }
 
-    const body = event.body ? JSON.parse(event.body) : {}
+    const body = typeof request.body === 'string' ? JSON.parse(request.body) : (request.body || {})
     const action = body?.action as string
 
     // 记录管理员操作日志
@@ -158,11 +158,11 @@ const handler: Handler = async (event) => {
         const { submissionId, status, adminNotes } = body || {}
         
         if (!submissionId || !status) {
-          return { statusCode: 400, body: JSON.stringify({ error: 'Missing submissionId or status' }) }
+          return response.status(400).json({ error: 'Missing submissionId or status' })
         }
 
         if (!['approved', 'rejected'].includes(status)) {
-          return { statusCode: 400, body: JSON.stringify({ error: 'Invalid status' }) }
+          return response.status(400).json({ error: 'Invalid status' })
         }
 
         try {
@@ -175,11 +175,11 @@ const handler: Handler = async (event) => {
           
           if (fetchErr) {
             console.error('Error fetching submission:', fetchErr)
-            return { statusCode: 500, body: JSON.stringify({ error: fetchErr.message }) }
+            return response.status(500).json({ error: fetchErr.message })
           }
 
           if (!submission) {
-            return { statusCode: 404, body: JSON.stringify({ error: 'Submission not found' }) }
+            return response.status(404).json({ error: 'Submission not found' })
           }
 
           // 更新提交状态
@@ -195,7 +195,7 @@ const handler: Handler = async (event) => {
 
           if (updErr) {
             console.error('Error updating submission:', updErr)
-            return { statusCode: 500, body: JSON.stringify({ error: updErr.message }) }
+            return response.status(500).json({ error: updErr.message })
           }
 
           // 如果审核通过，创建工具
@@ -239,7 +239,7 @@ const handler: Handler = async (event) => {
               newTool = retry.data as { id: string } | null
               if (insErr) {
                 console.error('Error creating tool after fallback:', insErr)
-                return { statusCode: 500, body: JSON.stringify({ error: insErr.message }) }
+                return response.status(500).json({ error: insErr.message })
               }
             }
 
@@ -255,18 +255,18 @@ const handler: Handler = async (event) => {
             })
           }
 
-          return { statusCode: 200, body: JSON.stringify({ success: true }) }
+          return response.status(200).json({ success: true })
         } catch (error) {
           console.error('Error in review_submission:', error)
           const errorMessage = error instanceof Error ? error.message : 'Internal server error'
-          return { statusCode: 500, body: JSON.stringify({ error: errorMessage }) }
+          return response.status(500).json({ error: errorMessage })
         }
       }
 
       case 'create_tool': {
         const tool = body?.tool
         if (!tool?.name || !tool?.website_url) {
-          return { statusCode: 400, body: JSON.stringify({ error: 'Missing required fields: name, website_url' }) }
+          return response.status(400).json({ error: 'Missing required fields: name, website_url' })
         }
 
         try {
@@ -305,23 +305,23 @@ const handler: Handler = async (event) => {
             data = retry.data as { id: string } | null
             if (error) {
               console.error('Error creating tool after fallback:', error)
-              return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
+              return response.status(500).json({ error: error.message })
             }
           }
 
           await logAdminAction('create_tool', 'tool', data?.id, payload)
-          return { statusCode: 200, body: JSON.stringify({ success: true, id: data?.id }) }
+          return response.status(200).json({ success: true, id: data?.id })
         } catch (error: unknown) {
           console.error('Error in create_tool:', error)
           const err = error as ErrorResponse
-          return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal server error' }) }
+          return response.status(500).json({ error: err.message || 'Internal server error' })
         }
       }
 
       case 'update_tool': {
         const { id, updates } = body || {}
         if (!id || !updates) {
-          return { statusCode: 400, body: JSON.stringify({ error: 'Missing id or updates' }) }
+          return response.status(400).json({ error: 'Missing id or updates' })
         }
 
         try {
@@ -341,7 +341,7 @@ const handler: Handler = async (event) => {
           }
 
           if (Object.keys(safe).length === 0) {
-            return { statusCode: 400, body: JSON.stringify({ error: 'No valid fields to update' }) }
+            return response.status(400).json({ error: 'No valid fields to update' })
           }
 
           const { error } = await supabase
@@ -351,22 +351,22 @@ const handler: Handler = async (event) => {
 
           if (error) {
             console.error('Error updating tool:', error)
-            return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
+            return response.status(500).json({ error: error.message })
           }
 
           await logAdminAction('update_tool', 'tool', id, safe)
-          return { statusCode: 200, body: JSON.stringify({ success: true }) }
+          return response.status(200).json({ success: true })
         } catch (error: unknown) {
           console.error('Error in update_tool:', error)
           const err = error as ErrorResponse
-          return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal server error' }) }
+          return response.status(500).json({ error: err.message || 'Internal server error' })
         }
       }
 
       case 'delete_tool': {
         const { id } = body || {}
         if (!id) {
-          return { statusCode: 400, body: JSON.stringify({ error: 'Missing id' }) }
+          return response.status(400).json({ error: 'Missing id' })
         }
 
         try {
@@ -384,22 +384,22 @@ const handler: Handler = async (event) => {
 
           if (error) {
             console.error('Error deleting tool:', error)
-            return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
+            return response.status(500).json({ error: error.message })
           }
 
           await logAdminAction('delete_tool', 'tool', id, { name: tool?.name })
-          return { statusCode: 200, body: JSON.stringify({ success: true }) }
+          return response.status(200).json({ success: true })
         } catch (error: unknown) {
           console.error('Error in delete_tool:', error)
           const err = error as ErrorResponse
-          return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal server error' }) }
+          return response.status(500).json({ error: err.message || 'Internal server error' })
         }
       }
 
       case 'create_category': {
         const category = body?.category
         if (!category?.name) {
-          return { statusCode: 400, body: JSON.stringify({ error: 'Missing category name' }) }
+          return response.status(400).json({ error: 'Missing category name' })
         }
 
         try {
@@ -449,29 +449,29 @@ const handler: Handler = async (event) => {
               const existing = await supabase.from('categories').select('id').eq('name', basePayload.name).maybeSingle()
               if (!existing.error && existing.data) {
                 await logAdminAction('create_category', 'category', existing.data.id, { name: basePayload.name })
-                return { statusCode: 200, body: JSON.stringify({ success: true, id: existing.data.id }) }
+                return response.status(200).json({ success: true, id: existing.data.id })
               }
             }
           }
 
           if (ins.error) {
             console.error('Error creating category:', ins.error)
-            return { statusCode: 500, body: JSON.stringify({ error: ins.error.message }) }
+            return response.status(500).json({ error: ins.error.message })
           }
 
           await logAdminAction('create_category', 'category', ins.data?.id, basePayload as Record<string, unknown>)
-          return { statusCode: 200, body: JSON.stringify({ success: true, id: ins.data?.id }) }
+          return response.status(200).json({ success: true, id: ins.data?.id })
         } catch (error: unknown) {
           console.error('Error in create_category:', error)
           const err = error as ErrorResponse
-          return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal server error' }) }
+          return response.status(500).json({ error: err.message || 'Internal server error' })
         }
       }
 
       case 'update_category': {
         const { id, updates } = body || {}
         if (!id || !updates) {
-          return { statusCode: 400, body: JSON.stringify({ error: 'Missing category id or updates' }) }
+          return response.status(400).json({ error: 'Missing category id or updates' })
         }
 
         try {
@@ -489,7 +489,7 @@ const handler: Handler = async (event) => {
           }
 
           if (Object.keys(safe).length === 0) {
-            return { statusCode: 400, body: JSON.stringify({ error: 'No valid fields to update' }) }
+            return response.status(400).json({ error: 'No valid fields to update' })
           }
 
           const { error } = await supabase
@@ -499,22 +499,22 @@ const handler: Handler = async (event) => {
 
           if (error) {
             console.error('Error updating category:', error)
-            return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
+            return response.status(500).json({ error: error.message })
           }
 
           await logAdminAction('update_category', 'category', id, safe)
-          return { statusCode: 200, body: JSON.stringify({ success: true }) }
+          return response.status(200).json({ success: true })
         } catch (error: unknown) {
           console.error('Error in update_category:', error)
           const err = error as ErrorResponse
-          return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal server error' }) }
+          return response.status(500).json({ error: err.message || 'Internal server error' })
         }
       }
 
       case 'delete_category': {
         const { id } = body || {}
         if (!id) {
-          return { statusCode: 400, body: JSON.stringify({ error: 'Missing category id' }) }
+          return response.status(400).json({ error: 'Missing category id' })
         }
 
         try {
@@ -525,7 +525,7 @@ const handler: Handler = async (event) => {
             .contains('categories', [id])
 
           if (count && count > 0) {
-            return { statusCode: 400, body: JSON.stringify({ error: 'Cannot delete category with associated tools' }) }
+            return response.status(400).json({ error: 'Cannot delete category with associated tools' })
           }
 
           const { error } = await supabase
@@ -535,15 +535,15 @@ const handler: Handler = async (event) => {
 
           if (error) {
             console.error('Error deleting category:', error)
-            return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
+            return response.status(500).json({ error: error.message })
           }
 
           await logAdminAction('delete_category', 'category', id)
-          return { statusCode: 200, body: JSON.stringify({ success: true }) }
+          return response.status(200).json({ success: true })
         } catch (error: unknown) {
           console.error('Error in delete_category:', error)
           const err = error as ErrorResponse
-          return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal server error' }) }
+          return response.status(500).json({ error: err.message || 'Internal server error' })
         }
       }
 
@@ -557,27 +557,23 @@ const handler: Handler = async (event) => {
 
           if (error) {
             console.error('Error fetching categories:', error)
-            return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
+            return response.status(500).json({ error: error.message })
           }
 
-          return { statusCode: 200, body: JSON.stringify({ categories }) }
+          return response.status(200).json({ categories })
         } catch (error: unknown) {
           console.error('Error in get_categories:', error)
           const err = error as ErrorResponse
-          return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal server error' }) }
+          return response.status(500).json({ error: err.message || 'Internal server error' })
         }
       }
 
       default:
-        return { statusCode: 400, body: JSON.stringify({ error: 'Unknown action' }) }
+        return response.status(400).json({ error: 'Unknown action' })
     }
   } catch (e: unknown) {
     console.error('Admin action error:', e)
     const err = e as ErrorResponse
-    return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Internal server error' }) }
+    return response.status(500).json({ error: err.message || 'Internal server error' })
   }
 }
-
-export { handler }
-
-

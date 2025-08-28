@@ -1,24 +1,24 @@
-import { Handler } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-const handler: Handler = async (event) => {
+export default async function handler(request: VercelRequest, response: VercelResponse) {
   try {
-    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) as string
+    const supabaseUrl = process.env.VITE_SUPABASE_URL as string
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
     if (!supabaseUrl || !serviceKey) {
-      return { statusCode: 500, body: 'Missing Supabase server config' }
+      return response.status(500).json({ error: 'Missing Supabase server config' })
     }
 
-    const authHeader = event.headers.authorization || event.headers.Authorization
+    const authHeader = request.headers.authorization || request.headers.Authorization
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return { statusCode: 401, body: 'Unauthorized' }
+      return response.status(401).json({ error: 'Unauthorized' })
     }
-    const accessToken = authHeader.replace(/^Bearer\s+/i, '')
+    const accessToken = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '') : ''
 
     const supabase = createClient(supabaseUrl, serviceKey)
     const { data: userRes, error: userErr } = await supabase.auth.getUser(accessToken)
     if (userErr || !userRes?.user) {
-      return { statusCode: 401, body: 'Invalid token' }
+      return response.status(401).json({ error: 'Invalid token' })
     }
     const userId = userRes.user.id
 
@@ -43,20 +43,14 @@ const handler: Handler = async (event) => {
       .order('created_at', { ascending: false })
 
     if (error) {
-      return { statusCode: 500, body: error.message }
+      return response.status(500).json({ error: error.message })
     }
 
-    return {
-      statusCode: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(data || [])
-    }
+    return response.status(200).json(data || [])
   } catch (e: unknown) {
     const error = e as Error
-    return { statusCode: 500, body: error?.message || 'Unexpected error' }
+    return response.status(500).json({ 
+      error: error?.message || 'Unexpected error' 
+    })
   }
 }
-
-export { handler }
-
-

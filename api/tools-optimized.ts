@@ -1,5 +1,5 @@
-import { Handler } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 // 🚀 内存缓存实现（适合Netlify Functions短时间缓存）
 interface CacheItem {
@@ -89,13 +89,13 @@ const metrics: PerformanceMetrics = {
   averageResponseTime: 0
 }
 
-const handler: Handler = async (event) => {
+export default async function handler(request: VercelRequest, response: VercelResponse) {
   const startTime = Date.now()
   metrics.totalRequests++
   
   try {
     // 📥 解析请求参数
-    const queryParams = event.queryStringParameters || {}
+    const queryParams = request.query || {}
     const limit = Math.min(parseInt(queryParams.limit || '60', 10), 200)
     const sortBy = queryParams.sortBy || 'upvotes'
     const sortOrder = queryParams.sortOrder || 'desc'
@@ -141,7 +141,7 @@ const handler: Handler = async (event) => {
     metrics.cacheMisses++
     
     // 🔧 Supabase客户端配置
-    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) as string
+    const supabaseUrl = process.env.VITE_SUPABASE_URL as string
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
     
     if (!supabaseUrl || !serviceKey) {
@@ -263,4 +263,4 @@ const handler: Handler = async (event) => {
   }
 }
 
-export { handler }
+// Exported as default function

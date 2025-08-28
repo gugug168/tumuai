@@ -1,5 +1,5 @@
-import { Handler } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 // 安全响应头配置
 const getSecurityHeaders = () => ({
@@ -13,22 +13,22 @@ const getSecurityHeaders = () => ({
   'Pragma': 'no-cache'
 })
 
-const handler: Handler = async (event) => {
+export default async function handler(request: VercelRequest, response: VercelResponse) {
   const startTime = Date.now()
   console.log('🔐 开始管理员权限验证...')
   
   try {
-    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) as string
+    const supabaseUrl = process.env.VITE_SUPABASE_URL as string
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
     if (!supabaseUrl || !serviceKey) {
-      return { statusCode: 500, headers: getSecurityHeaders(), body: JSON.stringify({ error: 'Missing Supabase server config' }) }
+      return response.status(500).setHeader(getSecurityHeaders()).json({ error: 'Missing Supabase server config' })
     }
 
-    const authHeader = event.headers.authorization || event.headers.Authorization
+    const authHeader = request.headers.authorization || request.headers.Authorization
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return { statusCode: 401, headers: getSecurityHeaders(), body: JSON.stringify({ error: 'Unauthorized' }) }
+      return response.status(401).setHeader(getSecurityHeaders()).json({ error: 'Unauthorized' })
     }
-    const accessToken = authHeader.replace(/^Bearer\s+/i, '')
+    const accessToken = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '') : ''
 
     const supabase = createClient(supabaseUrl, serviceKey)
 
@@ -36,7 +36,7 @@ const handler: Handler = async (event) => {
     const tokenParts = accessToken.split('.')
     if (tokenParts.length !== 3) {
       console.log('⚠️ 无效的JWT令牌格式')
-      return { statusCode: 401, headers: getSecurityHeaders(), body: JSON.stringify({ error: 'Invalid token format' }) }
+      return response.status(401).setHeader(getSecurityHeaders()).json({ error: 'Invalid token format' })
     }
     
     // Verify token and get user id
@@ -46,7 +46,7 @@ const handler: Handler = async (event) => {
     console.log(`✅ Token验证完成: ${Date.now() - authStartTime}ms`)
     if (userErr || !userRes?.user) {
       console.log(`⚠️ Token验证失败: ${userErr?.message}`)
-      return { statusCode: 401, headers: getSecurityHeaders(), body: JSON.stringify({ error: 'Invalid token' }) }
+      return response.status(401).setHeader(getSecurityHeaders()).json({ error: 'Invalid token' })
     }
     
     // 检查令牌是否即将过期（30分钟内）
@@ -76,16 +76,15 @@ const handler: Handler = async (event) => {
 
     const { data, error } = adminResult
     if (error) {
-      return { statusCode: 500, headers: getSecurityHeaders(), body: JSON.stringify({ error: error.message }) }
+      return response.status(500).setHeader(getSecurityHeaders()).json({ error: error.message })
     }
     if (data) {
       const totalTime = Date.now() - startTime
       console.log(`✅ 管理员权限验证成功: ${totalTime}ms`)
-      return {
-        statusCode: 200,
-        headers: getSecurityHeaders(),
-        body: JSON.stringify({ ...data, _performance: { totalTime, hasParallelQuery: true } })
-      }
+      return response.status(200).setHeader(getSecurityHeaders()).json({ 
+        ...data, 
+        _performance: { totalTime, hasParallelQuery: true } 
+      })
     }
 
     const { count } = countResult
@@ -97,12 +96,12 @@ const handler: Handler = async (event) => {
     // 额外安全检查：确保管理员邮箱已配置且用户邮箱已验证
     if (!adminEmail) {
       console.error('❌ 管理员邮箱未配置')
-      return { statusCode: 500, headers: getSecurityHeaders(), body: JSON.stringify({ error: 'Admin configuration missing' }) }
+      return response.status(500).setHeader(getSecurityHeaders()).json({ error: 'Admin configuration missing' })
     }
     
     if (!userRes.user.email_confirmed_at) {
       console.log('⚠️ 用户邮箱未验证，拒绝管理员权限')
-      return { statusCode: 403, headers: getSecurityHeaders(), body: JSON.stringify({ error: 'Email verification required' }) }
+      return response.status(403).setHeader(getSecurityHeaders()).json({ error: 'Email verification required' })
     }
     
     const shouldCreateAdmin = (!count || count === 0) || (userEmail === adminEmail)
@@ -132,36 +131,32 @@ const handler: Handler = async (event) => {
             .select('id,user_id,role,permissions,created_at,updated_at')
             .maybeSingle()
           if (updateErr) {
-            return { statusCode: 500, headers: getSecurityHeaders(), body: JSON.stringify({ error: updateErr.message }) }
+            return response.status(500).setHeader(getSecurityHeaders()).json({ error: updateErr.message })
           }
           const totalTime = Date.now() - startTime
           console.log(`✅ 更新管理员成功: ${totalTime}ms`)
-          return {
-            statusCode: 200,
-            headers: getSecurityHeaders(),
-            body: JSON.stringify({ ...updated, _performance: { totalTime, wasUpdated: true } })
-          }
+          return response.status(200).setHeader(getSecurityHeaders()).json({ 
+            ...updated, 
+            _performance: { totalTime, wasUpdated: true } 
+          })
         }
-        return { statusCode: 500, headers: getSecurityHeaders(), body: JSON.stringify({ error: insErr.message }) }
+        return response.status(500).setHeader(getSecurityHeaders()).json({ error: insErr.message })
       }
       const totalTime = Date.now() - startTime
       console.log(`✅ 创建管理员成功: ${totalTime}ms`)
-      return {
-        statusCode: 200,
-        headers: getSecurityHeaders(),
-        body: JSON.stringify({ ...created, _performance: { totalTime, wasCreated: true } })
-      }
+      return response.status(200).setHeader(getSecurityHeaders()).json({ 
+        ...created, 
+        _performance: { totalTime, wasCreated: true } 
+      })
     }
 
     // 否则不是管理员
-    return { statusCode: 403, headers: getSecurityHeaders(), body: JSON.stringify({ error: 'Forbidden' }) }
+    return response.status(403).setHeader(getSecurityHeaders()).json({ error: 'Forbidden' })
   } catch (e: unknown) {
     const totalTime = Date.now() - startTime
     console.error(`❌ 管理员验证失败: ${totalTime}ms`, e)
-    return { statusCode: 500, headers: getSecurityHeaders(), body: JSON.stringify({ error: (e as Error)?.message || 'Unexpected error' }) }
+    return response.status(500).setHeader(getSecurityHeaders()).json({ 
+      error: (e as Error)?.message || 'Unexpected error' 
+    })
   }
 }
-
-export { handler }
-
-

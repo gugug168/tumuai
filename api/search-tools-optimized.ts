@@ -1,5 +1,5 @@
-import { Handler } from '@netlify/functions'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 // 定义Tool类型
 interface Tool {
@@ -232,26 +232,23 @@ async function executeOptimizedSearch(
 }
 
 // 🚀 主处理函数
-const handler: Handler = async (event) => {
+export default async function handler(request: VercelRequest, response: VercelResponse) {
   const startTime = Date.now()
   searchMetrics.totalSearches++
   
   try {
     // 📥 解析搜索参数
-    const queryParams = event.queryStringParameters || {}
-    const method = event.httpMethod?.toUpperCase()
+    const queryParams = request.query || {}
+    const method = request.method?.toUpperCase()
     
     // 支持POST请求的复杂搜索（从body解析）
     let searchParams: Record<string, unknown> = {}
     
-    if (method === 'POST' && event.body) {
+    if (method === 'POST' && request.body) {
       try {
-        searchParams = JSON.parse(event.body)
+        searchParams = typeof request.body === 'string' ? JSON.parse(request.body) : request.body
       } catch {
-        return {
-          statusCode: 400,
-          body: JSON.stringify({ error: 'Invalid JSON in request body' })
-        }
+        return response.status(400).json({ error: 'Invalid JSON in request body' })
       }
     } else {
       // GET请求从query parameters解析
@@ -333,7 +330,7 @@ const handler: Handler = async (event) => {
     }
     
     // 🔧 Supabase配置
-    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) as string
+    const supabaseUrl = process.env.VITE_SUPABASE_URL as string
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
     
     if (!supabaseUrl || !serviceKey) {
@@ -432,4 +429,4 @@ const handler: Handler = async (event) => {
   }
 }
 
-export { handler }
+// Exported as default function

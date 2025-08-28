@@ -1,18 +1,16 @@
-import { Handler } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-const handler: Handler = async (event) => {
+export default async function handler(request: VercelRequest, response: VercelResponse) {
   try {
-    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) as string
+    const supabaseUrl = process.env.VITE_SUPABASE_URL as string
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
     if (!supabaseUrl || !serviceKey) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: 'Missing Supabase server config' })
-      }
+      return response.status(500).json({ error: 'Missing Supabase server config' })
     }
 
-    const limit = Math.min(parseInt(event.queryStringParameters?.limit || '60', 10), 200)
+    const limitParam = request.query.limit as string
+    const limit = Math.min(parseInt(limitParam || '60', 10), 200)
 
     const supabase = createClient(supabaseUrl, serviceKey)
 
@@ -24,29 +22,15 @@ const handler: Handler = async (event) => {
       .limit(limit)
 
     if (error) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: error.message })
-      }
+      return response.status(500).json({ error: error.message })
     }
 
-    return {
-      statusCode: 200,
-      headers: {
-        'content-type': 'application/json',
-        'cache-control': 'public, max-age=60'
-      },
-      body: JSON.stringify(data || [])
-    }
+    response.setHeader('Cache-Control', 'public, max-age=60')
+    return response.status(200).json(data || [])
   } catch (err: unknown) {
     const error = err as Error
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: error?.message || 'Unexpected error' })
-    }
+    return response.status(500).json({ 
+      error: error?.message || 'Unexpected error' 
+    })
   }
 }
-
-export { handler }
-
-

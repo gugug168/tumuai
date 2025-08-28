@@ -1,14 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
-import { Handler, HandlerEvent } from '@netlify/functions'
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 const supabase = createClient(
-  (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL)!,
+  process.env.VITE_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export const handler: Handler = async (event: HandlerEvent) => {
+export default async function handler(request: VercelRequest, response: VercelResponse) {
   // 只允许POST请求
-  if (event.httpMethod !== 'POST') {
+  if (request.method !== 'POST') {
     return {
       statusCode: 405,
       body: JSON.stringify({ error: 'Method not allowed' })
@@ -16,13 +16,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   try {
-    const { action, data } = JSON.parse(event.body || '{}')
+    const { action, data } = request.body || {}
 
     function toSlug(name: string): string {
       const base = (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
       return base && base !== '-' ? base : `c-${Math.random().toString(36).slice(2, 8)}`
     }
-    const authHeader = event.headers.authorization || event.headers.Authorization
+    const authHeader = request.headers.authorization || request.headers.Authorization
     
     // 验证管理员权限
     if (!authHeader) {

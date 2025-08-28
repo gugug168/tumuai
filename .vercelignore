@@ -1,0 +1,24 @@
+# 忽略所有 dist 目录
+**/dist
+
+# 忽略开发和测试文件
+**/*.test.*
+**/*.spec.*
+**/tests
+**/.git
+**/node_modules
+
+# 忽略文档和配置文件
+**/*.md
+**/*.sql
+**/scripts
+**/database
+**/supabase
+
+# 忽略备份文件
+**/*.backup
+**/*.bak
+
+# 忽略临时文件
+**/temp*
+**/.env.local

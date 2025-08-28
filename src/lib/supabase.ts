@@ -296,7 +296,7 @@ export async function getCategories() {
       return fallbackCategories
     }
 
-    // 如果数据为空或者很少，也使用fallback
+    // 如果数据为空，也使用fallback（不再限制数量）
     if (!data || data.length === 0) {
       console.log('📄 数据库中无分类数据，使用fallback分类数据...')
       return fallbackCategories

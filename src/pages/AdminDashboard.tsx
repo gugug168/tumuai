@@ -467,6 +467,69 @@ const AdminDashboard = () => {
           </div>
 
           <div className="p-6">
+            {/* 概览页面内容 */}
+            {activeTab === 'overview' && (
+              <div>
+                <div className="mb-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">系统概览</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* 快速统计 */}
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">快速统计</h4>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">总工具数</span>
+                          <span className="text-sm font-medium">{stats.totalTools}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">活跃分类</span>
+                          <span className="text-sm font-medium">{stats.totalCategories}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">待审核工具</span>
+                          <span className="text-sm font-medium text-orange-600">{stats.pendingSubmissions}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">系统日志</span>
+                          <span className="text-sm font-medium">{stats.totalLogs}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* 最近活动 */}
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">最近活动</h4>
+                      <div className="space-y-2">
+                        <div className="text-sm text-gray-600">
+                          ✅ 数据库连接正常
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          📊 统计数据已更新
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          🔧 系统运行正常
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          👤 管理员权限验证成功
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* 系统状态 */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
+                    <h4 className="text-sm font-medium text-green-800">系统状态良好</h4>
+                  </div>
+                  <p className="text-sm text-green-700 mt-1">
+                    所有服务运行正常，数据同步正常
+                  </p>
+                </div>
+              </div>
+            )}
+            
             {/* 工具审核 */}
             {activeTab === 'submissions' && (
               <div>

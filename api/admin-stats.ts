@@ -1,5 +1,5 @@
-import { Handler } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?: string) {
   const supabase = createClient(supabaseUrl, serviceKey)
@@ -25,16 +25,20 @@ async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?
   return null
 }
 
-const handler: Handler = async (event) => {
+export default async function handler(request: VercelRequest, response: VercelResponse) {
   try {
-    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) as string
+    const supabaseUrl = process.env.VITE_SUPABASE_URL as string
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
-    if (!supabaseUrl || !serviceKey) return { statusCode: 500, body: 'Missing Supabase server config' }
+    if (!supabaseUrl || !serviceKey) {
+      return response.status(500).json({ error: 'Missing Supabase server config' })
+    }
 
-    const authHeader = event.headers.authorization || event.headers.Authorization
-    const accessToken = authHeader?.replace(/^Bearer\s+/i, '')
+    const authHeader = request.headers.authorization || request.headers.Authorization
+    const accessToken = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '') : ''
     const admin = await verifyAdmin(supabaseUrl, serviceKey, accessToken)
-    if (!admin) return { statusCode: 403, body: 'Forbidden' }
+    if (!admin) {
+      return response.status(403).json({ error: 'Forbidden' })
+    }
 
     const supabase = createClient(supabaseUrl, serviceKey)
 
@@ -50,24 +54,18 @@ const handler: Handler = async (event) => {
     const reviewCount = reviews?.length || 0
     const averageRating = reviewCount > 0 ? (reviews!.reduce((s, r: { rating?: number }) => s + (r.rating || 0), 0) / reviewCount) : 0
 
-    return {
-      statusCode: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        totalTools: totalTools || 0,
-        totalUsers: totalUsers || 0,
-        pendingSubmissions: pendingSubmissions || 0,
-        totalReviews: reviewCount,
-        averageRating: Math.round(averageRating * 10) / 10,
-        totalFavorites: totalFavorites || 0,
-        commentsCount: commentsCount || 0
-      })
-    }
+    return response.status(200).json({
+      totalTools: totalTools || 0,
+      totalUsers: totalUsers || 0,
+      pendingSubmissions: pendingSubmissions || 0,
+      totalReviews: reviewCount,
+      averageRating: Math.round(averageRating * 10) / 10,
+      totalFavorites: totalFavorites || 0,
+      commentsCount: commentsCount || 0
+    })
   } catch (e: unknown) {
-    return { statusCode: 500, body: (e as Error)?.message || 'Unexpected error' }
+    return response.status(500).json({ 
+      error: (e as Error)?.message || 'Unexpected error' 
+    })
   }
 }
-
-export { handler }
-
-

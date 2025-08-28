@@ -1,28 +1,21 @@
-import { Handler } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-const handler: Handler = async (event) => {
+export default async function handler(request: VercelRequest, response: VercelResponse) {
   try {
-    // 1. 从URL路径中解析工具ID
-    const pathParts = event.path.split('/')
-    const toolId = pathParts[pathParts.length - 1]
+    // 1. 从查询参数中获取工具ID (Vercel格式)
+    const toolId = request.query.id as string
     
     if (!toolId) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Tool ID is required' })
-      }
+      return response.status(400).json({ error: 'Tool ID is required' })
     }
 
     // 2. 获取Supabase配置
-    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) as string
+    const supabaseUrl = process.env.VITE_SUPABASE_URL as string
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
     
     if (!supabaseUrl || !serviceKey) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: 'Missing Supabase server config' })
-      }
+      return response.status(500).json({ error: 'Missing Supabase server config' })
     }
 
     // 3. 创建Supabase客户端并获取工具详情
@@ -37,33 +30,18 @@ const handler: Handler = async (event) => {
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return {
-          statusCode: 404,
-          body: JSON.stringify({ error: 'Tool not found' })
-        }
+        return response.status(404).json({ error: 'Tool not found' })
       }
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: error.message })
-      }
+      return response.status(500).json({ error: error.message })
     }
 
     // 4. 返回工具详情数据
-    return {
-      statusCode: 200,
-      headers: {
-        'content-type': 'application/json',
-        'cache-control': 'public, max-age=300'  // 5分钟缓存
-      },
-      body: JSON.stringify(data)
-    }
+    response.setHeader('Cache-Control', 'public, max-age=300') // 5分钟缓存
+    return response.status(200).json(data)
   } catch (err: unknown) {
     const error = err as Error
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: error?.message || 'Unexpected error' })
-    }
+    return response.status(500).json({ 
+      error: error?.message || 'Unexpected error' 
+    })
   }
 }
-
-export { handler }

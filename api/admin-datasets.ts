@@ -1,5 +1,5 @@
-import { Handler } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 interface ToolDataset {
   reviews_count?: number
@@ -23,16 +23,20 @@ async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?
   return null
 }
 
-const handler: Handler = async (event) => {
+export default async function handler(request: VercelRequest, response: VercelResponse) {
   try {
-    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) as string
+    const supabaseUrl = process.env.VITE_SUPABASE_URL as string
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
-    if (!supabaseUrl || !serviceKey) return { statusCode: 500, body: 'Missing Supabase server config' }
+    if (!supabaseUrl || !serviceKey) {
+      return response.status(500).json({ error: 'Missing Supabase server config' })
+    }
 
-    const authHeader = event.headers.authorization || event.headers.Authorization
-    const accessToken = authHeader?.replace(/^Bearer\s+/i, '')
+    const authHeader = request.headers.authorization || request.headers.Authorization
+    const accessToken = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '') : ''
     const admin = await verifyAdmin(supabaseUrl, serviceKey, accessToken)
-    if (!admin) return { statusCode: 403, body: 'Forbidden' }
+    if (!admin) {
+      return response.status(403).json({ error: 'Forbidden' })
+    }
 
     const supabase = createClient(supabaseUrl, serviceKey)
 
@@ -76,13 +80,11 @@ const handler: Handler = async (event) => {
       }
     }
 
-    return { statusCode: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }
+    return response.status(200).json(body)
   } catch (e: unknown) {
     console.error('Admin datasets error:', e)
-    return { statusCode: 500, body: JSON.stringify({ error: (e as Error)?.message || 'Internal server error' }) }
+    return response.status(500).json({ 
+      error: (e as Error)?.message || 'Internal server error' 
+    })
   }
 }
-
-export { handler }
-
-
