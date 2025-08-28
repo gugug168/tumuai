@@ -52,40 +52,61 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
       return null
     }
     
-    // 调用服务端权限验证API - 支持多种部署环境
+    // 尝试服务端权限验证API - 支持多种部署环境
     const apiPath = window.location.hostname.includes('vercel.app') 
       ? '/api/admin-auth-check'
       : '/.netlify/functions/admin-auth-check'
+    
+    try {
+      const response = await fetch(apiPath, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      })
       
-    const response = await fetch(apiPath, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json'
+      if (response.ok && response.headers.get('content-type')?.includes('application/json')) {
+        const data = await response.json()
+        
+        if (data.isAdmin) {
+          console.log('✅ 服务端管理员权限验证成功:', data.user.email)
+          
+          return {
+            user_id: data.user.user_id,
+            email: data.user.email,
+            role: data.user.role,
+            is_super_admin: data.user.is_super_admin,
+            permissions: data.user.permissions
+          } as AdminUser & { permissions?: any }
+        }
       }
-    })
+    } catch (apiError) {
+      console.log('⚠️ 服务端API不可用，尝试客户端验证...')
+    }
     
-    if (!response.ok) {
-      const errorData = await response.json()
-      console.log('❌ 服务端权限验证失败:', errorData.error)
+    // 兜底方案：使用客户端直接查询数据库
+    console.log('🔄 使用客户端验证管理员权限...')
+    
+    const { data: adminUser, error: adminError } = await supabase
+      .from('admin_users')
+      .select('id, user_id, role, permissions, created_at, updated_at')
+      .eq('user_id', session.user.id)
+      .single()
+    
+    if (adminError || !adminUser) {
+      console.log('❌ 客户端验证：用户不是管理员')
       return null
     }
     
-    const data = await response.json()
-    
-    if (!data.isAdmin) {
-      console.log('❌ 用户不是管理员')
-      return null
-    }
-    
-    console.log('✅ 管理员权限验证成功:', data.user.email)
+    console.log('✅ 客户端管理员权限验证成功:', session.user.email)
     
     return {
-      user_id: data.user.user_id,
-      email: data.user.email,
-      role: data.user.role,
-      is_super_admin: data.user.is_super_admin,
-      permissions: data.user.permissions
+      user_id: adminUser.user_id,
+      email: session.user.email,
+      role: adminUser.role,
+      is_super_admin: adminUser.role === 'super_admin',
+      permissions: adminUser.permissions
     } as AdminUser & { permissions?: any }
     
   } catch (error) {
