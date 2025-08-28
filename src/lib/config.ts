@@ -69,14 +69,15 @@ export const APP_CONFIG = {
 
 // API端点配置  
 export const API_ENDPOINTS = {
-  netlifyFunctions: {
-    adminAuthCheck: '/netlify/functions/admin-auth-check', // 新增：服务端权限验证
-    adminCheck: '/netlify/functions/admin-check',
-    adminDatasets: '/netlify/functions/admin-datasets', 
-    adminCategories: '/netlify/functions/admin-categories',
-    adminToolsCrud: '/netlify/functions/admin-tools-crud',
-    adminStats: '/netlify/functions/admin-stats',
-    tools: '/netlify/functions/tools',
-    userFavorites: '/netlify/functions/user-favorites'
+  vercelFunctions: {
+    adminAuthCheck: '/api/admin-auth-check', // 服务端权限验证
+    adminCheck: '/api/admin-check',
+    adminDatasets: '/api/admin-datasets', 
+    adminCategories: '/api/admin-categories',
+    adminToolsCrud: '/api/admin-tools-crud',
+    adminStats: '/api/admin-stats',
+    tools: '/api/tools',
+    userFavorites: '/api/user-favorites',
+    setupAdmin: '/api/setup-admin' // 管理员初始化
   }
 } as const

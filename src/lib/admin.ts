@@ -53,11 +53,14 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
     }
     
     // 尝试服务端权限验证API - 支持多种部署环境
-    const apiPath = window.location.hostname.includes('vercel.app') 
+    const isVercel = window.location.hostname.includes('vercel.app') || window.location.hostname.includes('localhost')
+    const apiPath = isVercel 
       ? '/api/admin-auth-check'
       : '/.netlify/functions/admin-auth-check'
     
     try {
+      console.log(`🔗 尝试调用API: ${apiPath}`)
+      
       const response = await fetch(apiPath, {
         method: 'GET',
         headers: {
@@ -65,6 +68,8 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
           'Content-Type': 'application/json'
         }
       })
+      
+      console.log(`📡 API响应状态: ${response.status}, Content-Type: ${response.headers.get('content-type')}`)
       
       if (response.ok && response.headers.get('content-type')?.includes('application/json')) {
         const data = await response.json()
@@ -80,9 +85,13 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
             permissions: data.user.permissions
           } as AdminUser & { permissions?: any }
         }
+      } else {
+        // 如果返回的是HTML，说明API路由有问题
+        const responseText = await response.text()
+        console.log(`⚠️ API返回非JSON响应 (${response.status}):`, responseText.substring(0, 200))
       }
     } catch (apiError) {
-      console.log('⚠️ 服务端API不可用，尝试客户端验证...')
+      console.log('⚠️ 服务端API调用异常:', apiError instanceof Error ? apiError.message : apiError)
     }
     
     // 兜底方案：使用客户端直接查询数据库

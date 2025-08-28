@@ -47,13 +47,33 @@ const AdminLoginPage = () => {
       const permissionStartTime = Date.now()
       console.log('✅ 登录成功，准备验证管理员权限...')
       
-      // 简化管理员权限验证 - 基于邮箱列表进行本地验证
-      const { data: { user } } = await supabase.auth.getUser()
+      // 使用服务端API进行管理员权限验证
+      const { data: { session } } = await supabase.auth.getSession()
       
-      if (!user || !ADMIN_CONFIG.emails.includes(user.email || '')) {
+      if (!session?.access_token) {
+        throw new Error('获取访问令牌失败，请重新登录')
+      }
+      
+      const response = await fetch('/api/admin-auth-check', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '权限验证失败，您不是管理员用户')
+      }
+      
+      const adminData = await response.json()
+      
+      if (!adminData.isAdmin) {
         throw new Error('您不是管理员用户，无法访问管理后台。请联系系统管理员申请权限。')
       }
-      console.log('✅ 管理员权限验证成功:', user.email)
+      
+      console.log('✅ 管理员权限验证成功:', adminData.user.email)
       
       const permissionTime = Date.now() - permissionStartTime
       
