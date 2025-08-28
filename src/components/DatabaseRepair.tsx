@@ -18,7 +18,7 @@ const DatabaseRepair = () => {
       const token = sessionRes?.session?.access_token || '';
       
       // 简化数据库修复 - 直接提示用户联系管理员
-      setMessage('数据库修复功能已迁移到服务器端，请联系管理员进行维护。')
+      setResult({ message: '数据库修复功能已迁移到服务器端，请联系管理员进行维护。' })
       return
     } catch (err) {
       setError(err.message);
@@ -34,11 +34,8 @@ const DatabaseRepair = () => {
       const token = sessionRes?.session?.access_token || '';
       
       // 直接提示功能已迁移
-      setMessage('分类刷新功能已迁移到服务器端，请联系管理员。')
+      alert('分类刷新功能已迁移到服务器端，请联系管理员。')
       return
-
-      const data = await response.json();
-      return data.data || [];
     } catch (err) {
       console.error('验证失败:', err);
       return [];
@@ -107,20 +104,25 @@ const DatabaseRepair = () => {
             <div className="flex">
               <CheckCircle className="h-5 w-5 text-green-400 mt-0.5" />
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-green-800">修复成功</h3>
+                <h3 className="text-sm font-medium text-green-800">信息提示</h3>
                 <div className="mt-1 text-sm text-green-700">
-                  <p>已创建 {result.categoriesCount || 0} 个分类</p>
-                  <ul className="mt-1 space-y-0.5">
-                    {result.categories?.map(cat => (
-                      <li key={cat.id} className="flex items-center">
-                        <span 
-                          className="w-3 h-3 rounded mr-2" 
-                          style={{ backgroundColor: cat.color }}
-                        ></span>
-                        {cat.name}
-                      </li>
-                    ))}
-                  </ul>
+                  <p>{result.message || '操作完成'}</p>
+                  {result.categoriesCount && (
+                    <>
+                      <p>已创建 {result.categoriesCount} 个分类</p>
+                      <ul className="mt-1 space-y-0.5">
+                        {result.categories?.map(cat => (
+                          <li key={cat.id} className="flex items-center">
+                            <span 
+                              className="w-3 h-3 rounded mr-2" 
+                              style={{ backgroundColor: cat.color }}
+                            ></span>
+                            {cat.name}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

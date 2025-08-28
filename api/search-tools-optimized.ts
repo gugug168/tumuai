@@ -256,13 +256,13 @@ const handler: Handler = async (event) => {
     } else {
       // GET请求从query parameters解析
       searchParams = {
-        query: queryParams.q || queryParams.query || '',
-        categories: queryParams.categories ? queryParams.categories.split(',') : undefined,
-        features: queryParams.features ? queryParams.features.split(',') : undefined,
-        pricing: queryParams.pricing || undefined,
-        sortBy: queryParams.sortBy || 'upvotes',
-        sortOrder: queryParams.sortOrder || 'desc',
-        limit: parseInt(queryParams.limit || '20', 10)
+        query: (queryParams.q as string) || (queryParams.query as string) || '',
+        categories: queryParams.categories ? (queryParams.categories as string).split(',') : undefined,
+        features: queryParams.features ? (queryParams.features as string).split(',') : undefined,
+        pricing: (queryParams.pricing as string) || undefined,
+        sortBy: (queryParams.sortBy as string) || 'upvotes',
+        sortOrder: (queryParams.sortOrder as string) || 'desc',
+        limit: parseInt((queryParams.limit as string) || '20', 10)
       }
     }
     
@@ -274,7 +274,15 @@ const handler: Handler = async (event) => {
       sortBy = 'upvotes',
       sortOrder = 'desc',
       limit = 20
-    } = searchParams
+    } = searchParams as {
+      query?: string
+      categories?: string[]
+      features?: string[]
+      pricing?: string
+      sortBy?: string
+      sortOrder?: string
+      limit?: number
+    }
     
     // 📊 记录热门查询
     if (query) {

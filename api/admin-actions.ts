@@ -236,7 +236,7 @@ const handler: Handler = async (event) => {
                 .select('id')
                 .maybeSingle()
               insErr = retry.error as PostgrestError | null
-              newTool = retry.data as ToolData | null
+              newTool = retry.data as { id: string } | null
               if (insErr) {
                 console.error('Error creating tool after fallback:', insErr)
                 return { statusCode: 500, body: JSON.stringify({ error: insErr.message }) }
@@ -302,7 +302,7 @@ const handler: Handler = async (event) => {
               .select('id')
               .maybeSingle()
             error = retry.error as PostgrestError | null
-            data = retry.data as ToolData | null
+            data = retry.data as { id: string } | null
             if (error) {
               console.error('Error creating tool after fallback:', error)
               return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
@@ -459,7 +459,7 @@ const handler: Handler = async (event) => {
             return { statusCode: 500, body: JSON.stringify({ error: ins.error.message }) }
           }
 
-          await logAdminAction('create_category', 'category', ins.data?.id, basePayload)
+          await logAdminAction('create_category', 'category', ins.data?.id, basePayload as Record<string, unknown>)
           return { statusCode: 200, body: JSON.stringify({ success: true, id: ins.data?.id }) }
         } catch (error: unknown) {
           console.error('Error in create_category:', error)

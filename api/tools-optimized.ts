@@ -20,7 +20,7 @@ class MemoryCache {
       return null
     }
     
-    return item.data
+    return item.data as T
   }
   
   set<T>(key: string, data: T, ttl: number = 60000): void {
