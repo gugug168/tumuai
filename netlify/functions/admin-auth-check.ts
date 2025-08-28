@@ -59,9 +59,8 @@ const handler: Handler = async (event, context) => {
     // 检查用户是否是管理员（使用数据库验证）
     const { data: adminUser, error: adminError } = await supabase
       .from('admin_users')
-      .select('id, user_id, email, role, is_active, permissions, last_login')
+      .select('id, user_id, role, permissions, created_at, updated_at')
       .eq('user_id', user.id)
-      .eq('is_active', true)
       .single()
 
     if (adminError || !adminUser) {
@@ -91,7 +90,7 @@ const handler: Handler = async (event, context) => {
         user: {
           id: adminUser.id,
           user_id: adminUser.user_id,
-          email: adminUser.email,
+          email: user.email,
           role: adminUser.role,
           permissions: adminUser.permissions,
           is_super_admin: adminUser.role === 'super_admin'

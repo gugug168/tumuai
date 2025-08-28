@@ -52,8 +52,12 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
       return null
     }
     
-    // 调用服务端权限验证API
-    const response = await fetch('/netlify/functions/admin-auth-check', {
+    // 调用服务端权限验证API - 支持多种部署环境
+    const apiPath = window.location.hostname.includes('vercel.app') 
+      ? '/api/admin-auth-check'
+      : '/.netlify/functions/admin-auth-check'
+      
+    const response = await fetch(apiPath, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${session.access_token}`,
@@ -218,10 +222,10 @@ export async function deleteTools(toolIds: string[]) {
   if (error) throw error
 }
 
-// 实现管理员函数 - 调用Netlify Functions
+// 实现管理员函数 - 调用Vercel Functions
 export async function getUsers(page = 1, limit = 20) {
   try {
-    const response = await fetch('/netlify/functions/admin-datasets', {
+    const response = await fetch('/api/admin-datasets', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${await ensureAccessToken()}`
@@ -242,7 +246,7 @@ export async function getUsers(page = 1, limit = 20) {
 
 export async function getToolsAdmin(page = 1, limit = 20) {
   try {
-    const response = await fetch('/netlify/functions/admin-tools-crud', {
+    const response = await fetch('/api/admin-tools-crud', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${await ensureAccessToken()}`
@@ -263,7 +267,7 @@ export async function getToolsAdmin(page = 1, limit = 20) {
 
 export async function getAdminLogs(page = 1, limit = 50) {
   try {
-    const response = await fetch('/netlify/functions/admin-datasets?type=logs', {
+    const response = await fetch('/api/admin-datasets?type=logs', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${await ensureAccessToken()}`
@@ -284,7 +288,7 @@ export async function getAdminLogs(page = 1, limit = 50) {
 
 export async function getCategories() {
   try {
-    const response = await fetch('/netlify/functions/admin-categories', {
+    const response = await fetch('/api/admin-categories', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${await ensureAccessToken()}`
