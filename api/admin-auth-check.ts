@@ -1,8 +1,8 @@
-import { VercelRequest, VercelResponse } from '@vercel/node'
-import { createClient } from '@supabase/supabase-js'
+const { VercelRequest, VercelResponse } = require('@vercel/node')
+const { createClient } = require('@supabase/supabase-js')
 
 // 服务端权限验证函数
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+module.exports = async function handler(req: VercelRequest, res: VercelResponse) {
   // 设置CORS头
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
