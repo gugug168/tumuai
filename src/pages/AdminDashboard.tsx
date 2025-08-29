@@ -34,6 +34,7 @@ import {
 } from '../lib/admin';
 import ToolManagementModal from '../components/ToolManagementModal';
 import CategoryManagementModal from '../components/CategoryManagementModal';
+import SubmissionDetailModal from '../components/SubmissionDetailModal';
 
 interface Category {
   id: string;
@@ -848,6 +849,15 @@ const AdminDashboard = () => {
         onSave={() => { loadData() }}
         category={editingCategory || undefined}
         mode={editingCategory ? 'edit' : 'create'}
+      />
+
+      {/* 工具提交详情弹窗 */}
+      <SubmissionDetailModal
+        isOpen={!!showSubmissionModal}
+        onClose={() => setShowSubmissionModal(null)}
+        submission={showSubmissionModal}
+        onApprove={(submissionId) => handleReviewSubmission(submissionId, 'approved')}
+        onReject={(submissionId, notes) => handleReviewSubmission(submissionId, 'rejected', notes)}
       />
     </div>
   );

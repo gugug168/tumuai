@@ -3,6 +3,7 @@ import { Upload, Link as LinkIcon, Tag, DollarSign, Image, FileText, AlertCircle
 import { supabase } from '../lib/supabase';
 import { uploadToolLogo, validateImageFile } from '../lib/storage';
 import { FALLBACK_CATEGORIES, SUBMIT_PRICING_OPTIONS } from '../lib/config';
+import { autoGenerateLogo, generateInitialLogo } from '../lib/logoUtils';
 
 const SubmitToolPage = () => {
   const [formData, setFormData] = useState({
@@ -112,9 +113,10 @@ const SubmitToolPage = () => {
       newErrors.pricingModel = '请选择定价模式';
     }
 
-    if (!formData.logoFile) {
-      newErrors.logoFile = '请上传工具Logo';
-    }
+    // Logo文件不再是必填项
+    // if (!formData.logoFile) {
+    //   newErrors.logoFile = '请上传工具Logo';
+    // }
 
     // 邮箱格式验证（选填）
     if (formData.submitterEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.submitterEmail)) {
@@ -137,17 +139,30 @@ const SubmitToolPage = () => {
     try {
       console.log('开始提交工具...', formData);
       
-      // 上传Logo文件到 Supabase Storage
+      // 处理Logo：上传用户文件或自动生成
       let logoUrl = null;
+      
       if (formData.logoFile) {
+        // 用户上传了Logo文件
         try {
-          console.log('正在上传工具 logo...');
+          console.log('正在上传用户 logo...');
           logoUrl = await uploadToolLogo(formData.logoFile, formData.toolName);
-          console.log('Logo 上传成功:', logoUrl);
+          console.log('用户Logo 上传成功:', logoUrl);
         } catch (uploadError) {
           console.error('Logo 上传失败:', uploadError);
           alert(`图片上传失败: ${(uploadError as Error).message}`);
           return;
+        }
+      } else {
+        // 自动生成Logo
+        try {
+          console.log('正在自动生成 logo...');
+          logoUrl = await autoGenerateLogo(formData.toolName, formData.officialWebsite, formData.categories);
+          console.log('自动生成Logo 成功:', logoUrl);
+        } catch (logoError) {
+          console.warn('自动Logo生成失败，使用默认生成:', logoError);
+          // 兜底：使用简单的首字母生成
+          logoUrl = generateInitialLogo(formData.toolName, formData.categories);
         }
       }
 
@@ -401,7 +416,7 @@ const SubmitToolPage = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    上传工具Logo *
+                    上传工具Logo (可选)
                   </label>
                   <div className="relative">
                     <input
@@ -428,6 +443,9 @@ const SubmitToolPage = () => {
                   )}
                   <p className="mt-1 text-xs text-gray-500">
                     支持 JPG、PNG 格式，文件大小不超过 5MB
+                  </p>
+                  <p className="mt-1 text-xs text-blue-600">
+                    💡 未上传Logo？我们会自动从网站获取favicon或生成首字母Logo
                   </p>
                 </div>
               </div>

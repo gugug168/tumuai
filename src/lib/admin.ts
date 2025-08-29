@@ -129,11 +129,11 @@ export async function getSystemStats() {
       supabase.from('tools').select('id', { count: 'exact', head: true }).eq('status', 'published'),
       supabase.from('tools').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
       supabase.from('categories').select('id', { count: 'exact', head: true }),
-      // 获取真实的用户数量（从auth.users视图）
-      supabase.from('profiles').select('id', { count: 'exact', head: true }).catch(async () => {
-        // 兜底：如果profiles表不存在，尝试从admin_users获取基础统计
+      // 获取真实的用户数量 - 统一查询逻辑
+      supabase.from('user_profiles').select('id', { count: 'exact', head: true }).catch(async () => {
+        // 兜底：如果user_profiles表不存在，查询admin_users表
         const { count } = await supabase.from('admin_users').select('id', { count: 'exact', head: true })
-        return { count: (count || 0) + 1 } // 至少包含当前管理员
+        return { count: (count || 0) } 
       })
     ])
     
