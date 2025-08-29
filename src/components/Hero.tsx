@@ -50,20 +50,13 @@ const Hero = () => {
         <div className="text-center">
           {/* 主标题 */}
           <div className="mb-8">
-            <div className="flex items-center justify-center mb-4">
-              <Sparkles className="w-8 h-8 text-yellow-400 mr-3 animate-pulse" />
-              <span className="text-sm font-semibold text-blue-400 tracking-wider uppercase">
-                Civil AI Hub
-              </span>
-              <Sparkles className="w-8 h-8 text-yellow-400 ml-3 animate-pulse" />
-            </div>
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-4 leading-tight">
               <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                 TumuAI.net
               </span>
             </h1>
-            <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-gray-200 mb-6">
-              专业土木工程AI工具平台
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-gray-200 mb-6">
+              专业土木AI工具平台
             </h2>
           </div>
           
