@@ -14,11 +14,11 @@ const Footer = () => {
               </div>
               <div>
                 <h3 className="text-xl font-bold">TumuAI.net</h3>
-                <p className="text-sm text-gray-400">专业土木工程AI工具平台</p>
+                <p className="text-sm text-gray-400">专业土木AI工具平台</p>
               </div>
             </div>
             <p className="text-gray-400 mb-6 max-w-md">
-              专为土木工程师打造的AI工具导航平台，汇集最新最实用的专业工具，助力工程师提升工作效率。
+              专为土木人打造的AI工具导航平台，汇集最新最实用的专业工具，助力工土木人提升工作效率。
             </p>
             <div className="flex space-x-4">
               <a href="#" className="text-gray-400 hover:text-white transition-colors">
@@ -63,10 +63,10 @@ const Footer = () => {
 
         <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-400 text-sm">
-            © 2024 TumuAI.net. 专业土木工程AI工具平台 保留所有权利。
+            © 2025 TumuAI.net. 专业土木AI工具平台 保留所有权利。
           </p>
           <p className="text-gray-400 text-sm mt-2 md:mt-0">
-            服务10万+土木工程师 · 拥抱AI时代
+            献给每一位土木人 · 一起拥抱AI时代
           </p>
         </div>
       </div>

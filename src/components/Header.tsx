@@ -70,7 +70,7 @@ const Header = () => {
             </div>
             <div>
               <h1 className="text-xl font-bold text-primary-800">TumuAI.net</h1>
-              <p className="text-xs text-gray-500">专业土木工程AI工具平台</p>
+              <p className="text-xs text-gray-500">专业土木AI工具平台</p>
             </div>
           </Link>
 
