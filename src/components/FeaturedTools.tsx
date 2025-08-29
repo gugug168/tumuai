@@ -55,8 +55,9 @@ const FeaturedTools = React.memo(() => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              精选工具
+              编辑推荐 · 精选工具
             </h2>
+            <p className="text-gray-600">经过专业评测，为土木工程师精心挑选的优质工具</p>
           </div>
         </div>
 

@@ -154,9 +154,9 @@ const CategoryBrowser = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            工具分类
+            专业工具分类
           </h2>
-          <p className="text-gray-600">探索不同类别的专业工具</p>
+          <p className="text-gray-600">按专业领域精准分类，快速找到最适合的工具</p>
         </div>
 
         {/* 分类展示 - 显示真实的分类数据 */}

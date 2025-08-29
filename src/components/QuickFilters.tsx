@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Calendar, Sparkles, Heart, Users, Chrome, Smartphone } from 'lucide-react';
 
 const quickFilters = [
-  { id: 'today', label: '今天', icon: Calendar, color: 'bg-purple-600' },
-  { id: 'latest', label: '最新AI', icon: Sparkles, color: 'bg-blue-600' },
-  { id: 'favorites', label: '最多收藏', icon: Heart, color: 'bg-red-500' },
-  { id: 'popular', label: '最多人使用', icon: Users, color: 'bg-green-600' },
-  { id: 'browser', label: '浏览器插件', icon: Chrome, color: 'bg-yellow-600' },
-  { id: 'apps', label: 'Apps', icon: Smartphone, color: 'bg-indigo-600' }
+  { id: 'today', label: '最新', icon: Calendar, color: 'bg-purple-600' },
+  { id: 'latest', label: 'AI设计', icon: Sparkles, color: 'bg-blue-600' },
+  { id: 'favorites', label: '热门推荐', icon: Heart, color: 'bg-red-500' },
+  { id: 'popular', label: '常用工具', icon: Users, color: 'bg-green-600' },
+  { id: 'browser', label: '浏览器扩展', icon: Chrome, color: 'bg-yellow-600' },
+  { id: 'apps', label: '移动应用', icon: Smartphone, color: 'bg-indigo-600' }
 ];
 
 const QuickFilters = () => {

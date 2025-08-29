@@ -13,8 +13,8 @@ const Footer = () => {
                 <Hammer className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-bold">Civil AI Hub</h3>
-                <p className="text-sm text-gray-400">土木AI之家</p>
+                <h3 className="text-xl font-bold">TumuAI.net</h3>
+                <p className="text-sm text-gray-400">专业土木工程AI工具平台</p>
               </div>
             </div>
             <p className="text-gray-400 mb-6 max-w-md">
@@ -63,10 +63,10 @@ const Footer = () => {
 
         <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-400 text-sm">
-            © 2024 Civil AI Hub. 保留所有权利。
+            © 2024 TumuAI.net. 专业土木工程AI工具平台 保留所有权利。
           </p>
           <p className="text-gray-400 text-sm mt-2 md:mt-0">
-            专业服务土木工程师社区
+            服务10万+土木工程师 · 拥抱AI时代
           </p>
         </div>
       </div>

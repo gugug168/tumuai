@@ -24,16 +24,19 @@ const Hero = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-            发现最好的
+            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">TumuAI.net</span>
             <br />
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">土木工程AI工具</span>
+            专业土木工程AI工具平台
           </h1>
           <p className="text-lg md:text-xl mb-4 max-w-4xl mx-auto leading-relaxed text-gray-700">
-            <span className="text-blue-600 font-semibold">500+</span> 个土木工具和 
-            <span className="text-purple-600 font-semibold">8</span> 个分类，已收录于最大的土木工具导航站。
+            汇聚
+            <span className="text-blue-600 font-semibold">结构设计</span>、
+            <span className="text-purple-600 font-semibold">BIM建模</span>、
+            <span className="text-green-600 font-semibold">工程计算</span> 等专业工具，
+            <br />助力土木工程师提升设计效率，拥抱AI时代。
           </p>
           <p className="text-sm text-gray-500 mb-8">
-            土木工具列表和GPTs列表通过ChatGPT每天自动更新。
+            精选专业工具 | 智能推荐 | 持续更新 | 服务10万+工程师
           </p>
           
           {/* 搜索框 */}
@@ -44,7 +47,7 @@ const Hero = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="搜索AI工具、BIM软件、计算工具..."
+                placeholder="搜索结构设计、BIM建模、工程计算等专业工具..."
                 className="w-full pl-12 pr-20 py-4 text-lg border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-lg bg-white text-gray-900 placeholder-gray-500"
               />
               <button 

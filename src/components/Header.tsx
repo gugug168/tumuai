@@ -69,8 +69,8 @@ const Header = () => {
               <Hammer className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-primary-800">Civil AI Hub</h1>
-              <p className="text-xs text-gray-500">土木AI之家</p>
+              <h1 className="text-xl font-bold text-primary-800">TumuAI.net</h1>
+              <p className="text-xs text-gray-500">专业土木工程AI工具平台</p>
             </div>
           </Link>
 
