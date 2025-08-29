@@ -173,11 +173,11 @@ export async function getSystemStats() {
   }
 }
 
-// 获取工具提交列表 - 保持原有实现
+// 获取工具提交列表 - 修复表名错误
 export async function getToolSubmissions(status?: string) {
   try {
     let query = supabase
-      .from('tools')
+      .from('tool_submissions')
       .select('*')
       .order('created_at', { ascending: false })
     
@@ -195,23 +195,67 @@ export async function getToolSubmissions(status?: string) {
   }
 }
 
-// 审核工具提交 - 保持原有实现
+// 审核工具提交 - 修复逻辑错误
 export async function reviewToolSubmission(
   submissionId: string,
   status: 'approved' | 'rejected',
   adminNotes?: string
 ) {
   try {
-    const newStatus = status === 'approved' ? 'published' : 'rejected'
-    const { error } = await supabase
-      .from('tools')
+    // 首先获取提交数据
+    const { data: submission, error: fetchError } = await supabase
+      .from('tool_submissions')
+      .select('*')
+      .eq('id', submissionId)
+      .single()
+    
+    if (fetchError || !submission) {
+      throw new Error(`获取提交数据失败: ${fetchError?.message}`)
+    }
+    
+    // 更新提交状态
+    const { error: updateError } = await supabase
+      .from('tool_submissions')
       .update({ 
-        status: newStatus,
+        status,
+        admin_notes: adminNotes,
+        reviewed_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('id', submissionId)
     
-    if (error) throw error
+    if (updateError) throw updateError
+    
+    // 如果审核通过，将数据添加到tools表
+    if (status === 'approved') {
+      const { error: insertError } = await supabase
+        .from('tools')
+        .insert({
+          name: submission.tool_name,
+          tagline: submission.tagline,
+          description: submission.description,
+          website_url: submission.website_url,
+          logo_url: submission.logo_url,
+          categories: submission.categories,
+          features: submission.features || [],
+          pricing: submission.pricing || 'Free',
+          status: 'published',
+          featured: false,
+          views: 0,
+          upvotes: 0,
+          rating: 0,
+          review_count: 0,
+          date_added: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+      
+      if (insertError) {
+        console.warn('❌ 添加到工具表失败:', insertError)
+        // 不抛出错误，因为主要的审核状态更新已成功
+      }
+    }
+    
   } catch (error) {
     console.error('❌ 审核工具失败:', error)
     throw error

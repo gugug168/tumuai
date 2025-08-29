@@ -12,23 +12,7 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react';
-
-interface ToolSubmission {
-  id: string;
-  submitter_email?: string | null;
-  tool_name: string;
-  tagline?: string;
-  description?: string;
-  website_url: string;
-  logo_url?: string | null;
-  categories: string[];
-  features?: string[];
-  pricing?: string;
-  status: 'pending' | 'approved' | 'rejected';
-  created_at: string;
-  updated_at?: string;
-  admin_notes?: string | null;
-}
+import type { ToolSubmission } from '../types';
 
 interface SubmissionDetailModalProps {
   isOpen: boolean;

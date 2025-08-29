@@ -3,6 +3,26 @@
  * 为用户提供多种logo获取方式，减少手动上传的必要性
  */
 
+/**
+ * 带超时的fetch请求
+ */
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = 5000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
 // 默认占位符logo列表 - 根据工具类型匹配
 const DEFAULT_LOGOS = {
   'AI工具': '/placeholders/ai-tool.svg',
@@ -37,11 +57,10 @@ export async function getFaviconUrl(websiteUrl: string): Promise<string | null> 
     // 检查哪个favicon存在且可访问
     for (const faviconUrl of faviconUrls) {
       try {
-        const response = await fetch(faviconUrl, { 
+        const response = await fetchWithTimeout(faviconUrl, { 
           method: 'HEAD', 
-          mode: 'no-cors',
-          timeout: 5000 
-        });
+          mode: 'no-cors'
+        }, 5000);
         
         // no-cors模式下，如果没有错误说明资源存在
         return faviconUrl;
@@ -208,10 +227,9 @@ export async function autoGenerateLogo(toolName: string, websiteUrl: string, cat
  */
 export async function validateLogoUrl(logoUrl: string): Promise<boolean> {
   try {
-    const response = await fetch(logoUrl, { 
-      method: 'HEAD',
-      timeout: 5000
-    });
+    const response = await fetchWithTimeout(logoUrl, { 
+      method: 'HEAD'
+    }, 5000);
     return response.ok;
   } catch {
     return false;
