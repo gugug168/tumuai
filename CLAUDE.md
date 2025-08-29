@@ -93,6 +93,112 @@ netlify/functions/    # 服务器函数（管理员功能）
 - **环境变量**：开发使用`.env.local`，生产使用Netlify环境变量
 - **错误处理**：所有API调用都有完善的错误处理和兜底机制
 
+## 自动Git提交配置
+
+### 工作流程
+
+当Claude完成代码修改时，自动执行Git提交和推送操作，确保代码变更及时同步到远程仓库。
+
+### 自动提交规则
+
+**触发条件：**
+- Claude完成任何代码修改任务
+- 修改涉及源代码文件（.js, .jsx, .ts, .tsx, .css, .md等）
+- 功能验证通过，无明显错误
+
+**提交消息格式：**
+```
+[类型] 简洁描述
+
+详细说明（可选）
+
+🤖 Generated with Claude Code (claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+**提交类型标记：**
+- `feat` - 新功能
+- `fix` - 问题修复  
+- `refactor` - 代码重构
+- `style` - 样式调整
+- `docs` - 文档更新
+- `chore` - 配置或工具变更
+
+### 安全措施
+
+**提交前检查：**
+- [ ] 代码能够正常编译
+- [ ] 不包含敏感信息（API密钥、密码等）
+- [ ] 不包含调试代码或临时文件
+- [ ] 变更符合项目代码规范
+
+**排除文件：**
+```gitignore
+# 不自动提交的文件类型
+*.log
+*.tmp
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+node_modules/
+dist/
+.DS_Store
+```
+
+### 使用方法
+
+**启用自动提交：**
+```bash
+# 启用自动提交模式
+claude config set autoCommit true
+
+# 设置提交作者（可选）
+git config user.name "Claude AI Assistant"
+git config user.email "claude@anthropic.com"
+```
+
+**手动提交当前更改：**
+```bash
+# 执行自动提交脚本
+./scripts/auto-commit.sh "feat: 添加搜索功能和界面优化"
+```
+
+### 自动化脚本
+
+项目包含以下自动化脚本：
+- `scripts/auto-commit.sh` - 自动提交脚本
+- `scripts/pre-commit-check.sh` - 提交前检查脚本  
+- `.git/hooks/pre-commit` - Git预提交钩子
+
+### 配置选项
+
+**全局配置：**
+```bash
+# 自动提交开关
+claude config set autoCommit true
+
+# 自动推送开关  
+claude config set autoPush true
+
+# 提交消息模板
+claude config set commitTemplate "Claude Code Update"
+```
+
+**项目配置（.clauderc）：**
+```json
+{
+  "autoCommit": {
+    "enabled": true,
+    "autoPush": true,
+    "requireTests": false,
+    "skipFiles": ["*.log", "*.tmp"],
+    "commitTemplate": "[AUTO] {description}\n\n🤖 Generated with Claude Code"
+  }
+}
+```
+
 
 
 # Development Guidelines

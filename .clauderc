@@ -1,0 +1,31 @@
+{
+  "autoCommit": {
+    "enabled": true,
+    "autoPush": false,
+    "requireTests": false,
+    "skipFiles": [
+      "*.log",
+      "*.tmp",
+      ".env*",
+      "node_modules/",
+      "dist/",
+      ".DS_Store",
+      "*.lock"
+    ],
+    "commitTemplate": "[AUTO] {description}\n\n🤖 Generated with Claude Code (claude.ai/code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "defaultType": "feat"
+  },
+  "git": {
+    "authorName": "Claude AI Assistant", 
+    "authorEmail": "claude@anthropic.com",
+    "pushAfterCommit": false,
+    "runPreCommitChecks": true
+  },
+  "project": {
+    "name": "Civil AI Hub",
+    "type": "react-typescript",
+    "buildCommand": "npm run build",
+    "testCommand": "npm run test",
+    "lintCommand": "npm run lint"
+  }
+}

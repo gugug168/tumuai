@@ -24,7 +24,6 @@ import {
   LoaderIcon
 } from 'lucide-react';
 import { getCategories } from '../lib/supabase';
-import { getTools } from '../lib/supabase';
 import { apiRequestWithRetry } from '../lib/api';
 
 // 图标映射
@@ -90,7 +89,6 @@ const getSimpleColorClass = (hexColor: string) => {
 
 const CategoryBrowser = () => {
   const [categories, setCategories] = useState([]);
-  const [tools, setTools] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,20 +97,15 @@ const CategoryBrowser = () => {
       try {
         setLoading(true);
         setError(null);
-        console.log('🔍 CategoryBrowser: 开始获取数据...');
+        console.log('🔍 CategoryBrowser: 开始获取分类数据...');
         
-        // 并行获取分类和工具数据
-        const [categoriesData, toolsData] = await Promise.all([
-          apiRequestWithRetry(() => getCategories(), 2, 1000),
-          apiRequestWithRetry(() => getTools(8), 2, 1000) // 获取8个工具用于快捷入口
-        ]);
+        // 获取分类数据
+        const categoriesData = await apiRequestWithRetry(() => getCategories(), 2, 1000);
         
         setCategories(categoriesData);
-        setTools(toolsData);
         
-        console.log('✅ CategoryBrowser: 获取数据成功');
+        console.log('✅ CategoryBrowser: 获取分类数据成功');
         console.log(`   分类: ${categoriesData.length}个`);
-        console.log(`   工具: ${toolsData.length}个`);
         
       } catch (err) {
         console.error('❌ CategoryBrowser: 获取数据失败:', err);
@@ -159,62 +152,11 @@ const CategoryBrowser = () => {
   return (
     <section className="py-16 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              我的工具
-            </h2>
-            <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center">
-              编辑
-            </button>
-          </div>
-        </div>
-
-        {/* 快捷工具栏 - 显示真实的工具数据 */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-            {tools.slice(0, 8).map((tool) => (
-              <a
-                key={tool.id}
-                href={tool.website_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex flex-col items-center p-3 rounded-lg hover:bg-gray-50 transition-colors group"
-                title={`访问 ${tool.name} - ${tool.tagline}`}
-              >
-                <div className="bg-blue-500 p-3 rounded-lg mb-2 group-hover:scale-110 transition-transform">
-                  {tool.logo_url ? (
-                    <img 
-                      src={tool.logo_url} 
-                      alt={tool.name}
-                      className="w-6 h-6 rounded"
-                      onError={(e) => {
-                        // 如果图片加载失败，显示默认图标
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.parentElement.innerHTML = '<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>';
-                      }}
-                    />
-                  ) : (
-                    <Wrench className="w-6 h-6 text-white" />
-                  )}
-                </div>
-                <span className="text-sm font-medium text-gray-700 text-center line-clamp-2">
-                  {tool.name}
-                </span>
-              </a>
-            ))}
-            
-            {/* 查看更多工具链接 */}
-            <Link
-              to="/tools"
-              className="flex flex-col items-center p-3 rounded-lg hover:bg-gray-50 transition-colors group border-2 border-dashed border-gray-300"
-            >
-              <div className="bg-gray-400 p-3 rounded-lg mb-2 group-hover:scale-110 transition-transform">
-                <ArrowRight className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-sm font-medium text-gray-500 text-center">查看更多</span>
-            </Link>
-          </div>
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            工具分类
+          </h2>
+          <p className="text-gray-600">探索不同类别的专业工具</p>
         </div>
 
         {/* 分类展示 - 显示真实的分类数据 */}
