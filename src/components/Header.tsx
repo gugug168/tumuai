@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, Menu, X, Hammer, User, LogOut } from 'lucide-react';
+import { Menu, X, Hammer, User, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
 import { checkAdminStatus } from '../lib/admin';
@@ -9,7 +9,6 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [searchQuery, setSearchQuery] = useState('');
   const location = useLocation();
   const { user, profile, signOut } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -38,7 +37,6 @@ const Header = () => {
   const navItems = [
     { path: '/', label: '首页' },
     { path: '/tools', label: '工具中心' },
-    { path: '/favorites', label: '我的收藏', requireAuth: true },
     { path: '/submit', label: '提交工具' },
     { path: '/about', label: '关于我们' },
   ];
@@ -59,13 +57,6 @@ const Header = () => {
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      // 跳转到工具中心页面并传递搜索参数
-      window.location.href = `/tools?search=${encodeURIComponent(searchQuery.trim())}`;
-    }
-  };
 
   return (
     <>
@@ -83,19 +74,6 @@ const Header = () => {
             </div>
           </Link>
 
-          {/* Search Bar - Desktop */}
-          <div className="hidden md:flex flex-1 max-w-2xl mx-8">
-            <form onSubmit={handleSearch} className="relative w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="搜索AI工具、BIM软件、计算工具..."
-                className="input-field pl-10 bg-white text-gray-900 placeholder-gray-500"
-              />
-            </form>
-          </div>
 
           {/* Navigation - Desktop */}
           <nav className="hidden md:flex items-center space-x-6">
@@ -188,19 +166,6 @@ const Header = () => {
           </button>
         </div>
 
-        {/* Mobile Search */}
-        <div className="md:hidden pb-4">
-          <form onSubmit={handleSearch} className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜索工具..."
-              className="input-field pl-10 bg-white text-gray-900 placeholder-gray-500"
-            />
-          </form>
-        </div>
 
         {/* Mobile Navigation */}
         {isMenuOpen && (

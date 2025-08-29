@@ -15,7 +15,6 @@ import {
   Tag,
   RefreshCw,
   ExternalLink,
-  Wrench,
   Settings
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -33,7 +32,6 @@ import {
   type ToolSubmission,
   type AdminLog
 } from '../lib/admin';
-import DatabaseRepair from '../components/DatabaseRepair';
 import ToolManagementModal from '../components/ToolManagementModal';
 import CategoryManagementModal from '../components/CategoryManagementModal';
 
@@ -296,8 +294,7 @@ const AdminDashboard = () => {
     { id: 'submissions', label: '工具审核', icon: FileText, count: stats.pendingSubmissions },
     { id: 'tools', label: '工具管理', icon: Database },
     { id: 'categories', label: '分类管理', icon: Tag },
-    { id: 'users', label: '用户管理', icon: Users },
-    { id: 'repair', label: '数据库修复', icon: Wrench }
+    { id: 'users', label: '用户管理', icon: Users }
   ];
 
   // 权限验证中，显示加载界面
@@ -832,13 +829,6 @@ const AdminDashboard = () => {
               </div>
             )}
 
-            {/* 数据库修复 */}
-            {activeTab === 'repair' && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">数据库修复</h3>
-                <DatabaseRepair />
-              </div>
-            )}
           </div>
         </div>
       </div>

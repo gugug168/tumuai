@@ -82,10 +82,10 @@ const ToolsPage = React.memo(() => {
       );
     }
 
-    // 功能筛选 - 添加空值保护  
+    // 功能筛选 - 修改为匹配所有选择的功能特性
     if (filters.features.length > 0) {
       filtered = filtered.filter(tool =>
-        filters.features.some(feature => (tool.features || []).includes(feature))
+        filters.features.every(feature => (tool.features || []).includes(feature))
       );
     }
 

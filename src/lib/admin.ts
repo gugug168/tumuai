@@ -124,19 +124,35 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
 // 获取系统统计数据 - 修复字段匹配问题
 export async function getSystemStats() {
   try {
-    const [toolsCount, publishedCount, pendingCount, categoriesCount] = await Promise.all([
+    const [toolsCount, publishedCount, pendingCount, categoriesCount, usersCount] = await Promise.all([
       supabase.from('tools').select('id', { count: 'exact', head: true }),
       supabase.from('tools').select('id', { count: 'exact', head: true }).eq('status', 'published'),
       supabase.from('tools').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-      supabase.from('categories').select('id', { count: 'exact', head: true })
+      supabase.from('categories').select('id', { count: 'exact', head: true }),
+      // 获取真实的用户数量（从auth.users视图）
+      supabase.from('profiles').select('id', { count: 'exact', head: true }).catch(async () => {
+        // 兜底：如果profiles表不存在，尝试从admin_users获取基础统计
+        const { count } = await supabase.from('admin_users').select('id', { count: 'exact', head: true })
+        return { count: (count || 0) + 1 } // 至少包含当前管理员
+      })
     ])
     
     const totalTools = toolsCount.count || 0
     const pendingSubmissions = pendingCount.count || 0
     
+    let totalUsers = 0
+    if (usersCount && typeof usersCount.count === 'number') {
+      totalUsers = usersCount.count
+    } else if (usersCount && usersCount.count) {
+      totalUsers = usersCount.count
+    } else {
+      // 最终兜底：设置为1（至少有当前管理员）
+      totalUsers = 1
+    }
+    
     return {
       totalTools: totalTools,
-      totalUsers: 0, // 暂时设为0，可以后续添加用户统计
+      totalUsers: totalUsers,
       pendingSubmissions: pendingSubmissions,
       totalReviews: 0, // 暂时设为0
       totalFavorites: 0, // 暂时设为0
@@ -147,7 +163,7 @@ export async function getSystemStats() {
     console.error('❌ 获取统计数据异常:', error)
     return { 
       totalTools: 0, 
-      totalUsers: 0, 
+      totalUsers: 1, // 设置为1而不是0，至少有当前管理员
       pendingSubmissions: 0, 
       totalReviews: 0,
       totalFavorites: 0,

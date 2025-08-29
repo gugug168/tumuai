@@ -16,7 +16,6 @@ import SubmitToolPage from './pages/SubmitToolPage'; // 改为直接导入以避
 const ToolDetailPage = React.lazy(() => import('./pages/ToolDetailPage'));
 const AboutPage = React.lazy(() => import('./pages/AboutPage'));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
-const FavoritesPage = React.lazy(() => import('./pages/FavoritesPage'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const DiagnosticPage = React.lazy(() => import('./pages/DiagnosticPage'));
 const AdminLoginPage = React.lazy(() => import('./pages/AdminLoginPage'));
@@ -39,7 +38,6 @@ function App() {
                     <Route path="/submit" element={<SubmitToolPage />} />
                     <Route path="/about" element={<AboutPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
-                    <Route path="/favorites" element={<FavoritesPage />} />
                     <Route path="/admin/*" element={<AdminDashboard />} />
                     <Route path="/admin-login" element={<AdminLoginPage />} />
                     <Route path="/diagnostic" element={<DiagnosticPage />} />
