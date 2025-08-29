@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概览
 
-Civil AI Hub是一个面向Civil领域的人工智能工具平台，使用React + TypeScript + Vite构建，部署在Netlify上，后端使用Supabase（PostgreSQL数据库）。
+Civil AI Hub是一个面向Civil领域的人工智能工具平台，使用React + TypeScript + Vite构建，部署在Vercel上，后端使用Supabase（PostgreSQL数据库）。
 
 ## 技术栈
 
@@ -15,7 +15,7 @@ Civil AI Hub是一个面向Civil领域的人工智能工具平台，使用React 
 - **路由**：React Router v7
 - **状态管理**：React Context
 - **后端**：Supabase（数据库+认证）
-- **部署**：Netlify Functions（无服务器函数）
+- **部署**：Vercel Functions（无服务器函数）
 
 ## 常用命令
 
@@ -33,7 +33,7 @@ npm run lint         # ESLint代码检查
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 
-# 生产环境变量（Netlify）
+# 生产环境变量（Vercel）
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ```
 
@@ -53,7 +53,7 @@ src/
 ├── App.tsx           # 主应用路由配置
 └── main.tsx          # 应用入口
 
-netlify/functions/    # 服务器函数（管理员功能）
+api/                  # 服务器函数（管理员功能）
 ├── admin-actions.ts  # 工具审核CRUD
 ├── admin-check.ts    # 管理员权限验证
 ├── admin-datasets.ts # 数据统计
@@ -76,21 +76,21 @@ netlify/functions/    # 服务器函数（管理员功能）
 1. **用户功能**：浏览工具、搜索过滤、收藏、提交新工具
 2. **管理功能**：工具审核、CRUD操作、数据统计
 3. **认证系统**：基于Supabase Auth的用户认证
-4. **数据获取**：优先使用Netlify Functions，兜底Supabase客户端
+4. **数据获取**：优先使用Vercel Functions，兜底Supabase客户端
 
 ### 部署流程
 
-项目使用Netlify自动部署：
+项目使用Vercel自动部署：
 1. 代码推送到GitHub触发自动构建
-2. Netlify运行`npm run build`构建静态资源
-3. 无服务器函数自动部署到`netlify/functions/`
-4. 环境变量在Netlify Dashboard中配置
+2. Vercel运行`npm run build`构建静态资源
+3. 无服务器函数自动部署到`api/`目录
+4. 环境变量在Vercel Dashboard中配置
 
 ### 开发注意事项
 
-- **数据获取**：优先使用Netlify Functions避免RLS问题
+- **数据获取**：优先使用Vercel Functions避免RLS问题
 - **权限控制**：管理员功能使用服务器函数验证权限
-- **环境变量**：开发使用`.env.local`，生产使用Netlify环境变量
+- **环境变量**：开发使用`.env.local`，生产使用Vercel环境变量
 - **错误处理**：所有API调用都有完善的错误处理和兜底机制
 
 ## 自动Git提交配置
