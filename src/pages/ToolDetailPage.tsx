@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { addToFavorites, removeFromFavorites, isFavorited, addToolReview, getToolReviews } from '../lib/community';
 import { getToolById, incrementToolViews, getTools } from '../lib/supabase';
+import { generateInitialLogo } from '../lib/logoUtils';
 import type { Tool } from '../types/index';
 
 interface Review {
@@ -70,7 +71,7 @@ const ToolDetailPage = () => {
           name: tool.name,
           category: tool.categories[0] || currentCategory,
           description: tool.tagline,
-          logo: tool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=200',
+          logo: tool.logo_url || generateInitialLogo(tool.name, tool.categories || []),
           rating: tool.rating
         }));
       
@@ -131,13 +132,13 @@ const ToolDetailPage = () => {
   const adaptedTool = tool ? {
     id: tool.id,
     name: tool.name,
-    logo: tool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=200',
+    logo: tool.logo_url || generateInitialLogo(tool.name, tool.categories || []),
     category: tool.categories?.[0] || '工具',
     website: tool.website_url,
     shortDescription: tool.tagline,
     detailedDescription: tool.description || tool.tagline,
     images: [
-      tool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=800'
+      tool.logo_url || generateInitialLogo(tool.name, tool.categories || [])
     ],
     videoUrl: '',
     features: tool.features || [],

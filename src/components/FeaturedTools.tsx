@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Star, Heart } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
 import { getFeaturedTools } from '../lib/supabase';
+import { generateInitialLogo } from '../lib/logoUtils';
 import { apiRequestWithRetry } from '../lib/api';
 import { useCache } from '../hooks/useCache';
 import { usePerformance } from '../hooks/usePerformance';
@@ -110,7 +111,7 @@ const FeaturedTools = React.memo(() => {
               {/* Tool Logo */}
               <div className="flex-shrink-0">
                 <OptimizedImage
-                  src={tool.logo_url || 'https://via.placeholder.com/48x48?text=Tool'}
+                  src={tool.logo_url || generateInitialLogo(tool.name, tool.categories || [])}
                   alt={tool.name}
                   className="w-12 h-12 rounded-lg"
                   priority={true}

@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Star, ExternalLink, Heart, Eye } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
+import { generateInitialLogo } from '../lib/logoUtils';
 import type { Tool } from '../types';
 
 interface ToolCardProps {
@@ -18,13 +19,31 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
     onFavoriteToggle(tool.id);
   }, [tool.id, onFavoriteToggle]);
 
+  // 生成兜底Logo的函数
+  const getFallbackLogo = React.useCallback(() => {
+    try {
+      return generateInitialLogo(tool.name, tool.categories || []);
+    } catch (error) {
+      console.warn('生成兜底Logo失败:', error);
+      // 最终兜底：简单的SVG
+      return `data:image/svg+xml,${encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+          <rect width="100" height="100" fill="#6b7280" rx="12"/>
+          <text x="50" y="50" font-family="Arial" font-size="24" text-anchor="middle" dominant-baseline="central" fill="white">
+            ${tool.name?.charAt(0)?.toUpperCase() || 'T'}
+          </text>
+        </svg>
+      `)}`;
+    }
+  }, [tool.name, tool.categories]);
+
   if (viewMode === 'list') {
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow group flex items-center space-x-4">
         {/* Tool Logo */}
         <div className="flex-shrink-0">
           <OptimizedImage
-            src={tool.logo_url || 'https://via.placeholder.com/48x48?text=Tool'}
+            src={tool.logo_url || getFallbackLogo()}
             alt={tool.name}
             className="w-12 h-12 rounded-lg"
             priority={false}
@@ -85,7 +104,7 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
       {/* Tool Image */}
       <div className="relative overflow-hidden">
         <OptimizedImage
-          src={tool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=300'}
+          src={tool.logo_url || getFallbackLogo()}
           alt={tool.name}
           className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"
           priority={false}

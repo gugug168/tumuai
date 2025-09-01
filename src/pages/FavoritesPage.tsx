@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Heart, Star, ExternalLink, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserFavorites, removeFromFavorites } from '../lib/community';
+import { generateInitialLogo } from '../lib/logoUtils';
 import AuthModal from '../components/AuthModal';
 
 const FavoritesPage = () => {
@@ -128,7 +129,7 @@ const FavoritesPage = () => {
                   <div className="p-6">
                     <div className="flex items-start space-x-3 mb-4">
                       <img
-                        src={tool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=100'}
+                        src={tool.logo_url || generateInitialLogo(tool.name, tool.categories || [])}
                         alt={tool.name}
                         className="w-12 h-12 rounded-lg object-cover"
                       />

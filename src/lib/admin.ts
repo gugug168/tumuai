@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { ADMIN_CONFIG } from './config'
+import { ADMIN_CONFIG, API_ENDPOINTS } from './config'
 
 // 基本类型定义
 export interface AdminUser {
@@ -37,6 +37,44 @@ export interface AdminLog {
 async function ensureAccessToken() {
   const { data: { session } } = await supabase.auth.getSession()
   return session?.access_token || null
+}
+
+// 统一获取所有管理数据 - 调用修复的后端API
+export async function getAllAdminData() {
+  try {
+    console.log('🔄 统一获取管理数据...')
+    const accessToken = await ensureAccessToken()
+    
+    if (!accessToken) {
+      throw new Error('用户未登录')
+    }
+    
+    const response = await fetch(API_ENDPOINTS.vercelFunctions.adminDatasets, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`API调用失败: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    console.log('✅ 管理数据获取成功:', {
+      tools: data.tools?.length || 0,
+      users: data.users?.length || 0,
+      submissions: data.submissions?.length || 0,
+      categories: data.categories?.length || 0,
+      logs: data.logs?.length || 0
+    })
+    
+    return data
+  } catch (error) {
+    console.error('❌ 统一获取管理数据失败:', error)
+    throw error
+  }
 }
 
 // 检查用户是否为管理员 - 使用服务端验证

@@ -20,14 +20,9 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { 
   checkAdminStatus, 
-  getSystemStats, 
-  getToolSubmissions, 
+  getAllAdminData,
   reviewToolSubmission,
-  getUsers,
-  getToolsAdmin,
-  getAdminLogs,
   deleteTool,
-  getCategories,
   deleteCategory,
   type ToolSubmission,
   type AdminLog
@@ -143,27 +138,35 @@ const AdminDashboard = () => {
       
       console.log('✅ 管理员权限验证通过');
       
-      // 加载所有数据
-      const loaders = [
-        loadStats(),
-        loadSubmissions(),
-        loadUsers(),
-        loadTools(),
-        loadLogs(),
-        loadCategories()
-      ].map(p => p.catch((e) => console.error('❌ 子任务失败:', e)))
+      // 使用统一的数据获取API
+      const data = await getAllAdminData();
+      
+      // 设置所有数据状态
+      if (data.stats) {
+        setStats(prevStats => ({ ...prevStats, ...data.stats }));
+      }
+      
+      if (data.submissions) {
+        setSubmissions(data.submissions);
+      }
+      
+      if (data.users) {
+        setUsers(data.users); // 使用修复的真实用户数据
+      }
+      
+      if (data.tools) {
+        setTools(data.tools);
+      }
+      
+      if (data.logs) {
+        setLogs(data.logs);
+      }
+      
+      if (data.categories) {
+        setCategories(data.categories);
+      }
 
-      const hardCap = new Promise<void>((resolve) => setTimeout(() => {
-        console.warn('⏱️ 管理数据加载达到硬性超时(15s)，继续渲染已到达的数据')
-        resolve()
-      }, 15000))
-
-      await Promise.race([
-        Promise.allSettled(loaders).then(() => undefined),
-        hardCap
-      ])
-
-      console.log('🎉 管理数据加载流程结束（全部完成或达成硬性超时）');
+      console.log('🎉 管理数据加载完成');
     } catch (error: unknown) {
       const err = error as Error
       console.error('❌ 管理数据加载失败:', error);
@@ -173,65 +176,7 @@ const AdminDashboard = () => {
     }
   }, [navigate]);
 
-  const loadStats = async () => {
-    try {
-      const data = await getSystemStats();
-      setStats(prev => ({ ...prev, ...data }));
-    } catch (error) {
-      console.error('❌ 统计数据加载失败:', error);
-    }
-  };
-
-  const loadSubmissions = async () => {
-    try {
-      const data = await getToolSubmissions();
-      setSubmissions(data);
-    } catch (error) {
-      console.error('❌ 提交数据加载失败:', error);
-    }
-  };
-
-  const loadUsers = async () => {
-    try {
-      const data = await getUsers();
-      setUsers(data);
-    } catch (error) {
-      console.error('❌ 用户数据加载失败:', error);
-    }
-  };
-
-  const loadTools = async () => {
-    try {
-      const data = await getToolsAdmin();
-      setTools(data);
-    } catch (error) {
-      console.error('❌ 工具数据加载失败:', error);
-    }
-  };
-
-  const loadLogs = async () => {
-    try {
-      const data = await getAdminLogs();
-      setLogs(data);
-      setStats(prev => ({ ...prev, totalLogs: data.length }));
-      console.log('✅ 管理员日志加载完成:', data.length, '条记录');
-      // 确保logs状态被使用（避免linting警告）
-      if (process.env.NODE_ENV === 'development') {
-        console.debug('当前日志状态:', logs.length, '-> ', data.length);
-      }
-    } catch (error) {
-      console.error('❌ 日志数据加载失败:', error);
-    }
-  };
-
-  const loadCategories = async () => {
-    try {
-      const data = await getCategories();
-      setCategories(data);
-    } catch (error) {
-      console.error('❌ 分类数据加载失败:', error);
-    }
-  };
+  // 所有单独的load函数已移除，现在使用统一的getAllAdminData()函数
 
   useEffect(() => {
     // 只有权限验证通过后才加载数据
@@ -815,7 +760,7 @@ const AdminDashboard = () => {
                         {users.map((user) => (
                           <tr key={user.id}>
                             <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                              {user.full_name || user.email}
+                              {user.email?.split('@')[0] || user.email}
                             </td>
                             <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{user.email}</td>
                             <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">

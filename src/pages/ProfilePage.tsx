@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useProfile } from '../contexts/ProfileContext';
 import { updateUserProfile } from '../lib/auth';
 import { getUserFavorites } from '../lib/community';
+import { generateInitialLogo } from '../lib/logoUtils';
 import { useNavigate, Link } from 'react-router-dom';
 import type { Tool } from '../types';
 
@@ -208,7 +209,7 @@ const ProfilePage = () => {
                         <div key={favorite.id} className="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-shadow">
                           <div className="flex items-center space-x-3 mb-3">
                             <img
-                              src={tool.logo_url || 'https://via.placeholder.com/40x40?text=Tool'}
+                              src={tool.logo_url || generateInitialLogo(tool.name, tool.categories || [])}
                               alt={tool.name}
                               className="w-10 h-10 rounded-lg object-cover"
                             />

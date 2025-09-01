@@ -9,6 +9,7 @@ import type { Tool, ToolReview } from '../types';
 import { useTypedQuery, useTypedMutation } from '../hooks/useTypedAsyncOperation';
 import { getToolById, incrementToolViews } from '../lib/supabase';
 import { addToolReview } from '../lib/community';
+import { generateInitialLogo } from '../lib/logoUtils';
 import type { 
   BaseComponentProps, 
   FormState, 
@@ -66,7 +67,7 @@ const ToolHeader: React.FC<ToolHeaderProps> = React.memo(({
     <header className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
       <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-6">
         <img
-          src={tool.logo_url || '/default-tool-logo.png'}
+          src={tool.logo_url || generateInitialLogo(tool.name, tool.categories || [])}
           alt={`${tool.name} logo`}
           className="w-20 h-20 rounded-xl object-cover"
           loading="lazy"

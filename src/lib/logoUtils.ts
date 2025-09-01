@@ -121,6 +121,22 @@ export function getDefaultLogoByCategory(categories: string[]): string {
 }
 
 /**
+ * 安全的Base64编码函数，支持中文字符
+ */
+function safeBase64Encode(str: string): string {
+  try {
+    // 对于中文字符，先用encodeURIComponent编码，再使用btoa
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => {
+      return String.fromCharCode(parseInt(p1, 16));
+    }));
+  } catch (error) {
+    // 如果编码失败，使用URL编码方式
+    console.warn('Base64编码失败，使用URL编码:', error);
+    return encodeURIComponent(str);
+  }
+}
+
+/**
  * 生成基于首字母的SVG logo
  */
 export function generateInitialLogo(toolName: string, categories: string[] = []): string {
@@ -137,7 +153,13 @@ export function generateInitialLogo(toolName: string, categories: string[] = [])
     </svg>
   `;
   
-  return `data:image/svg+xml;base64,${btoa(svgContent)}`;
+  try {
+    return `data:image/svg+xml;base64,${safeBase64Encode(svgContent)}`;
+  } catch (error) {
+    // 最终兜底：直接使用URI编码的SVG
+    console.warn('SVG编码失败，使用URI编码兜底:', error);
+    return `data:image/svg+xml,${encodeURIComponent(svgContent)}`;
+  }
 }
 
 /**

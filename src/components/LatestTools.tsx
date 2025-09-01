@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, ExternalLink, Heart, Eye, Clock } from 'lucide-react';
 import { getLatestTools } from '../lib/supabase';
+import { generateInitialLogo } from '../lib/logoUtils';
 import type { Tool } from '../types';
 
 const LatestTools = () => {
@@ -81,7 +82,7 @@ const LatestTools = () => {
               {/* Tool Image */}
               <div className="relative overflow-hidden">
                 <img
-                  src={tool.logo_url || 'https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=300'}
+                  src={tool.logo_url || generateInitialLogo(tool.name, tool.categories || [])}
                   alt={tool.name}
                   className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"
                 />
