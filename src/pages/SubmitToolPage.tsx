@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Upload, Link as LinkIcon, Tag, DollarSign, Image, FileText, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { uploadToolLogo, validateImageFile } from '../lib/storage';
-import { FALLBACK_CATEGORIES, SUBMIT_PRICING_OPTIONS } from '../lib/config';
+import { SUBMIT_PRICING_OPTIONS, EMERGENCY_CATEGORIES } from '../lib/config';
+import { getCategories } from '../lib/supabase';
 import { autoGenerateLogo, generateInitialLogo } from '../lib/logoUtils';
 
 const SubmitToolPage = () => {
@@ -20,6 +21,33 @@ const SubmitToolPage = () => {
 
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // 动态分类数据状态
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  // 获取分类数据
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        console.log('🔄 SubmitToolPage: 开始获取分类数据...');
+        setCategoriesLoading(true);
+        const dbCategories = await getCategories();
+        const categoryNames = dbCategories.map(c => c.name);
+        setAvailableCategories(categoryNames);
+        console.log('✅ SubmitToolPage: 获取分类成功', categoryNames.length, '个分类');
+      } catch (error) {
+        console.error('❌ SubmitToolPage: 获取分类失败:', error);
+        // 使用emergency fallback
+        setAvailableCategories([...EMERGENCY_CATEGORIES]);
+        console.log('🚨 SubmitToolPage: 使用emergency分类');
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    loadCategories();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -145,24 +173,25 @@ const SubmitToolPage = () => {
       if (formData.logoFile) {
         // 用户上传了Logo文件
         try {
-          console.log('正在上传用户 logo...');
+          console.log('🖼️ 开始上传用户Logo文件:', formData.logoFile.name);
           logoUrl = await uploadToolLogo(formData.logoFile, formData.toolName);
-          console.log('用户Logo 上传成功:', logoUrl);
+          console.log('✅ 用户Logo上传成功:', logoUrl);
         } catch (uploadError) {
-          console.error('Logo 上传失败:', uploadError);
-          alert(`图片上传失败: ${(uploadError as Error).message}`);
+          console.error('❌ Logo上传失败:', uploadError);
+          alert(`📷 图片上传失败！\n\n${(uploadError as Error).message}\n\n💡 建议：\n• 检查网络连接是否正常\n• 确保图片文件小于5MB\n• 尝试选择其他格式的图片（JPG、PNG）`);
           return;
         }
       } else {
         // 自动生成Logo
         try {
-          console.log('正在自动生成 logo...');
+          console.log('🎨 开始自动生成Logo...');
           logoUrl = await autoGenerateLogo(formData.toolName, formData.officialWebsite, formData.categories);
-          console.log('自动生成Logo 成功:', logoUrl);
+          console.log('✅ 自动生成Logo成功:', logoUrl);
         } catch (logoError) {
-          console.warn('自动Logo生成失败，使用默认生成:', logoError);
+          console.warn('⚠️ 自动Logo生成失败，使用默认生成:', logoError);
           // 兜底：使用简单的首字母生成
           logoUrl = generateInitialLogo(formData.toolName, formData.categories);
+          console.log('🔤 使用首字母Logo生成');
         }
       }
 
@@ -349,21 +378,33 @@ const SubmitToolPage = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   选择分类 * <span className="text-gray-500">(可多选)</span>
                 </label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {FALLBACK_CATEGORIES.map((category) => (
-                    <label key={category} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={formData.categories.includes(category)}
-                        onChange={() => handleCategoryChange(category)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">{category}</span>
-                    </label>
-                  ))}
-                </div>
+                {categoriesLoading ? (
+                  <div className="flex items-center justify-center py-8 text-gray-500">
+                    <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                    加载分类数据中...
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {availableCategories.map((category) => (
+                      <label key={category} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.categories.includes(category)}
+                          onChange={() => handleCategoryChange(category)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">{category}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
                 {errors.categories && (
                   <p className="mt-2 text-sm text-red-600">{errors.categories}</p>
+                )}
+                {!categoriesLoading && availableCategories.length === 0 && (
+                  <p className="mt-2 text-sm text-amber-600">
+                    ⚠️ 暂时无法获取分类数据，请稍后重试
+                  </p>
                 )}
               </div>
 

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Tool, ToolSearchFilters } from '../types'
+import { CategoryManager } from './category-manager'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -219,94 +220,7 @@ export async function searchTools(
   }
 }
 
-// 静态分类数据作为fallback
-const fallbackCategories = [
-  {
-    id: 1,
-    name: 'AI结构设计',
-    description: '基于AI的结构设计与分析工具',
-    icon: 'Brain',
-    color: '#3B82F6'
-  },
-  {
-    id: 2,
-    name: 'BIM软件',
-    description: '建筑信息模型设计与管理',
-    icon: 'Layers',
-    color: '#10B981'
-  },
-  {
-    id: 3,
-    name: '效率工具',
-    description: '提升工作效率的专业工具',
-    icon: 'Zap',
-    color: '#F59E0B'
-  },
-  {
-    id: 4,
-    name: '岩土工程',
-    description: '岩土工程分析与设计',
-    icon: 'Mountain',
-    color: '#8B5CF6'
-  },
-  {
-    id: 5,
-    name: '项目管理',
-    description: '项目协作与管理工具',
-    icon: 'Users',
-    color: '#EF4444'
-  },
-  {
-    id: 6,
-    name: '智能施工管理',
-    description: '施工过程管理与优化',
-    icon: 'HardHat',
-    color: '#06B6D4'
-  }
-];
-
-// 获取分类列表
+// 获取分类列表 - 使用统一的CategoryManager
 export async function getCategories() {
-  try {
-    console.log('🔍 开始获取分类数据...')
-    
-    // 首先尝试包含 is_active 条件的查询
-    let { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true })
-      .order('name', { ascending: true })
-
-    // 如果因为字段不存在而失败，则使用没有 is_active 条件的查询
-    if (error && error.message.includes('is_active')) {
-      console.log('⚠️ is_active字段不存在，使用简化查询...')
-      const result = await supabase
-        .from('categories')
-        .select('*')
-        .order('name', { ascending: true })
-      
-      data = result.data
-      error = result.error
-    }
-
-    if (error) {
-      console.error('❌ Supabase查询失败:', error)
-      console.log('🔄 使用fallback分类数据...')
-      return fallbackCategories
-    }
-
-    // 如果数据为空，也使用fallback（不再限制数量）
-    if (!data || data.length === 0) {
-      console.log('📄 数据库中无分类数据，使用fallback分类数据...')
-      return fallbackCategories
-    }
-
-    console.log('✅ 获取分类成功:', data.length, '个分类')
-    return data
-  } catch (error) {
-    console.error('❌ 获取分类异常:', error)
-    console.log('🔄 使用fallback分类数据...')
-    return fallbackCategories
-  }
+  return await CategoryManager.getCategories();
 }

@@ -19,7 +19,7 @@ import AuthModal from '../components/AuthModal';
 import ToolCard from '../components/ToolCard';
 import { useCache } from '../hooks/useCache';
 import { usePerformance } from '../hooks/usePerformance';
-import { FALLBACK_CATEGORIES, FALLBACK_FEATURES, PRICING_OPTIONS, SORT_OPTIONS } from '../lib/config';
+import { EMERGENCY_CATEGORIES, FALLBACK_FEATURES, PRICING_OPTIONS, SORT_OPTIONS } from '../lib/config';
 
 const ToolsPage = React.memo(() => {
   const { user } = useAuth();
@@ -193,7 +193,7 @@ const ToolsPage = React.memo(() => {
         console.log('✅ 分类数据加载成功:', categoryNames.length + '个分类')
       } else {
         console.log('⚠️ 数据库无分类数据，使用后备分类')
-        setCategories([...FALLBACK_CATEGORIES])
+        setCategories([...EMERGENCY_CATEGORIES])
       }
     } catch (error) {
       console.error('❌ 获取分类失败，使用后备分类:', error)

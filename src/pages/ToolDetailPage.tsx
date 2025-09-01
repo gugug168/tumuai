@@ -582,13 +582,24 @@ const ToolDetailPage = () => {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-4">工具标签</h3>
               <div className="flex flex-wrap gap-2">
-                {adaptedTool.tags.map((tag, index) => (
+                {/* 优先显示分类标签 */}
+                {tool.categories.map((category, index) => (
                   <span
-                    key={index}
+                    key={`category-${index}`}
+                    className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium flex items-center"
+                  >
+                    <Tag className="w-3 h-3 mr-1" />
+                    {category}
+                  </span>
+                ))}
+                {/* 其他功能标签 */}
+                {tool.features.map((feature, index) => (
+                  <span
+                    key={`feature-${index}`}
                     className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm flex items-center"
                   >
                     <Tag className="w-3 h-3 mr-1" />
-                    {tag}
+                    {feature}
                   </span>
                 ))}
               </div>
@@ -599,9 +610,15 @@ const ToolDetailPage = () => {
               <h3 className="text-xl font-bold text-gray-900 mb-4">工具信息</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">分类</span>
-                  <span className="font-medium text-gray-900">{adaptedTool.category}</span>
+                  <span className="text-gray-600">主分类</span>
+                  <span className="font-medium text-gray-900">{tool.categories[0] || '未分类'}</span>
                 </div>
+                {tool.categories.length > 1 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">其他分类</span>
+                    <span className="font-medium text-gray-900">{tool.categories.slice(1).join(', ')}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-600">收录时间</span>
                   <span className="font-medium text-gray-900">{adaptedTool.addedDate}</span>

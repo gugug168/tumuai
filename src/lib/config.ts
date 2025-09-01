@@ -23,16 +23,12 @@ export const SUBMIT_PRICING_OPTIONS = [
   { value: 'trial', label: '免费试用' }
 ] as const
 
-// 后备分类配置（数据库获取失败时使用）
-export const FALLBACK_CATEGORIES = [
+// 紧急情况下的最小分类集（仅在数据库完全不可用时使用）
+// 注意：正常情况下应该使用 CategoryManager.getCategories() 从数据库获取
+export const EMERGENCY_CATEGORIES = [
   'AI结构设计',
   'BIM软件',
-  '智能施工管理', 
-  '效率工具',
-  '岩土工程',
-  '项目管理',
-  '资料管理',
-  '图纸处理'
+  '效率工具'
 ] as const
 
 // 后备功能特性配置（将来可迁移到数据库）
