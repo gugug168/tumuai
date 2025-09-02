@@ -5,7 +5,73 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { URLProcessor } from '../src/utils/url-processor'
+
+// 本地URL处理函数
+interface URLValidationResult {
+  isValid: boolean
+  error?: string
+  normalized?: string
+}
+
+function validateAndNormalizeURL(url: string): URLValidationResult {
+  if (!url || typeof url !== 'string') {
+    return {
+      isValid: false,
+      error: '无效的URL参数'
+    }
+  }
+  
+  const trimmedUrl = url.trim()
+  
+  if (!trimmedUrl) {
+    return {
+      isValid: false,
+      error: 'URL不能为空'
+    }
+  }
+  
+  try {
+    // 如果URL没有协议，添加https://
+    let normalizedUrl = trimmedUrl
+    if (!normalizedUrl.match(/^https?:\/\//)) {
+      normalizedUrl = `https://${normalizedUrl}`
+    }
+    
+    const urlObj = new URL(normalizedUrl)
+    
+    // 标准化域名（转小写，移除www前缀）
+    let hostname = urlObj.hostname.toLowerCase()
+    if (hostname.startsWith('www.')) {
+      hostname = hostname.substring(4)
+    }
+    
+    // 重构标准化的URL
+    const normalized = `${urlObj.protocol}//${hostname}${urlObj.pathname === '/' ? '' : urlObj.pathname}`
+    
+    return {
+      isValid: true,
+      normalized
+    }
+  } catch (error) {
+    return {
+      isValid: false,
+      error: '无效的URL格式'
+    }
+  }
+}
+
+function getDisplayURL(url: string): string {
+  try {
+    const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`)
+    let hostname = urlObj.hostname.toLowerCase()
+    if (hostname.startsWith('www.')) {
+      hostname = hostname.substring(4)
+    }
+    return hostname
+  } catch {
+    return url
+  }
+}
 
 interface DuplicateCheckResult {
   exists: boolean
@@ -51,6 +117,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   
   try {
+    console.log('🔍 开始重复检测API处理...')
+    
     // 1. 输入验证
     const { url }: RequestBody = req.body
     
@@ -61,8 +129,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
     
+    console.log('📝 输入URL:', url)
+    
     // 2. URL格式验证和标准化
-    const validation = URLProcessor.validateURL(url.trim())
+    const validation = validateAndNormalizeURL(url.trim())
     
     if (!validation.isValid) {
       return res.status(400).json({
@@ -72,13 +142,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     const normalizedUrl = validation.normalized || ''
-    const displayUrl = URLProcessor.getDisplayURL(url)
+    const displayUrl = getDisplayURL(url)
+    
+    console.log('🔗 标准化URL:', normalizedUrl)
+    console.log('👁️ 显示URL:', displayUrl)
     
     // 3. 初始化Supabase客户端
     const supabaseUrl = process.env.VITE_SUPABASE_URL
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     
     if (!supabaseUrl || !serviceKey) {
+      console.error('❌ Supabase配置缺失')
       return res.status(500).json({
         error: 'Server configuration error',
         code: 'SERVER_CONFIG_ERROR'
@@ -88,7 +162,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const supabase = createClient(supabaseUrl, serviceKey)
     
     // 4. 检查重复工具
-    console.log(`🔍 检查重复网站: ${normalizedUrl}`)
+    console.log('🔍 查询数据库重复工具...')
     
     const { data: existingTools, error } = await supabase
       .from('tools')
@@ -97,7 +171,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .limit(1)
     
     if (error) {
-      console.error('数据库查询错误:', error)
+      console.error('❌ 数据库查询错误:', error)
       return res.status(500).json({
         error: 'Database query failed',
         code: 'DATABASE_ERROR'
@@ -128,7 +202,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         display_url: displayUrl
       }
       
-      console.log(`🚨 发现重复工具: ${existingTool.name}`)
+      console.log('🚨 发现重复工具:', existingTool.name)
       return res.status(200).json(result)
     } else {
       const result: DuplicateCheckResult = {
@@ -139,12 +213,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         display_url: displayUrl
       }
       
-      console.log(`✅ 无重复工具: ${normalizedUrl}`)
+      console.log('✅ 无重复工具:', normalizedUrl)
       return res.status(200).json(result)
     }
     
   } catch (error) {
-    console.error('重复检测API错误:', error)
+    console.error('❌ 重复检测API错误:', error)
     
     return res.status(500).json({
       error: 'Internal server error',
