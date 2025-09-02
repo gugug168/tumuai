@@ -10,10 +10,11 @@ export default async function handler(request: VercelRequest, response: VercelRe
     }
 
     const authHeader = request.headers.authorization || request.headers.Authorization
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const authHeaderStr = Array.isArray(authHeader) ? authHeader[0] : authHeader
+    if (!authHeaderStr || !authHeaderStr.startsWith('Bearer ')) {
       return response.status(401).json({ error: 'Unauthorized' })
     }
-    const accessToken = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '') : ''
+    const accessToken = authHeaderStr.replace(/^Bearer\s+/i, '')
 
     const supabase = createClient(supabaseUrl, serviceKey)
     const { data: userRes, error: userErr } = await supabase.auth.getUser(accessToken)

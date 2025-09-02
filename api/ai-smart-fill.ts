@@ -139,6 +139,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         code: 'INVALID_URL'
       });
     }
+
+    // 🔧 智能切换：检查是否有DeepSeek API密钥
+    const hasDeepSeekKey = !!process.env.DEEPSEEK_API_KEY;
+    
+    if (!hasDeepSeekKey) {
+      console.log('⚠️ DEEPSEEK_API_KEY not configured, falling back to mock API');
+      // 转发到mock API
+      const mockApiUrl = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}/api/ai-smart-fill-mock`;
+      
+      try {
+        const mockResponse = await fetch(mockApiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ websiteUrl, includeContent, existingTool })
+        });
+        
+        const mockData = await mockResponse.json();
+        return res.status(mockResponse.status).json({
+          ...mockData,
+          metadata: {
+            ...mockData.metadata,
+            note: '使用Mock API（未配置DeepSeek密钥）'
+          }
+        });
+      } catch (mockError) {
+        console.error('Mock API也失败了:', mockError);
+        // 继续下面的错误处理逻辑
+      }
+    }
     
     // 3. 抓取网站内容（可选）
     let websiteContent = null;

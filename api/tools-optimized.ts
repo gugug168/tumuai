@@ -96,7 +96,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
   try {
     // 📥 解析请求参数
     const queryParams = request.query || {}
-    const limit = Math.min(parseInt(queryParams.limit || '60', 10), 200)
+    const limit = Math.min(parseInt(Array.isArray(queryParams.limit) ? queryParams.limit[0] || '60' : queryParams.limit || '60', 10), 200)
     const sortBy = queryParams.sortBy || 'upvotes'
     const sortOrder = queryParams.sortOrder || 'desc'
     const category = queryParams.category

@@ -32,7 +32,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
       }
     }
 
-    const token = authHeader.replace('Bearer ', '')
+    const token = Array.isArray(authHeader) ? authHeader[0].replace('Bearer ', '') : authHeader.replace('Bearer ', '')
     const { data: userData, error: userError } = await supabase.auth.getUser(token)
     
     if (userError || !userData.user) {

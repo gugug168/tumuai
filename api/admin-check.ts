@@ -13,6 +13,15 @@ const getSecurityHeaders = () => ({
   'Pragma': 'no-cache'
 })
 
+// Helper函数：设置安全头部
+const setSecurityHeaders = (response: VercelResponse): VercelResponse => {
+  const headers = getSecurityHeaders()
+  Object.entries(headers).forEach(([key, value]) => {
+    response.setHeader(key, value)
+  })
+  return response
+}
+
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   const startTime = Date.now()
   console.log('🔐 开始管理员权限验证...')
@@ -21,14 +30,15 @@ export default async function handler(request: VercelRequest, response: VercelRe
     const supabaseUrl = process.env.VITE_SUPABASE_URL as string
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
     if (!supabaseUrl || !serviceKey) {
-      return response.status(500).setHeader(getSecurityHeaders()).json({ error: 'Missing Supabase server config' })
+      return response.status(500).setHeader('Access-Control-Allow-Origin', '*').json({ error: 'Missing Supabase server config' })
     }
 
     const authHeader = request.headers.authorization || request.headers.Authorization
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return response.status(401).setHeader(getSecurityHeaders()).json({ error: 'Unauthorized' })
+    const authHeaderStr = Array.isArray(authHeader) ? authHeader[0] : authHeader
+    if (!authHeaderStr || !authHeaderStr.startsWith('Bearer ')) {
+      return response.status(401).setHeader('Access-Control-Allow-Origin', '*').json({ error: 'Unauthorized' })
     }
-    const accessToken = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '') : ''
+    const accessToken = authHeaderStr.replace(/^Bearer\s+/i, '')
 
     const supabase = createClient(supabaseUrl, serviceKey)
 
@@ -36,7 +46,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
     const tokenParts = accessToken.split('.')
     if (tokenParts.length !== 3) {
       console.log('⚠️ 无效的JWT令牌格式')
-      return response.status(401).setHeader(getSecurityHeaders()).json({ error: 'Invalid token format' })
+      return response.status(401).setHeader('Access-Control-Allow-Origin', '*').json({ error: 'Invalid token format' })
     }
     
     // Verify token and get user id
@@ -46,7 +56,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
     console.log(`✅ Token验证完成: ${Date.now() - authStartTime}ms`)
     if (userErr || !userRes?.user) {
       console.log(`⚠️ Token验证失败: ${userErr?.message}`)
-      return response.status(401).setHeader(getSecurityHeaders()).json({ error: 'Invalid token' })
+      return response.status(401).setHeader('Access-Control-Allow-Origin', '*').json({ error: 'Invalid token' })
     }
     
     // 检查令牌是否即将过期（30分钟内）
@@ -76,12 +86,12 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
     const { data, error } = adminResult
     if (error) {
-      return response.status(500).setHeader(getSecurityHeaders()).json({ error: error.message })
+      return response.status(500).setHeader('Access-Control-Allow-Origin', '*').json({ error: error.message })
     }
     if (data) {
       const totalTime = Date.now() - startTime
       console.log(`✅ 管理员权限验证成功: ${totalTime}ms`)
-      return response.status(200).setHeader(getSecurityHeaders()).json({ 
+      return response.status(200).setHeader('Access-Control-Allow-Origin', '*').json({ 
         ...data, 
         _performance: { totalTime, hasParallelQuery: true } 
       })
@@ -96,12 +106,12 @@ export default async function handler(request: VercelRequest, response: VercelRe
     // 额外安全检查：确保管理员邮箱已配置且用户邮箱已验证
     if (!adminEmail) {
       console.error('❌ 管理员邮箱未配置')
-      return response.status(500).setHeader(getSecurityHeaders()).json({ error: 'Admin configuration missing' })
+      return response.status(500).setHeader('Access-Control-Allow-Origin', '*').json({ error: 'Admin configuration missing' })
     }
     
     if (!userRes.user.email_confirmed_at) {
       console.log('⚠️ 用户邮箱未验证，拒绝管理员权限')
-      return response.status(403).setHeader(getSecurityHeaders()).json({ error: 'Email verification required' })
+      return response.status(403).setHeader('Access-Control-Allow-Origin', '*').json({ error: 'Email verification required' })
     }
     
     const shouldCreateAdmin = (!count || count === 0) || (userEmail === adminEmail)
@@ -131,31 +141,31 @@ export default async function handler(request: VercelRequest, response: VercelRe
             .select('id,user_id,role,permissions,created_at,updated_at')
             .maybeSingle()
           if (updateErr) {
-            return response.status(500).setHeader(getSecurityHeaders()).json({ error: updateErr.message })
+            return response.status(500).setHeader('Access-Control-Allow-Origin', '*').json({ error: updateErr.message })
           }
           const totalTime = Date.now() - startTime
           console.log(`✅ 更新管理员成功: ${totalTime}ms`)
-          return response.status(200).setHeader(getSecurityHeaders()).json({ 
+          return response.status(200).setHeader('Access-Control-Allow-Origin', '*').json({ 
             ...updated, 
             _performance: { totalTime, wasUpdated: true } 
           })
         }
-        return response.status(500).setHeader(getSecurityHeaders()).json({ error: insErr.message })
+        return response.status(500).setHeader('Access-Control-Allow-Origin', '*').json({ error: insErr.message })
       }
       const totalTime = Date.now() - startTime
       console.log(`✅ 创建管理员成功: ${totalTime}ms`)
-      return response.status(200).setHeader(getSecurityHeaders()).json({ 
+      return response.status(200).setHeader('Access-Control-Allow-Origin', '*').json({ 
         ...created, 
         _performance: { totalTime, wasCreated: true } 
       })
     }
 
     // 否则不是管理员
-    return response.status(403).setHeader(getSecurityHeaders()).json({ error: 'Forbidden' })
+    return response.status(403).setHeader('Access-Control-Allow-Origin', '*').json({ error: 'Forbidden' })
   } catch (e: unknown) {
     const totalTime = Date.now() - startTime
     console.error(`❌ 管理员验证失败: ${totalTime}ms`, e)
-    return response.status(500).setHeader(getSecurityHeaders()).json({ 
+    return response.status(500).setHeader('Access-Control-Allow-Origin', '*').json({ 
       error: (e as Error)?.message || 'Unexpected error' 
     })
   }

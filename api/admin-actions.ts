@@ -459,7 +459,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
             return response.status(500).json({ error: ins.error.message })
           }
 
-          await logAdminAction('create_category', 'category', ins.data?.id, basePayload as Record<string, unknown>)
+          await logAdminAction('create_category', 'category', ins.data?.id, basePayload as unknown as Record<string, unknown>)
           return response.status(200).json({ success: true, id: ins.data?.id })
         } catch (error: unknown) {
           console.error('Error in create_category:', error)

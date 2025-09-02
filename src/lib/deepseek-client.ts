@@ -192,7 +192,7 @@ ${existingTool ? `参考信息: 名称："${existingTool.name}"，描述："${ex
         throw new Error(`DeepSeek API error: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       
       if (!data.choices || data.choices.length === 0) {
         throw new Error('DeepSeek API returned no choices');
