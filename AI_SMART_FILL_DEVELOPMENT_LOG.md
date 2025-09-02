@@ -398,7 +398,7 @@ AI智能填入功能已完全开发和测试完成，具备以下特性：
 **✅ 完全成功！使用真实DeepSeek API密钥完成端到端测试**
 
 #### 🧪 测试配置
-- **DeepSeek API密钥**: `sk-b11e9083849145c4a8b0cf821645a349` (已配置)
+- **DeepSeek API密钥**: `XXXXXXXXXXXX` (已配置,已放入环境变量)
 - **测试URL**: `https://claude.ai`
 - **开发环境**: Node.js + Express Mock服务器 + Vite前端
 - **测试浏览器**: Playwright自动化测试
