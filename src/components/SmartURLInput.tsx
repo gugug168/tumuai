@@ -3,7 +3,7 @@
  * 支持实时重复检测、URL验证和友好的状态提示
  */
 
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { 
   CheckCircle, 
   XCircle, 
@@ -177,9 +177,12 @@ const SmartURLInput: React.FC<SmartURLInputProps> = ({
     }
   }, [enableAIFill, onAIFillComplete]);
 
-  // 防抖检测函数 - 添加取消标记防止竞态条件
-  const debouncedCheck = useCallback(
-    debounce(async (url: string) => {
+  // 防抖检测函数 - 使用useRef保持函数稳定性，避免重复创建
+  const debouncedCheckRef = useRef<((url: string) => void) & { cancel: () => void }>()
+  
+  // 初始化debounce函数，只在组件挂载时创建一次
+  useEffect(() => {
+    debouncedCheckRef.current = debounce(async (url: string) => {
       console.log('🔍 Starting URL check for:', url); // 调试日志
       
       if (!url.trim()) {
@@ -258,15 +261,22 @@ const SmartURLInput: React.FC<SmartURLInputProps> = ({
           console.error('URL检测失败 (Unknown):', error)
         }
       }
-    }, 800),
-    [onDuplicateChange, enableAIFill] // 添加enableAIFill到依赖数组
-  )
+    }, 800)
+    
+    // 组件卸载时清理debounce
+    return () => {
+      if (debouncedCheckRef.current) {
+        debouncedCheckRef.current.cancel()
+      }
+    }
+  }, []) // 空依赖数组，确保只创建一次
   
   // 监听输入变化
   useEffect(() => {
-    debouncedCheck(value)
-    return () => debouncedCheck.cancel()
-  }, [value, debouncedCheck])
+    if (debouncedCheckRef.current) {
+      debouncedCheckRef.current(value)
+    }
+  }, [value])
   
   // 获取状态图标
   const getStatusIcon = () => {
