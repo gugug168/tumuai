@@ -177,10 +177,13 @@ const SmartURLInput: React.FC<SmartURLInputProps> = ({
     }
   }, [enableAIFill, onAIFillComplete]);
 
-  // 防抖检测函数
+  // 防抖检测函数 - 添加取消标记防止竞态条件
   const debouncedCheck = useCallback(
     debounce(async (url: string) => {
+      console.log('🔍 Starting URL check for:', url); // 调试日志
+      
       if (!url.trim()) {
+        console.log('📭 Empty URL, resetting to idle state');
         setCheckStatus('idle')
         setDuplicateInfo(null)
         setDisplayURL('')
@@ -192,6 +195,7 @@ const SmartURLInput: React.FC<SmartURLInputProps> = ({
       // 前端URL格式验证
       const validation = URLProcessor.validateURL(url)
       if (!validation.isValid) {
+        console.log('❌ URL validation failed:', validation.error);
         setCheckStatus('invalid')
         setErrorMessage(validation.error || '无效的URL格式')
         setDisplayURL('')
@@ -203,17 +207,25 @@ const SmartURLInput: React.FC<SmartURLInputProps> = ({
       setCheckStatus('checking')
       setErrorMessage('')
       
+      console.log('🚀 Calling duplicate check API for:', url);
+      const startTime = performance.now();
+      
       try {
         // 调用重复检测API
         const result = await checkWebsiteDuplicate(url)
+        const endTime = performance.now();
+        console.log(`✅ Duplicate check completed in ${endTime - startTime}ms:`, result);
+        
         setProcessingTime(result.processing_time_ms)
         
         if (result.exists) {
+          console.log('🔄 URL exists, setting duplicate status');
           setCheckStatus('duplicate')
           setDuplicateInfo(result)
           setShowAIButton(false)
           onDuplicateChange(result)
         } else {
+          console.log('✨ URL is new, setting valid status');
           setCheckStatus('valid')
           setDuplicateInfo(null)
           setShowAIButton(enableAIFill) // 非重复时显示AI按钮
@@ -221,6 +233,9 @@ const SmartURLInput: React.FC<SmartURLInputProps> = ({
         }
         
       } catch (error) {
+        const endTime = performance.now();
+        console.error(`❌ Duplicate check failed in ${endTime - startTime}ms:`, error);
+        
         setCheckStatus('error')
         
         if (error instanceof DuplicateCheckClientError) {
@@ -244,7 +259,7 @@ const SmartURLInput: React.FC<SmartURLInputProps> = ({
         }
       }
     }, 800),
-    [onDuplicateChange]
+    [onDuplicateChange, enableAIFill] // 添加enableAIFill到依赖数组
   )
   
   // 监听输入变化

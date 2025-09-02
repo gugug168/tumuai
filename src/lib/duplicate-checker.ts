@@ -28,7 +28,18 @@ export class DuplicateChecker {
     }
     
     // 开发环境模拟响应 - 遵循KISS原则，快速测试功能
-    if (import.meta.env.DEV) {
+    // 注意：使用更可靠的开发环境检测
+    const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development' || window.location.hostname === 'localhost'
+    
+    console.log('🔍 DuplicateChecker environment check:', { 
+      isDev, 
+      DEV: import.meta.env.DEV, 
+      MODE: import.meta.env.MODE,
+      hostname: window.location.hostname 
+    });
+    
+    if (isDev && false) { // 暂时禁用模拟模式，直接使用真实API进行测试
+      console.log('🎭 Using mock duplicate check for development');
       return new Promise((resolve) => {
         setTimeout(() => {
           const normalizedUrl = url.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '')
@@ -68,8 +79,12 @@ export class DuplicateChecker {
       })
     }
     
+    console.log('🚀 Making real API call to duplicate check endpoint for:', url);
+    
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), DuplicateChecker.REQUEST_TIMEOUT)
+    
+    const startTime = performance.now();
     
     try {
       const response = await fetch(DuplicateChecker.API_ENDPOINT, {
@@ -80,6 +95,9 @@ export class DuplicateChecker {
         body: JSON.stringify({ url: url.trim() }),
         signal: controller.signal
       })
+      
+      const fetchTime = performance.now() - startTime;
+      console.log(`🌐 API call completed in ${fetchTime}ms, status: ${response.status}`);
       
       clearTimeout(timeoutId)
       
@@ -112,12 +130,15 @@ export class DuplicateChecker {
       }
       
       const result: DuplicateCheckResponse = await response.json()
+      console.log('✅ API response received:', result);
       
       // 验证响应数据格式
       if (typeof result.exists !== 'boolean') {
+        console.error('❌ Invalid response format:', result);
         throw new Error('服务器返回数据格式错误')
       }
       
+      console.log(`🎯 Duplicate check result: exists=${result.exists}, processing_time=${result.processing_time_ms}ms`);
       return result
       
     } catch (error) {
