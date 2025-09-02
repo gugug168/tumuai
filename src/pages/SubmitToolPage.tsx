@@ -1,10 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Link as LinkIcon, Tag, DollarSign, Image, FileText, AlertCircle } from 'lucide-react';
+import { Upload, Link as LinkIcon, Tag, DollarSign, Image, FileText, AlertCircle, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { uploadToolLogo, validateImageFile } from '../lib/storage';
 import { SUBMIT_PRICING_OPTIONS, EMERGENCY_CATEGORIES } from '../lib/config';
 import { getCategories } from '../lib/supabase';
 import { autoGenerateLogo, generateInitialLogo } from '../lib/logoUtils';
+import SmartURLInput from '../components/SmartURLInput';
+import type { DuplicateCheckResult } from '../lib/duplicate-checker';
+
+// AI智能填入类型定义（与SmartURLInput保持一致）
+interface AIAnalysisResult {
+  name: string;
+  tagline: string;
+  description: string;
+  features: string[];
+  pricing: 'Free' | 'Freemium' | 'Paid' | 'Trial';
+  categories: string[];
+  confidence: number;
+  reasoning: string;
+}
 
 const SubmitToolPage = () => {
   const [formData, setFormData] = useState({
@@ -25,6 +39,9 @@ const SubmitToolPage = () => {
   // 动态分类数据状态
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  // 重复检测状态
+  const [duplicateInfo, setDuplicateInfo] = useState<DuplicateCheckResult | null>(null);
 
   // 获取分类数据
   useEffect(() => {
@@ -108,6 +125,47 @@ const SubmitToolPage = () => {
     }
   };
 
+  // 处理重复检测结果
+  const handleDuplicateChange = (info: DuplicateCheckResult) => {
+    setDuplicateInfo(info);
+    
+    // 如果发现重复，设置错误状态
+    if (info.exists) {
+      setErrors(prev => ({
+        ...prev,
+        officialWebsite: '该网站已存在于平台中'
+      }));
+    } else {
+      // 清除网站URL相关错误
+      if (errors.officialWebsite) {
+        setErrors(prev => ({
+          ...prev,
+          officialWebsite: ''
+        }));
+      }
+    }
+  };
+
+  // AI智能填入完成处理
+  const handleAIFillComplete = (data: AIAnalysisResult) => {
+    console.log('AI分析结果:', data);
+    
+    // 自动填入表单数据
+    setFormData(prev => ({
+      ...prev,
+      toolName: data.name || prev.toolName,
+      shortDescription: data.tagline || prev.shortDescription,
+      detailedDescription: data.description || prev.detailedDescription,
+      categories: data.categories && data.categories.length > 0 ? data.categories : prev.categories,
+      mainFeatures: data.features && data.features.length > 0 ? data.features.join(', ') : prev.mainFeatures,
+      pricingModel: data.pricing ? data.pricing.toLowerCase() : prev.pricingModel
+    }));
+    
+    // 显示成功提示
+    const confidence = Math.round((data.confidence || 0) * 100);
+    alert(`🎉 AI分析完成！\n\n✅ 置信度: ${confidence}%\n💡 推理: ${data.reasoning || '基于网站内容分析'}\n\n请检查并完善AI填入的信息。`);
+  };
+
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
 
@@ -124,6 +182,11 @@ const SubmitToolPage = () => {
         new URL(formData.officialWebsite);
       } catch {
         newErrors.officialWebsite = '请输入有效的网址格式';
+      }
+      
+      // 重复检测验证
+      if (duplicateInfo?.exists) {
+        newErrors.officialWebsite = '该网站已存在于平台中，无法重复提交';
       }
     }
 
@@ -274,6 +337,54 @@ const SubmitToolPage = () => {
           </ul>
         </div>
 
+        {/* AI智能填入区域 */}
+        <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-xl border border-blue-200 p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">AI智能填入 (Beta)</h3>
+                <p className="text-sm text-gray-600">输入网址，让AI帮您自动填写工具信息</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-2 text-xs text-gray-500">
+              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              <span>实时重复检测</span>
+            </div>
+          </div>
+          
+          {/* 智能URL输入框 */}
+          <div className="space-y-4">
+            <SmartURLInput
+              value={formData.officialWebsite}
+              onChange={(url) => setFormData(prev => ({ ...prev, officialWebsite: url }))}
+              onDuplicateChange={handleDuplicateChange}
+              onAIFillComplete={handleAIFillComplete}
+              enableAIFill={true}
+              placeholder="输入工具网站地址，如：https://chatgpt.com"
+              disabled={isSubmitting}
+            />
+            
+            <div className="text-xs text-gray-600 mt-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
+              <div className="flex items-start space-x-2">
+                <Sparkles className="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-gray-800 mb-1">AI智能填入使用指南：</p>
+                  <ul className="space-y-1 text-gray-600">
+                    <li>• 输入有效URL后，系统将自动检测重复工具</li>
+                    <li>• 检测通过后，点击"AI智能填入"按钮启动分析</li>
+                    <li>• AI将自动抓取网站内容并生成工具信息</li>
+                    <li>• 请在生成后仔细检查并完善相关信息</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Submission Form */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -284,48 +395,33 @@ const SubmitToolPage = () => {
                 基本信息
               </h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    工具名称 *
-                  </label>
-                  <input
-                    type="text"
-                    name="toolName"
-                    value={formData.toolName}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.toolName ? 'border-red-300' : 'border-gray-300'
-                    } bg-white text-gray-900 placeholder-gray-500`}
-                    placeholder="例如：StructuralGPT"
-                  />
-                  {errors.toolName && (
-                    <p className="mt-1 text-sm text-red-600">{errors.toolName}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    官方网址 *
-                  </label>
-                  <div className="relative">
-                    <LinkIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      type="url"
-                      name="officialWebsite"
-                      value={formData.officialWebsite}
-                      onChange={handleInputChange}
-                      className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        errors.officialWebsite ? 'border-red-300' : 'border-gray-300'
-                      } bg-white text-gray-900 placeholder-gray-500`}
-                      placeholder="https://example.com"
-                    />
-                  </div>
-                  {errors.officialWebsite && (
-                    <p className="mt-1 text-sm text-red-600">{errors.officialWebsite}</p>
-                  )}
-                </div>
+              <div className="max-w-md">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  工具名称 *
+                </label>
+                <input
+                  type="text"
+                  name="toolName"
+                  value={formData.toolName}
+                  onChange={handleInputChange}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.toolName ? 'border-red-300' : 'border-gray-300'
+                  } bg-white text-gray-900 placeholder-gray-500`}
+                  placeholder="例如：StructuralGPT"
+                />
+                {errors.toolName && (
+                  <p className="mt-1 text-sm text-red-600">{errors.toolName}</p>
+                )}
               </div>
+
+              {/* 官方网址已移到AI智能填入区域 */}
+              {duplicateInfo?.exists && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-700">
+                    ⚠️ 检测到网站重复，请返回上方修改网址或选择其他工具
+                  </p>
+                </div>
+              )}
 
               <div className="mt-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">

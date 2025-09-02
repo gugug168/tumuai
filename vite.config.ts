@@ -103,6 +103,52 @@ export default defineConfig({
     // HMR优化
     hmr: {
       overlay: true
+    },
+    
+    // API代理配置 - 开发环境API路由
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+        configure: (proxy, options) => {
+          // 如果代理服务器不可用，使用mock数据
+          proxy.on('error', (err, req, res) => {
+            console.log('Proxy error, using mock data:', err.message);
+            if (req.url?.includes('/api/ai-smart-fill')) {
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({
+                success: true,
+                data: {
+                  name: 'Claude AI',
+                  tagline: 'Advanced AI assistant for conversations and analysis',
+                  description: 'Claude is an AI assistant created by Anthropic that can help with a wide variety of tasks including writing, analysis, math, coding, and creative projects.',
+                  features: ['Natural conversation', 'Text analysis', 'Code assistance', 'Creative writing'],
+                  pricing: 'Freemium',
+                  categories: ['AI Assistant', 'Productivity'],
+                  confidence: 0.9,
+                  reasoning: 'Mock data for development testing'
+                },
+                apiUsage: {
+                  promptTokens: 350,
+                  completionTokens: 180,
+                  totalTokens: 530,
+                  cost: 0.074
+                },
+                metadata: {
+                  analysisTime: 1200,
+                  timestamp: new Date().toISOString(),
+                  websiteContentFetched: true,
+                  apiVersion: '1.0'
+                }
+              }));
+            } else {
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'API service unavailable' }));
+            }
+          });
+        }
+      }
     }
   },
 
