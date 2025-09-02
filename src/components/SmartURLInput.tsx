@@ -135,6 +135,28 @@ const SmartURLInput: React.FC<SmartURLInputProps> = ({
         })
       });
       
+      // 检查响应状态和Content-Type
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        let errorMessage = `API请求失败 (${response.status})`;
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error?.message || errorData.error || errorMessage;
+          } catch (e) {
+            // JSON解析失败，使用默认错误信息
+          }
+        } else {
+          // 非JSON响应，可能是HTML错误页面
+          const textResponse = await response.text();
+          console.error('Non-JSON API response:', textResponse.substring(0, 500));
+          errorMessage = '服务器返回了非预期的响应格式';
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
       const data: AISmartFillResponse = await response.json();
       
       if (data.success && data.data) {

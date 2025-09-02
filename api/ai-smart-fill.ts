@@ -167,7 +167,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       } catch (mockError) {
         console.error('Mock API也失败了:', mockError);
-        // 继续下面的错误处理逻辑
+        // 返回错误而不是继续执行DeepSeek逻辑
+        await logPerformance('ai-smart-fill', Date.now() - startTime, 500);
+        return res.status(500).json({
+          success: false,
+          error: {
+            code: 'MOCK_API_ERROR',
+            message: 'DeepSeek API密钥未配置，Mock API也不可用',
+            retryable: false
+          },
+          apiUsage: {
+            promptTokens: 0,
+            completionTokens: 0,
+            totalTokens: 0,
+            cost: 0
+          },
+          metadata: {
+            analysisTime: Date.now() - startTime,
+            timestamp: new Date().toISOString(),
+            websiteContentFetched: false,
+            apiVersion: '1.0',
+            note: 'API密钥未配置，Mock API不可用'
+          }
+        });
       }
     }
     
@@ -183,11 +205,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     // 4. 初始化 DeepSeek 客户端
-    const deepseekClient = new DeepSeekClient({
-      apiKey: process.env.DEEPSEEK_API_KEY,
-      maxTokens: 2000, // 控制成本
-      temperature: 0.2, // 提高一致性
-    });
+    let deepseekClient;
+    try {
+      deepseekClient = new DeepSeekClient({
+        apiKey: process.env.DEEPSEEK_API_KEY,
+        maxTokens: 2000, // 控制成本
+        temperature: 0.2, // 提高一致性
+      });
+    } catch (clientError) {
+      console.error('DeepSeek客户端初始化失败:', clientError);
+      await logPerformance('ai-smart-fill', Date.now() - startTime, 500);
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'CLIENT_INIT_ERROR',
+          message: 'AI服务初始化失败，请检查API密钥配置',
+          retryable: false
+        },
+        apiUsage: {
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+          cost: 0
+        },
+        metadata: {
+          analysisTime: Date.now() - startTime,
+          timestamp: new Date().toISOString(),
+          websiteContentFetched: false,
+          apiVersion: '1.0'
+        }
+      });
+    }
     
     // 5. 构建分析请求
     const analysisRequest: SmartFillRequest = {
