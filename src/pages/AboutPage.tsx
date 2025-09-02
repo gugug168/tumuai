@@ -52,7 +52,7 @@ const AboutPage = () => {
       <section className="bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-            关于 Civil AI Hub
+            关于 TumuAI.net
           </h1>
           <p className="text-xl text-gray-600 leading-relaxed">
             我们致力于为土木工程师打造最专业、最全面的AI工具导航平台，
@@ -97,7 +97,7 @@ const AboutPage = () => {
           
           <div className="prose prose-lg mx-auto text-gray-600">
             <p className="text-lg leading-relaxed mb-6">
-              Civil AI Hub 诞生于一群资深土木工程师的共同愿景。在日常工作中，我们发现AI技术正在快速发展，
+            TumuAI.net诞生于一群资深土木工程师的共同愿景。在日常工作中，我们发现AI技术正在快速发展，
               但很多优秀的工具分散在互联网的各个角落，工程师们往往需要花费大量时间去寻找和筛选。
             </p>
             
@@ -108,7 +108,7 @@ const AboutPage = () => {
             </p>
             
             <p className="text-lg leading-relaxed mb-6">
-              于是，Civil AI Hub 应运而生。我们不仅仅是一个工具目录，更是一个专业的推荐平台。
+              于是，TumuAI.net 应运而生。我们不仅仅是一个工具目录，更是一个专业的推荐平台。
               每一个工具都经过我们团队的亲自测试和评估，确保推荐给用户的都是真正有价值的解决方案。
             </p>
             
@@ -185,7 +185,7 @@ const AboutPage = () => {
               className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors"
             >
               <Mail className="w-5 h-5" />
-              <span>contact@civilaihub.com</span>
+              <span>307714007@qq.com</span>
             </a>
             <a
               href="#"
