@@ -84,12 +84,30 @@ export class DuplicateChecker {
       clearTimeout(timeoutId)
       
       if (!response.ok) {
-        const errorData: DuplicateCheckError = await response.json()
+        let errorMessage = '检测失败'
+        let errorCode = 'UNKNOWN_ERROR'
+        
+        try {
+          const contentType = response.headers.get('content-type')
+          if (contentType && contentType.includes('application/json')) {
+            const errorData: DuplicateCheckError = await response.json()
+            errorMessage = errorData.error || errorMessage
+            errorCode = errorData.code || errorCode
+          } else {
+            // 非JSON响应，可能是HTML错误页面
+            const textResponse = await response.text()
+            console.error('重复检测API非JSON响应:', textResponse.substring(0, 200))
+            errorMessage = `服务器错误 (${response.status})`
+          }
+        } catch (parseError) {
+          console.error('解析错误响应失败:', parseError)
+          errorMessage = `服务器响应解析失败 (${response.status})`
+        }
+        
         throw new DuplicateCheckClientError(
-          errorData.error || '检测失败',
-          errorData.code || 'UNKNOWN_ERROR',
-          response.status,
-          errorData.processing_time_ms
+          errorMessage,
+          errorCode,
+          response.status
         )
       }
       
