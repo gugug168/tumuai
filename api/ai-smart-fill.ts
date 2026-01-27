@@ -157,11 +157,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           body: JSON.stringify({ websiteUrl, includeContent, existingTool })
         });
         
-        const mockData = await mockResponse.json();
+        const mockData = await mockResponse.json() as Record<string, unknown>;
         return res.status(mockResponse.status).json({
           ...mockData,
           metadata: {
-            ...mockData.metadata,
+            ...(mockData.metadata as Record<string, unknown> | undefined),
             note: '使用Mock API（未配置DeepSeek密钥）'
           }
         });
