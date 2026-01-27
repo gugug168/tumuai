@@ -12,7 +12,7 @@ import {
   Clock
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getTools, getCategories, getToolsCount } from '../lib/supabase';
+import { getTools, getCategories, getToolsCount, getToolsWithCache, getToolsCountWithCache, getToolsSmart } from '../lib/supabase';
 import type { Tool } from '../types';
 import { addToFavorites, removeFromFavorites, isFavorited, batchCheckFavorites } from '../lib/community';
 import AuthModal from '../components/AuthModal';
@@ -172,7 +172,7 @@ const ToolsPage = React.memo(() => {
     }
   }, [user, tools]);
 
-  // 工具数据加载函数 - 统一使用服务器端分页
+  // 工具数据加载函数 - 统一使用服务器端分页 + 多层缓存优化
   const loadTools = useCallback(async (autoRetry = false, page = currentPage) => {
     setLoadError(null);
     setLoading(true);
@@ -187,37 +187,47 @@ const ToolsPage = React.memo(() => {
 
       console.log(`🔄 开始加载工具数据 (limit: ${limit}, offset: ${offset}, page: ${page})...`);
 
-      // 并行获取数据和总数
-      const [data, totalCount] = await Promise.all([
-        recordApiCall('load_tools', async () => {
-          return await getTools(limit, offset);
-        }, { autoRetry, retryCount }),
-        getToolsCount()
-      ]);
+      // 使用智能获取函数：优先API代理 > 本地缓存 > 直连数据库
+      const result = await recordApiCall('load_tools_smart', async () => {
+        return await getToolsSmart(limit, offset, true);
+      }, { autoRetry, retryCount });
 
-      console.log(`✅ 工具数据加载成功: ${data.length}个工具, 总数${totalCount}`);
-      setTools(Array.isArray(data) ? data : []);
-      setTotalToolsCount(totalCount);
+      console.log(`✅ 工具数据加载成功: ${result.tools.length}个工具, 总数${result.count}`);
+      setTools(Array.isArray(result.tools) ? result.tools : []);
+      if (result.count !== undefined) {
+        setTotalToolsCount(result.count);
+      }
       setRetryCount(0);
     } catch (error) {
       console.error('❌ 加载工具失败:', error);
 
-      // 错误分类和用户友好的错误信息
-      let errorMessage = '加载失败，请稍后重试';
+      // 最后兜底：直接使用原始方法
+      try {
+        const [data, totalCount] = await Promise.all([
+          getTools(TOOLS_PER_PAGE, (page - 1) * TOOLS_PER_PAGE),
+          getToolsCount()
+        ]);
+        setTools(Array.isArray(data) ? data : []);
+        setTotalToolsCount(totalCount);
+        setRetryCount(0);
+      } catch (fallbackError) {
+        // 错误分类和用户友好的错误信息
+        let errorMessage = '加载失败，请稍后重试';
 
-      if (error instanceof Error) {
-        if (error.message.includes('网络') || error.message.includes('fetch')) {
-          errorMessage = isOffline ? '网络连接已断开，请检查网络设置' : '网络连接不稳定，正在重试...';
-        } else if (error.message.includes('404')) {
-          errorMessage = '服务暂时不可用，请稍后再试';
-        } else if (error.message.includes('500')) {
-          errorMessage = '服务器繁忙，请稍后再试';
-        } else {
-          errorMessage = error.message;
+        if (error instanceof Error) {
+          if (error.message.includes('网络') || error.message.includes('fetch')) {
+            errorMessage = isOffline ? '网络连接已断开，请检查网络设置' : '网络连接不稳定，正在重试...';
+          } else if (error.message.includes('404')) {
+            errorMessage = '服务暂时不可用，请稍后再试';
+          } else if (error.message.includes('500')) {
+            errorMessage = '服务器繁忙，请稍后再试';
+          } else {
+            errorMessage = error.message;
+          }
         }
-      }
 
-      setLoadError(errorMessage);
+        setLoadError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }

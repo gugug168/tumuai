@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Tool, ToolSearchFilters } from '../types'
 import { CategoryManager } from './category-manager'
+import { unifiedCache } from './unified-cache-manager'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -91,6 +92,134 @@ export async function getToolsCount(): Promise<number> {
   } catch (error) {
     console.error('Unexpected error fetching tools count:', error)
     return 0
+  }
+}
+
+// 获取工具列表（带缓存）- 阶段1优化
+// 缓存策略：5分钟TTL，支持stale-while-revalidate
+export async function getToolsWithCache(limit = 12, offset = 0): Promise<Tool[]> {
+  const cacheKey = `tools_list_${limit}_${offset}`
+
+  return unifiedCache.fetchWithCache(
+    cacheKey,
+    () => getTools(limit, offset),
+    {
+      ttl: 5 * 60 * 1000, // 5分钟缓存
+      staleWhileRevalidate: true // 过期后先返回旧数据，后台刷新
+    }
+  )
+}
+
+// 获取工具总数（带缓存）
+export async function getToolsCountWithCache(): Promise<number> {
+  const cacheKey = 'tools_count'
+
+  return unifiedCache.fetchWithCache(
+    cacheKey,
+    () => getToolsCount(),
+    {
+      ttl: 5 * 60 * 1000,
+      staleWhileRevalidate: true
+    }
+  )
+}
+
+// 获取精选工具（带缓存）
+export async function getFeaturedToolsWithCache(): Promise<Tool[]> {
+  const cacheKey = 'featured_tools'
+
+  return unifiedCache.fetchWithCache(
+    cacheKey,
+    () => getFeaturedTools(),
+    {
+      ttl: 10 * 60 * 1000, // 精选工具10分钟缓存
+      staleWhileRevalidate: true
+    }
+  )
+}
+
+// 获取最新工具（带缓存）
+export async function getLatestToolsWithCache(): Promise<Tool[]> {
+  const cacheKey = 'latest_tools'
+
+  return unifiedCache.fetchWithCache(
+    cacheKey,
+    () => getLatestTools(),
+    {
+      ttl: 5 * 60 * 1000,
+      staleWhileRevalidate: true
+    }
+  )
+}
+
+// ============================================================
+// Vercel API 代理层调用函数（阶段3优化）
+// ============================================================
+
+interface ToolsCacheResult {
+  tools: Tool[]
+  count?: number
+  cached: boolean
+  timestamp: string
+}
+
+/**
+ * 通过 Vercel API 代理获取工具列表
+ * 优势：
+ * - 服务端缓存（CDN级别）
+ * - 所有用户共享缓存
+ * - 降低数据库负载
+ */
+export async function getToolsViaAPI(
+  limit = 12,
+  offset = 0,
+  includeCount = true
+): Promise<{ tools: Tool[]; count?: number }> {
+  try {
+    const url = new URL('/api/tools-cache', window.location.origin)
+    url.searchParams.set('limit', limit.toString())
+    url.searchParams.set('offset', offset.toString())
+    if (includeCount) {
+      url.searchParams.set('includeCount', 'true')
+    }
+
+    const response = await fetch(url.toString())
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`)
+    }
+
+    const result: ToolsCacheResult = await response.json()
+    return {
+      tools: result.tools || [],
+      count: result.count
+    }
+  } catch (error) {
+    console.error('Error fetching tools via API:', error)
+    throw error
+  }
+}
+
+/**
+ * 智能获取工具 - 自动选择最优数据源
+ * 优先级：API代理 > 本地缓存 > 直连数据库
+ */
+export async function getToolsSmart(
+  limit = 12,
+  offset = 0,
+  includeCount = true
+): Promise<{ tools: Tool[]; count?: number }> {
+  // 首先尝试通过 Vercel API（最快）
+  try {
+    return await getToolsViaAPI(limit, offset, includeCount)
+  } catch (apiError) {
+    console.warn('API proxy failed, falling back to cached direct connection:', apiError)
+
+    // 回退到本地缓存的直连方式
+    const tools = await getToolsWithCache(limit, offset)
+    const count = includeCount ? await getToolsCountWithCache() : undefined
+
+    return { tools, count }
   }
 }
 
