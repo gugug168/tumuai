@@ -94,8 +94,7 @@ ORDER BY upvotes DESC;
 -- 分析表以更新统计信息
 ANALYZE tools;
 
--- 清理死锁和优化表
-VACUUM ANALYZE tools;
+-- 注意：VACUUM 命令在 Supabase 中由系统自动执行，无需手动运行
 
 -- ============================================================
 -- 预期性能提升

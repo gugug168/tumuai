@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Hammer, Mail, Github, Twitter, Linkedin } from 'lucide-react';
+import { Hammer, Mail, Github, BookOpen } from 'lucide-react';
 
 const Footer = () => {
   return (
@@ -21,20 +21,30 @@ const Footer = () => {
             <p className="text-gray-400 mb-6 max-w-md">
               专为土木人打造的AI工具导航平台，汇集最新最实用的专业工具，助力工土木人提升工作效率。
             </p>
-            <div className="flex space-x-4">
-              <a href="mailto:contact@tumuai.net" className="text-gray-400 hover:text-white transition-colors" aria-label="邮件联系">
-                <Mail className="w-5 h-5" />
-              </a>
-              <a href="https://github.com/gugug168/tumuai" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors" aria-label="GitHub">
-                <Github className="w-5 h-5" />
-              </a>
-              <a href="https://www.tumuai.net" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors" aria-label="网站">
-                <Twitter className="w-5 h-5" />
-              </a>
-              <a href="mailto:contact@tumuai.net" className="text-gray-400 hover:text-white transition-colors" aria-label="联系">
-                <Linkedin className="w-5 h-5" />
-              </a>
+            {/* 联系方式 */}
+            <div className="mb-4">
+              <p className="text-sm text-gray-500 mb-2">联系我们：</p>
+              <div className="space-y-2">
+                <a href="mailto:contact@tumuai.net" className="flex items-center text-gray-400 hover:text-blue-400 transition-colors">
+                  <Mail className="w-4 h-4 mr-2" />
+                  <span>contact@tumuai.net</span>
+                </a>
+                <div className="flex items-center text-gray-400">
+                  <span className="text-blue-400 mr-2">微信:</span>
+                  <span>fuyesq168</span>
+                </div>
+              </div>
             </div>
+            {/* 知识库链接 */}
+            <a
+              href="https://fv2fbshiww0.feishu.cn/wiki/QFcFwHXxLiyVT7kRMAWcRtmXn0I?from=from_copylink"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              <BookOpen className="w-4 h-4 mr-2" />
+              <span>访问知识库 →</span>
+            </a>
           </div>
 
           {/* Quick Links */}
@@ -64,7 +74,7 @@ const Footer = () => {
 
         <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-400 text-sm">
-            © 2025 TumuAI.net. 专业土木AI工具平台 保留所有权利。
+            © 2026 TumuAI.net. 专业土木AI工具平台 保留所有权利。
           </p>
           <p className="text-gray-400 text-sm mt-2 md:mt-0">
             献给每一位土木人 · 一起拥抱AI时代
