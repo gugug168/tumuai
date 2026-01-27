@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useDeferredValue, useTransition, useId } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useDeferredValue, useTransition, useId, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { 
   Filter,
@@ -14,7 +14,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { getTools, getCategories } from '../lib/supabase';
 import type { Tool } from '../types';
-import { addToFavorites, removeFromFavorites, isFavorited } from '../lib/community';
+import { addToFavorites, removeFromFavorites, isFavorited, batchCheckFavorites } from '../lib/community';
 import AuthModal from '../components/AuthModal';
 import ToolCard from '../components/ToolCard';
 import { useCache } from '../hooks/useCache';
@@ -34,6 +34,13 @@ const ToolsPage = React.memo(() => {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [retryCount, setRetryCount] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
+
+  // 分页状态 - 每页显示12个工具
+  const [currentPage, setCurrentPage] = useState(1);
+  const TOOLS_PER_PAGE = 12;
+
+  // 搜索防抖：使用 useRef 存储防抖定时器
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   
   // 性能监控和缓存hooks
   const { fetchWithCache, clearCache } = useCache();
@@ -112,21 +119,34 @@ const ToolsPage = React.memo(() => {
     return filtered;
   }, [tools, deferredSearch, filters.categories, filters.features, filters.pricing, filters.sortBy]);
 
-  // 收藏状态加载函数
+  // 分页计算 - 当筛选条件变化时重置到第一页
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [deferredSearch, filters.categories, filters.features, filters.pricing, filters.sortBy]);
+
+  // 当前页的工具列表
+  const paginatedTools = useMemo(() => {
+    const startIndex = (currentPage - 1) * TOOLS_PER_PAGE;
+    const endIndex = startIndex + TOOLS_PER_PAGE;
+    return filteredTools.slice(startIndex, endIndex);
+  }, [filteredTools, currentPage]);
+
+  const totalPages = Math.ceil(filteredTools.length / TOOLS_PER_PAGE);
+
+  // 收藏状态加载函数 - 使用批量查询优化性能
   const loadFavoriteStates = useCallback(async () => {
-    if (!user) return;
-    
-    const states: {[key: string]: boolean} = {};
-    for (const tool of tools) {
-      try {
-        const favorited = await isFavorited(tool.id);
-        states[tool.id] = favorited;
-      } catch (error) {
-        console.error('检查收藏状态失败:', error);
-        states[tool.id] = false;
-      }
+    if (!user || tools.length === 0) return;
+
+    try {
+      // 使用批量查询替代循环单独查询，大幅减少API请求次数
+      const toolIds = tools.map(t => t.id);
+      const states = await batchCheckFavorites(toolIds);
+      setFavoriteStates(states);
+    } catch (error) {
+      console.error('批量检查收藏状态失败:', error);
+      // 失败时设置为空状态
+      setFavoriteStates({});
     }
-    setFavoriteStates(states);
   }, [user, tools]);
 
   // 工具数据加载函数 - 使用缓存优化
@@ -208,10 +228,19 @@ const ToolsPage = React.memo(() => {
   }, [loadCategories]);
 
   useEffect(() => {
-    // 从URL参数初始化搜索
+    // 从URL参数初始化搜索和分类筛选
     const searchQuery = searchParams.get('search');
-    if (searchQuery) {
-      setFilters(prev => ({ ...prev, search: searchQuery }));
+    const categoryQuery = searchParams.get('category');
+
+    setFilters(prev => ({
+      ...prev,
+      search: searchQuery || '',
+      categories: categoryQuery ? [categoryQuery] : []
+    }));
+
+    // 如果有分类筛选，自动展开筛选面板
+    if (categoryQuery) {
+      setShowFilters(true);
     }
   }, [searchParams]);
 
@@ -231,26 +260,41 @@ const ToolsPage = React.memo(() => {
         window.location.reload();
       }
     };
-    
+
     const handleOffline = () => {
       setIsOffline(true);
     };
-    
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, [tools.length, loadError]);
 
+  // 清理防抖定时器
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, []);
 
-  // 优化的筛选处理函数 - 使用startTransition标记非紧急更新
+
+  // 优化的筛选处理函数 - 搜索添加300ms防抖
   const handleFilterChange = useCallback((type: string, value: string | string[]) => {
     if (type === 'search') {
-      // 搜索输入立即更新（紧急更新）
-      setFilters(prev => ({ ...prev, [type]: value }));
+      // 搜索输入使用防抖优化
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+
+      searchDebounceRef.current = setTimeout(() => {
+        setFilters(prev => ({ ...prev, [type]: value }));
+      }, 300);
     } else {
       // 其他筛选使用transition（非紧急更新）
       startTransition(() => {
@@ -572,15 +616,40 @@ const ToolsPage = React.memo(() => {
             {filters.search && (
               <span> 包含 "<span className="font-semibold">{filters.search}</span>"</span>
             )}
+            {totalPages > 1 && (
+              <span className="ml-2 text-gray-500">
+                (第 {currentPage}/{totalPages} 页)
+              </span>
+            )}
           </p>
-          {process.env.NODE_ENV === 'development' && (
-            <button
-              onClick={() => printReport()}
-              className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600"
-            >
-              📊 性能报告
-            </button>
-          )}
+          <div className="flex items-center space-x-2">
+            {totalPages > 1 && (
+              <div className="flex items-center space-x-1">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  上一页
+                </button>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  下一页
+                </button>
+              </div>
+            )}
+            {process.env.NODE_ENV === 'development' && (
+              <button
+                onClick={() => printReport()}
+                className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600"
+              >
+                📊 性能报告
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Tools Grid/List */}
@@ -603,7 +672,7 @@ const ToolsPage = React.memo(() => {
             ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
             : 'space-y-4'
           }>
-            {filteredTools.map((tool) => (
+            {paginatedTools.map((tool) => (
               <ToolCard
                 key={tool.id}
                 tool={tool}

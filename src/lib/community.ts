@@ -147,7 +147,7 @@ export async function removeFromFavorites(toolId: string) {
   if (error) throw error
 }
 
-// 检查是否已收藏
+// 检查是否已收藏（单个工具）
 export async function isFavorited(toolId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return false
@@ -168,6 +168,39 @@ export async function isFavorited(toolId: string) {
   } catch (error) {
     console.warn('检查收藏状态失败:', error)
     return false
+  }
+}
+
+// 批量检查多个工具的收藏状态（性能优化）
+export async function batchCheckFavorites(toolIds: string[]): Promise<{[key: string]: boolean}> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || toolIds.length === 0) return {}
+
+  try {
+    const { data, error } = await supabase
+      .from('user_favorites')
+      .select('tool_id')
+      .eq('user_id', user.id)
+      .in('tool_id', toolIds)
+
+    if (error) {
+      console.warn('批量检查收藏状态时出错:', error)
+      return {}
+    }
+
+    // 构建收藏状态映射表
+    const result: {[key: string]: boolean} = {}
+    // 初始化所有工具为未收藏
+    toolIds.forEach(id => result[id] = false)
+    // 标记已收藏的工具
+    data?.forEach(item => {
+      result[item.tool_id] = true
+    })
+
+    return result
+  } catch (error) {
+    console.warn('批量检查收藏状态失败:', error)
+    return {}
   }
 }
 
