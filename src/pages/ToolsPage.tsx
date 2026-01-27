@@ -38,7 +38,6 @@ const ToolsPage = React.memo(() => {
   // 分页状态 - 每页显示12个工具
   const [currentPage, setCurrentPage] = useState(1);
   const [totalToolsCount, setTotalToolsCount] = useState(0);
-  const [isSearchMode, setIsSearchMode] = useState(false); // 是否处于搜索模式
   const TOOLS_PER_PAGE = 12;
 
   // 搜索防抖：使用 useRef 存储防抖定时器
@@ -129,32 +128,34 @@ const ToolsPage = React.memo(() => {
     }
   }, [filters, recordInteraction]);
 
-  // 分页计算 - 当筛选条件变化时重置到第一页并重新加载
+  // 分页重置 - 筛选条件变化时重置到第一页（客户端筛选，不需要重新请求）
   useEffect(() => {
     setCurrentPage(1);
-    // 短暂延迟后加载数据，避免频繁请求
-    const timeoutId = setTimeout(() => {
-      loadTools(false, 1);
-    }, 100);
-    return () => clearTimeout(timeoutId);
-  }, [deferredSearch, filters.categories, filters.features, filters.pricing, filters.sortBy]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [deferredSearch, filters.categories, filters.features, filters.pricing]);
 
-  // 计算总页数和当前页的工具
-  const displayTools = isSearchMode ? filteredTools : tools;
-  const totalPages = isSearchMode
+  // 计算筛选后的工具（客户端筛选）
+  const hasActiveFilters = filters.search ||
+    filters.categories.length > 0 ||
+    filters.features.length > 0 ||
+    filters.pricing;
+
+  // 计算分页显示
+  // 如果有筛选条件，使用客户端筛选结果；否则使用服务器返回的数据
+  const displayTools = hasActiveFilters ? filteredTools : tools;
+  const totalPages = hasActiveFilters
     ? Math.ceil(filteredTools.length / TOOLS_PER_PAGE)
     : Math.ceil(totalToolsCount / TOOLS_PER_PAGE);
 
   const paginatedTools = useMemo(() => {
-    if (isSearchMode) {
-      // 搜索模式下，客户端分页
+    if (hasActiveFilters) {
+      // 有筛选条件时，客户端分页显示筛选结果
       const startIndex = (currentPage - 1) * TOOLS_PER_PAGE;
       const endIndex = startIndex + TOOLS_PER_PAGE;
       return filteredTools.slice(startIndex, endIndex);
     }
-    // 普通模式下，直接显示服务器返回的数据
+    // 无筛选条件时，直接显示服务器返回的当前页数据
     return tools;
-  }, [isSearchMode, filteredTools, currentPage, tools]);
+  }, [hasActiveFilters, filteredTools, currentPage, tools]);
 
   // 收藏状态加载函数 - 只检查当前页的收藏状态
   const loadFavoriteStates = useCallback(async () => {
@@ -171,7 +172,7 @@ const ToolsPage = React.memo(() => {
     }
   }, [user, tools]);
 
-  // 工具数据加载函数 - 使用服务器端分页优化性能
+  // 工具数据加载函数 - 统一使用服务器端分页
   const loadTools = useCallback(async (autoRetry = false, page = currentPage) => {
     setLoadError(null);
     setLoading(true);
@@ -180,16 +181,11 @@ const ToolsPage = React.memo(() => {
     }
 
     try {
-      // 检查是否有搜索条件
-      const hasFilters = filters.search ||
-        filters.categories.length > 0 ||
-        filters.features.length > 0 ||
-        filters.pricing;
+      // 统一使用固定的每页大小，避免重复加载
+      const limit = TOOLS_PER_PAGE;
+      const offset = (page - 1) * TOOLS_PER_PAGE;
 
-      const limit = hasFilters ? 100 : TOOLS_PER_PAGE; // 有筛选条件时获取更多数据
-      const offset = hasFilters ? 0 : (page - 1) * TOOLS_PER_PAGE;
-
-      console.log(`🔄 开始加载工具数据 (limit: ${limit}, offset: ${offset})...`);
+      console.log(`🔄 开始加载工具数据 (limit: ${limit}, offset: ${offset}, page: ${page})...`);
 
       // 并行获取数据和总数
       const [data, totalCount] = await Promise.all([
@@ -202,14 +198,13 @@ const ToolsPage = React.memo(() => {
       console.log(`✅ 工具数据加载成功: ${data.length}个工具, 总数${totalCount}`);
       setTools(Array.isArray(data) ? data : []);
       setTotalToolsCount(totalCount);
-      setIsSearchMode(hasFilters);
       setRetryCount(0);
     } catch (error) {
       console.error('❌ 加载工具失败:', error);
-      
+
       // 错误分类和用户友好的错误信息
       let errorMessage = '加载失败，请稍后重试';
-      
+
       if (error instanceof Error) {
         if (error.message.includes('网络') || error.message.includes('fetch')) {
           errorMessage = isOffline ? '网络连接已断开，请检查网络设置' : '网络连接不稳定，正在重试...';
@@ -221,16 +216,17 @@ const ToolsPage = React.memo(() => {
           errorMessage = error.message;
         }
       }
-      
+
       setLoadError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [isOffline, recordApiCall, retryCount, currentPage, filters]);
+  }, [isOffline, recordApiCall, retryCount, currentPage]);
 
-  // 当页码变化时重新加载数据（非搜索模式下）
+  // 当页码变化时重新加载数据（仅在没有筛选条件时）
   useEffect(() => {
-    if (currentPage > 1 && !isSearchMode) {
+    // 只有在没有筛选条件且页码大于1时才从服务器加载新数据
+    if (currentPage > 1 && !hasActiveFilters) {
       loadTools(false, currentPage);
     }
   }, [currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -581,17 +577,21 @@ const ToolsPage = React.memo(() => {
                 <div>
                   <h4 className="text-sm font-medium text-gray-900 mb-3">分类</h4>
                   <div className="space-y-2">
-                    {categories.map(category => (
-                      <label key={category} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={filters.categories.includes(category)}
-                          onChange={() => handleCategoryToggle(category)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="ml-2 text-sm text-gray-700">{category}</span>
-                      </label>
-                    ))}
+                    {categories.map(category => {
+                      const checkboxId = `category-${category.replace(/\s+/g, '-')}`;
+                      return (
+                        <label key={category} htmlFor={checkboxId} className="flex items-center cursor-pointer">
+                          <input
+                            id={checkboxId}
+                            type="checkbox"
+                            checked={filters.categories.includes(category)}
+                            onChange={() => handleCategoryToggle(category)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">{category}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -599,17 +599,21 @@ const ToolsPage = React.memo(() => {
                 <div>
                   <h4 className="text-sm font-medium text-gray-900 mb-3">功能特性</h4>
                   <div className="space-y-2">
-                    {FALLBACK_FEATURES.map(feature => (
-                      <label key={feature} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={filters.features.includes(feature)}
-                          onChange={() => handleFeatureToggle(feature)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="ml-2 text-sm text-gray-700">{feature}</span>
-                      </label>
-                    ))}
+                    {FALLBACK_FEATURES.map(feature => {
+                      const checkboxId = `feature-${feature.replace(/\s+/g, '-')}`;
+                      return (
+                        <label key={feature} htmlFor={checkboxId} className="flex items-center cursor-pointer">
+                          <input
+                            id={checkboxId}
+                            type="checkbox"
+                            checked={filters.features.includes(feature)}
+                            onChange={() => handleFeatureToggle(feature)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">{feature}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -617,19 +621,23 @@ const ToolsPage = React.memo(() => {
                 <div>
                   <h4 className="text-sm font-medium text-gray-900 mb-3">定价模式</h4>
                   <div className="space-y-2">
-                    {PRICING_OPTIONS.map(option => (
-                      <label key={option.value} className="flex items-center">
-                        <input
-                          type="radio"
-                          name="pricing"
-                          value={option.value}
-                          checked={filters.pricing === option.value}
-                          onChange={(e) => handleFilterChange('pricing', e.target.value)}
-                          className="border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="ml-2 text-sm text-gray-700">{option.label}</span>
-                      </label>
-                    ))}
+                    {PRICING_OPTIONS.map(option => {
+                      const radioId = `pricing-${option.value}`;
+                      return (
+                        <label key={option.value} htmlFor={radioId} className="flex items-center cursor-pointer">
+                          <input
+                            id={radioId}
+                            type="radio"
+                            name="pricing"
+                            value={option.value}
+                            checked={filters.pricing === option.value}
+                            onChange={(e) => handleFilterChange('pricing', e.target.value)}
+                            className="border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">{option.label}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -652,7 +660,7 @@ const ToolsPage = React.memo(() => {
         {/* Results Summary */}
         <div className="mb-6 flex items-center justify-between">
           <p className="text-gray-600">
-            找到 <span className="font-semibold text-gray-900">{isSearchMode ? filteredTools.length : totalToolsCount}</span> 个工具
+            找到 <span className="font-semibold text-gray-900">{hasActiveFilters ? filteredTools.length : totalToolsCount}</span> 个工具
             {filters.search && (
               <span> 包含 "<span className="font-semibold">{filters.search}</span>"</span>
             )}
@@ -693,7 +701,7 @@ const ToolsPage = React.memo(() => {
         </div>
 
         {/* Tools Grid/List */}
-        {filteredTools.length === 0 ? (
+        {displayTools.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
             <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">未找到匹配的工具</h3>
