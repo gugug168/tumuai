@@ -62,9 +62,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
     })
 
     // 4. 构建查询
+    // 使用 { count: 'exact' } 获取筛选后的总数
     let query = supabase
       .from('tools')
-      .select('id,name,tagline,logo_url,categories,features,pricing,rating,views,upvotes,date_added,description,website_url')
+      .select('id,name,tagline,logo_url,categories,features,pricing,rating,views,upvotes,date_added,description,website_url', { count: 'exact' })
       .eq('status', 'published')
 
     // 分类筛选 - 使用 overlaps 操作符匹配数组中的任意值
