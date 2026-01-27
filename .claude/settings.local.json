@@ -24,6 +24,10 @@
       "E:\\tumuai"
     ]
   },
+  "enabledPlugins": {
+    "vercel@claude-plugins-official": true,
+    "supabase@claude-plugins-official": true
+  },
   "outputStyle": "nekomata-engineer",
   "mcpServers": {
     "supabase": {

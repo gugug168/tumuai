@@ -12,7 +12,7 @@ import {
   Clock
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getTools, getCategories } from '../lib/supabase';
+import { getTools, getCategories, getToolsCount } from '../lib/supabase';
 import type { Tool } from '../types';
 import { addToFavorites, removeFromFavorites, isFavorited, batchCheckFavorites } from '../lib/community';
 import AuthModal from '../components/AuthModal';
@@ -37,6 +37,8 @@ const ToolsPage = React.memo(() => {
 
   // 分页状态 - 每页显示12个工具
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalToolsCount, setTotalToolsCount] = useState(0);
+  const [isSearchMode, setIsSearchMode] = useState(false); // 是否处于搜索模式
   const TOOLS_PER_PAGE = 12;
 
   // 搜索防抖：使用 useRef 存储防抖定时器
@@ -62,18 +64,12 @@ const ToolsPage = React.memo(() => {
 
   // 筛选逻辑函数 - 使用useMemo优化性能
   const filteredTools = useMemo(() => {
-    recordInteraction('filter_tools', { filterCount: Object.keys(filters).filter(key => 
-      key === 'search' ? filters[key] : 
-      Array.isArray(filters[key]) ? filters[key].length > 0 : 
-      Boolean(filters[key])
-    ).length });
-
     let filtered = [...tools];
 
     // 搜索筛选 - 使用deferred值优化性能
     if (deferredSearch) {
       const searchLower = deferredSearch.toLowerCase();
-      filtered = filtered.filter(tool => 
+      filtered = filtered.filter(tool =>
         tool.name.toLowerCase().includes(searchLower) ||
         tool.tagline.toLowerCase().includes(searchLower) ||
         tool.description?.toLowerCase().includes(searchLower) ||
@@ -119,57 +115,94 @@ const ToolsPage = React.memo(() => {
     return filtered;
   }, [tools, deferredSearch, filters.categories, filters.features, filters.pricing, filters.sortBy]);
 
-  // 分页计算 - 当筛选条件变化时重置到第一页
+  // 记录筛选交互（仅开发环境，移除useMemo中的副作用）
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const filterCount = Object.keys(filters).filter(key =>
+        key === 'search' ? filters[key] :
+        Array.isArray(filters[key]) ? filters[key].length > 0 :
+        Boolean(filters[key])
+      ).length;
+      if (filterCount > 0) {
+        recordInteraction('filter_tools', { filterCount });
+      }
+    }
+  }, [filters, recordInteraction]);
+
+  // 分页计算 - 当筛选条件变化时重置到第一页并重新加载
   useEffect(() => {
     setCurrentPage(1);
-  }, [deferredSearch, filters.categories, filters.features, filters.pricing, filters.sortBy]);
+    // 短暂延迟后加载数据，避免频繁请求
+    const timeoutId = setTimeout(() => {
+      loadTools(false, 1);
+    }, 100);
+    return () => clearTimeout(timeoutId);
+  }, [deferredSearch, filters.categories, filters.features, filters.pricing, filters.sortBy]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 当前页的工具列表
+  // 计算总页数和当前页的工具
+  const displayTools = isSearchMode ? filteredTools : tools;
+  const totalPages = isSearchMode
+    ? Math.ceil(filteredTools.length / TOOLS_PER_PAGE)
+    : Math.ceil(totalToolsCount / TOOLS_PER_PAGE);
+
   const paginatedTools = useMemo(() => {
-    const startIndex = (currentPage - 1) * TOOLS_PER_PAGE;
-    const endIndex = startIndex + TOOLS_PER_PAGE;
-    return filteredTools.slice(startIndex, endIndex);
-  }, [filteredTools, currentPage]);
+    if (isSearchMode) {
+      // 搜索模式下，客户端分页
+      const startIndex = (currentPage - 1) * TOOLS_PER_PAGE;
+      const endIndex = startIndex + TOOLS_PER_PAGE;
+      return filteredTools.slice(startIndex, endIndex);
+    }
+    // 普通模式下，直接显示服务器返回的数据
+    return tools;
+  }, [isSearchMode, filteredTools, currentPage, tools]);
 
-  const totalPages = Math.ceil(filteredTools.length / TOOLS_PER_PAGE);
-
-  // 收藏状态加载函数 - 使用批量查询优化性能
+  // 收藏状态加载函数 - 只检查当前页的收藏状态
   const loadFavoriteStates = useCallback(async () => {
     if (!user || tools.length === 0) return;
 
     try {
-      // 使用批量查询替代循环单独查询，大幅减少API请求次数
+      // 使用批量查询替代循环单独查询
       const toolIds = tools.map(t => t.id);
       const states = await batchCheckFavorites(toolIds);
       setFavoriteStates(states);
     } catch (error) {
       console.error('批量检查收藏状态失败:', error);
-      // 失败时设置为空状态
       setFavoriteStates({});
     }
   }, [user, tools]);
 
-  // 工具数据加载函数 - 使用缓存优化
-  const loadTools = useCallback(async (autoRetry = false) => {
+  // 工具数据加载函数 - 使用服务器端分页优化性能
+  const loadTools = useCallback(async (autoRetry = false, page = currentPage) => {
     setLoadError(null);
     setLoading(true);
     if (!autoRetry) {
       setRetryCount(prev => prev + 1);
     }
-    
+
     try {
-      console.log('🔄 开始加载工具数据...');
-      
-      // 使用缓存API调用，5分钟缓存，1分钟stale-while-revalidate
-      const data = await recordApiCall('load_tools', async () => {
-        return await fetchWithCache('tools_list', 
-          () => getTools(60),
-          { ttl: 5 * 60 * 1000, staleWhileRevalidate: 60 * 1000 }
-        );
-      }, { autoRetry, retryCount });
-      
-      console.log('✅ 工具数据加载成功:', data.length, '个工具');
+      // 检查是否有搜索条件
+      const hasFilters = filters.search ||
+        filters.categories.length > 0 ||
+        filters.features.length > 0 ||
+        filters.pricing;
+
+      const limit = hasFilters ? 100 : TOOLS_PER_PAGE; // 有筛选条件时获取更多数据
+      const offset = hasFilters ? 0 : (page - 1) * TOOLS_PER_PAGE;
+
+      console.log(`🔄 开始加载工具数据 (limit: ${limit}, offset: ${offset})...`);
+
+      // 并行获取数据和总数
+      const [data, totalCount] = await Promise.all([
+        recordApiCall('load_tools', async () => {
+          return await getTools(limit, offset);
+        }, { autoRetry, retryCount }),
+        getToolsCount()
+      ]);
+
+      console.log(`✅ 工具数据加载成功: ${data.length}个工具, 总数${totalCount}`);
       setTools(Array.isArray(data) ? data : []);
+      setTotalToolsCount(totalCount);
+      setIsSearchMode(hasFilters);
       setRetryCount(0);
     } catch (error) {
       console.error('❌ 加载工具失败:', error);
@@ -193,7 +226,14 @@ const ToolsPage = React.memo(() => {
     } finally {
       setLoading(false);
     }
-  }, [isOffline, fetchWithCache, recordApiCall, retryCount]);
+  }, [isOffline, recordApiCall, retryCount, currentPage, filters]);
+
+  // 当页码变化时重新加载数据（非搜索模式下）
+  useEffect(() => {
+    if (currentPage > 1 && !isSearchMode) {
+      loadTools(false, currentPage);
+    }
+  }, [currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 获取分类数据 - 使用缓存优化
   const loadCategories = useCallback(async () => {
@@ -612,7 +652,7 @@ const ToolsPage = React.memo(() => {
         {/* Results Summary */}
         <div className="mb-6 flex items-center justify-between">
           <p className="text-gray-600">
-            找到 <span className="font-semibold text-gray-900">{filteredTools.length}</span> 个工具
+            找到 <span className="font-semibold text-gray-900">{isSearchMode ? filteredTools.length : totalToolsCount}</span> 个工具
             {filters.search && (
               <span> 包含 "<span className="font-semibold">{filters.search}</span>"</span>
             )}

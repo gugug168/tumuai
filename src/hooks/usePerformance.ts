@@ -146,8 +146,10 @@ export function usePerformance(componentName?: string) {
     }
   }, [startTiming, endTiming]);
 
-  // 记录用户交互
+  // 记录用户交互（仅开发环境）
   const recordInteraction = useCallback((interactionName: string, metadata?: Record<string, any>) => {
+    if (process.env.NODE_ENV !== 'development') return;
+
     const entry: PerformanceEntry = {
       name: `${componentRef.current}_${interactionName}`,
       startTime: performance.now(),
@@ -274,9 +276,11 @@ export function usePerformance(componentName?: string) {
     };
   }, []);
 
-  // 在组件每次渲染时记录
+  // 在组件每次渲染时记录（仅开发环境）
   useEffect(() => {
-    recordRender();
+    if (process.env.NODE_ENV === 'development') {
+      recordRender();
+    }
   });
 
   return {

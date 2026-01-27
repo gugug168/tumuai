@@ -50,17 +50,17 @@ export type { Tool } from '../types'
 //   )
 // }
 
-// 获取所有工具 - 增强类型安全
-export async function getTools(limit = 60): Promise<Tool[]> {
+// 获取所有工具 - 增强类型安全，支持分页
+export async function getTools(limit = 60, offset = 0): Promise<Tool[]> {
   try {
-    console.log('✅ 通过Supabase直连获取工具')
+    console.log(`✅ 通过Supabase直连获取工具 (limit: ${limit}, offset: ${offset})`)
     // 直接使用 Supabase 客户端
     const { data, error } = await supabase
       .from('tools')
       .select('id,name,tagline,logo_url,categories,features,pricing,rating,views,upvotes,date_added')
       .eq('status', 'published')  // 只获取已发布的工具
       .order('upvotes', { ascending: false })
-      .limit(limit)
+      .range(offset, offset + limit - 1)
 
     if (error) {
       console.error('Error fetching tools:', error)
@@ -71,6 +71,26 @@ export async function getTools(limit = 60): Promise<Tool[]> {
   } catch (error) {
     console.error('Unexpected error fetching tools:', error)
     throw error
+  }
+}
+
+// 获取工具总数
+export async function getToolsCount(): Promise<number> {
+  try {
+    const { count, error } = await supabase
+      .from('tools')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'published')
+
+    if (error) {
+      console.error('Error fetching tools count:', error)
+      return 0
+    }
+
+    return count || 0
+  } catch (error) {
+    console.error('Unexpected error fetching tools count:', error)
+    return 0
   }
 }
 
