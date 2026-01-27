@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useDeferredValue, useTransition, useId, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { 
+import {
   Filter,
   Grid,
   List,
@@ -9,7 +9,9 @@ import {
   RefreshCw,
   AlertCircle,
   Wifi,
-  Clock
+  Clock,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getTools, getCategories, getToolsCount, getToolsWithCache, getToolsCountWithCache, getToolsSmart } from '../lib/supabase';
@@ -740,20 +742,31 @@ const ToolsPage = React.memo(() => {
           </p>
           <div className="flex items-center space-x-2">
             {totalPages > 1 && (
-              <div className="flex items-center space-x-1">
+              <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300 transition-all duration-200 shadow-sm hover:shadow"
                 >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
                   上一页
                 </button>
+
+                {/* 页码显示 */}
+                <div className="flex items-center px-4 py-2 bg-blue-50 rounded-lg font-medium text-blue-700">
+                  <span className="text-sm">第</span>
+                  <span className="mx-1 font-bold">{currentPage}</span>
+                  <span className="text-sm">/ {totalPages}</span>
+                  <span className="text-sm">页</span>
+                </div>
+
                 <button
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300 transition-all duration-200 shadow-sm hover:shadow"
                 >
                   下一页
+                  <ChevronRight className="w-4 h-4 ml-1" />
                 </button>
               </div>
             )}
