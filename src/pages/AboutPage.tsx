@@ -152,20 +152,20 @@ const AboutPage = () => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center text-white">
             <div>
-              <div className="text-4xl font-bold mb-2">500+</div>
-              <div className="text-blue-100">精选工具</div>
+              <div className="text-4xl font-bold mb-2">88+</div>
+              <div className="text-blue-100">收录工具</div>
             </div>
             <div>
-              <div className="text-4xl font-bold mb-2">10,000+</div>
-              <div className="text-blue-100">注册用户</div>
+              <div className="text-4xl font-bold mb-2">7+</div>
+              <div className="text-blue-100">工具分类</div>
             </div>
             <div>
-              <div className="text-4xl font-bold mb-2">50,000+</div>
-              <div className="text-blue-100">月访问量</div>
+              <div className="text-4xl font-bold mb-2">持续更新</div>
+              <div className="text-blue-100">内容更新</div>
             </div>
             <div>
-              <div className="text-4xl font-bold mb-2">98%</div>
-              <div className="text-blue-100">用户满意度</div>
+              <div className="text-4xl font-bold mb-2">用心服务</div>
+              <div className="text-blue-100">用户至上</div>
             </div>
           </div>
         </div>
@@ -181,25 +181,29 @@ const AboutPage = () => {
           
           <div className="flex justify-center space-x-6">
             <a
-              href="mailto:contact@civilaihub.com"
+              href="mailto:contact@tumuai.net"
               className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors"
             >
               <Mail className="w-5 h-5" />
-              <span>307714007@qq.com</span>
+              <span>contact@tumuai.net</span>
             </a>
             <a
-              href="#"
+              href="https://github.com/gugug168/tumuai"
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors"
             >
               <Github className="w-5 h-5" />
               <span>GitHub</span>
             </a>
             <a
-              href="#"
+              href="https://www.tumuai.net"
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors"
             >
               <Linkedin className="w-5 h-5" />
-              <span>LinkedIn</span>
+              <span>官网</span>
             </a>
           </div>
         </div>

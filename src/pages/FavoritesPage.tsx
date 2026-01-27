@@ -49,26 +49,24 @@ const FavoritesPage = () => {
   // 如果用户未登录
   if (!user) {
     return (
-      <>
-        <div className="min-h-screen bg-background-secondary flex items-center justify-center">
-          <div className="text-center">
-            <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-primary-800 mb-4">请先登录</h2>
-            <p className="text-gray-600 mb-6">登录后即可查看您收藏的工具</p>
-            <button
-              onClick={() => setShowAuthModal(true)}
-              className="btn-primary"
-            >
-              立即登录
-            </button>
-          </div>
+      <div className="min-h-[60vh] bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">请先登录</h2>
+          <p className="text-gray-600 mb-6">登录后即可查看您收藏的工具</p>
+          <button
+            onClick={() => setShowAuthModal(true)}
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          >
+            立即登录
+          </button>
         </div>
         <AuthModal
           isOpen={showAuthModal}
           onClose={() => setShowAuthModal(false)}
           initialMode="login"
         />
-      </>
+      </div>
     );
   }
 
