@@ -566,11 +566,13 @@ const ToolsPage = React.memo(() => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   id={searchId}
+                  name="search"
                   type="text"
                   value={filters.search}
                   onChange={(e) => handleFilterChange('search', e.target.value)}
                   placeholder="搜索工具名称、功能、分类..."
                   className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
+                  aria-label="搜索AI工具"
                 />
                 {/* 加载指示器 */}
                 {isPending && (

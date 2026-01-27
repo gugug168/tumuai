@@ -1,15 +1,53 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Sparkles, Building2, Calculator, PenTool } from 'lucide-react';
 
+interface SiteStats {
+  toolsCount: number;
+  categoriesCount: number;
+}
+
 const Hero = () => {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = React.useState('');
-  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [stats, setStats] = useState<SiteStats>({ toolsCount: 88, categoriesCount: 7 });
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 获取真实的统计数据
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // 获取工具总数
+        const toolsResponse = await fetch('/api/tools-cache?limit=1&includeCount=true');
+        const toolsData = await toolsResponse.json();
+        const toolsCount = toolsData.count || 88;
+
+        // 获取分类数量
+        const categoriesResponse = await fetch('https://bixljqdwkjuzftlpmgtb.supabase.co/rest/v1/categories?select=*&is_active=eq.true', {
+          headers: {
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || ''}`
+          }
+        });
+        const categoriesData = await categoriesResponse.json();
+        const categoriesCount = categoriesData.length || 7;
+
+        setStats({ toolsCount, categoriesCount });
+      } catch (error) {
+        console.error('获取统计数据失败:', error);
+        // 使用默认值
+        setStats({ toolsCount: 88, categoriesCount: 7 });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      // 使用React Router跳转到工具中心页面并传递搜索参数
       navigate(`/tools?search=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
@@ -93,10 +131,13 @@ const Hero = () => {
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
                 <input
                   type="text"
+                  id="hero-search"
+                  name="search"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="搜索结构设计、BIM建模、工程计算等专业工具..."
                   className="w-full pl-12 pr-32 py-4 text-lg border-0 rounded-xl focus:ring-2 focus:ring-purple-500 shadow-xl bg-white/95 backdrop-blur-sm text-gray-900 placeholder-gray-500 transition-all duration-300 hover:bg-white focus:bg-white"
+                  aria-label="搜索AI工具"
                 />
                 <button 
                   type="submit"
@@ -111,18 +152,22 @@ const Hero = () => {
           {/* 底部统计 */}
           <div className="flex items-center justify-center space-x-8 text-gray-300">
             <div className="text-center group cursor-default">
-              <div className="text-2xl font-bold text-blue-400 group-hover:text-blue-300 transition-colors">500+</div>
+              <div className="text-2xl font-bold text-blue-400 group-hover:text-blue-300 transition-colors">
+                {isLoading ? '...' : `${stats.toolsCount}+`}
+              </div>
               <div className="text-xs">专业工具</div>
             </div>
             <div className="w-px h-8 bg-gray-600"></div>
             <div className="text-center group cursor-default">
-              <div className="text-2xl font-bold text-purple-400 group-hover:text-purple-300 transition-colors">50+</div>
+              <div className="text-2xl font-bold text-purple-400 group-hover:text-purple-300 transition-colors">
+                {isLoading ? '...' : `${stats.categoriesCount}+`}
+              </div>
               <div className="text-xs">工具分类</div>
             </div>
             <div className="w-px h-8 bg-gray-600"></div>
             <div className="text-center group cursor-default">
-              <div className="text-2xl font-bold text-pink-400 group-hover:text-pink-300 transition-colors">1000+</div>
-              <div className="text-xs">活跃用户</div>
+              <div className="text-2xl font-bold text-pink-400 group-hover:text-pink-300 transition-colors">持续更新</div>
+              <div className="text-xs">数据更新</div>
             </div>
           </div>
         </div>

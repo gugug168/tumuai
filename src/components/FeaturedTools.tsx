@@ -143,7 +143,9 @@ const FeaturedTools = React.memo(() => {
                   <div className="flex items-center space-x-1 mb-1">
                     <Star className="w-4 h-4 text-yellow-400 fill-current" />
                     <span className="text-sm font-medium text-gray-700">
-                      {tool.rating ? tool.rating.toFixed(1) : '4.5'}
+                      {tool.review_count && tool.review_count > 0
+                        ? tool.rating?.toFixed(1) || '4.5'
+                        : '新工具'}
                     </span>
                   </div>
                   <span className="text-xs text-gray-500">{tool.pricing || '免费'}</span>
