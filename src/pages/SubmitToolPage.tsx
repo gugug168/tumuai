@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Link as LinkIcon, Tag, DollarSign, Image, FileText, AlertCircle, Sparkles } from 'lucide-react';
+import { Upload, Link as LinkIcon, Tag, DollarSign, Image, FileText, AlertCircle, Sparkles, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { uploadToolLogo, validateImageFile } from '../lib/storage';
 import { SUBMIT_PRICING_OPTIONS, EMERGENCY_CATEGORIES } from '../lib/config';
@@ -7,6 +7,15 @@ import { getCategories } from '../lib/supabase';
 import { autoGenerateLogo, generateInitialLogo } from '../lib/logoUtils';
 import SmartURLInput from '../components/SmartURLInput';
 import type { DuplicateCheckResult } from '../lib/duplicate-checker';
+
+// 表单步骤定义
+const FORM_STEPS = [
+  { id: 1, title: 'AI智能填入', icon: Sparkles },
+  { id: 2, title: '基本信息', icon: FileText },
+  { id: 3, title: '分类功能', icon: Tag },
+  { id: 4, title: '定价Logo', icon: DollarSign },
+  { id: 5, title: '提交审核', icon: Upload }
+];
 
 // AI智能填入类型定义（与SmartURLInput保持一致）
 interface AIAnalysisResult {
@@ -35,10 +44,17 @@ const SubmitToolPage = () => {
 
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [showSuccess, setShowSuccess] = useState(false);
+
   // 动态分类数据状态
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  // 表单步骤状态跟踪
+  const [currentStep, setCurrentStep] = useState(1);
+  const [stepCompletion, setStepCompletion] = useState<Record<number, boolean>>({
+    1: false, 2: false, 3: false, 4: false, 5: false
+  });
 
   // 重复检测状态
   const [duplicateInfo, setDuplicateInfo] = useState<DuplicateCheckResult | null>(null);
@@ -65,6 +81,30 @@ const SubmitToolPage = () => {
 
     loadCategories();
   }, []);
+
+  // 监听表单数据变化，更新步骤完成状态
+  useEffect(() => {
+    setStepCompletion({
+      1: formData.officialWebsite.length > 0,
+      2: formData.toolName.length > 0 && formData.shortDescription.length > 0,
+      3: formData.categories.length > 0,
+      4: formData.pricingModel.length > 0,
+      5: false
+    });
+
+    // 更新当前步骤
+    if (formData.officialWebsite.length === 0) {
+      setCurrentStep(1);
+    } else if (formData.toolName.length === 0 || formData.shortDescription.length === 0) {
+      setCurrentStep(2);
+    } else if (formData.categories.length === 0) {
+      setCurrentStep(3);
+    } else if (formData.pricingModel.length === 0) {
+      setCurrentStep(4);
+    } else {
+      setCurrentStep(5);
+    }
+  }, [formData]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -284,24 +324,30 @@ const SubmitToolPage = () => {
         alert(`提交失败: ${error.message}`);
         return;
       }
-      
+
       console.log('提交成功:', data);
-      
-      // 显示成功消息
-      alert('✅ 工具提交成功！我们会在1-3个工作日内审核，审核结果将通过邮件通知您。');
-      
-      // 重置表单
-      setFormData({
-        toolName: '',
-        officialWebsite: '',
-        shortDescription: '',
-        detailedDescription: '',
-        categories: [],
-        mainFeatures: '',
-        pricingModel: '',
-        logoFile: null,
-        submitterEmail: ''
-      });
+
+      // 显示成功庆祝动画
+      setShowSuccess(true);
+
+      // 3秒后重置表单并关闭成功状态
+      setTimeout(() => {
+        setShowSuccess(false);
+        // 重置表单
+        setFormData({
+          toolName: '',
+          officialWebsite: '',
+          shortDescription: '',
+          detailedDescription: '',
+          categories: [],
+          mainFeatures: '',
+          pricingModel: '',
+          logoFile: null,
+          submitterEmail: ''
+        });
+        setStepCompletion({ 1: false, 2: false, 3: false, 4: false, 5: false });
+        setCurrentStep(1);
+      }, 3000);
       
     } catch (error) {
       console.error('提交过程中发生错误:', error);
@@ -320,6 +366,90 @@ const SubmitToolPage = () => {
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             发现了优秀的土木工程AI工具？与社区分享，帮助更多工程师提升工作效率
           </p>
+        </div>
+
+        {/* 步骤指示器 */}
+        <div className="mb-8 hidden md:block">
+          <div className="flex items-center justify-between">
+            {FORM_STEPS.map((step, index) => {
+              const IconComponent = step.icon;
+              const isCompleted = stepCompletion[step.id];
+              const isCurrent = currentStep === step.id;
+              const isPast = currentStep > step.id;
+
+              return (
+                <React.Fragment key={step.id}>
+                  <div className="flex flex-col items-center">
+                    <div
+                      className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+                        isCompleted
+                          ? 'bg-green-500 text-white'
+                          : isCurrent
+                          ? 'bg-blue-600 text-white shadow-lg scale-110'
+                          : isPast
+                          ? 'bg-blue-100 text-blue-600'
+                          : 'bg-gray-200 text-gray-500'
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <Check className="w-6 h-6" />
+                      ) : (
+                        <IconComponent className="w-5 h-5" />
+                      )}
+                    </div>
+                    <span
+                      className={`text-sm font-medium mt-2 transition-colors ${
+                        isCurrent ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-gray-500'
+                      }`}
+                    >
+                      {step.title}
+                    </span>
+                  </div>
+                  {index < FORM_STEPS.length - 1 && (
+                    <div
+                      className={`flex-1 h-1 mx-2 max-w-24 transition-colors duration-300 ${
+                        isCompleted || isPast ? 'bg-green-500' : 'bg-gray-200'
+                      }`}
+                    ></div>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 移动端步骤指示器 */}
+        <div className="md:hidden mb-6">
+          <div className="flex items-center justify-between bg-white rounded-lg p-4 shadow-sm">
+            {FORM_STEPS.map((step, index) => {
+              const IconComponent = step.icon;
+              const isCompleted = stepCompletion[step.id];
+              const isCurrent = currentStep === step.id;
+
+              return (
+                <div key={step.id} className="flex flex-col items-center">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      isCompleted
+                        ? 'bg-green-500 text-white'
+                        : isCurrent
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-500'
+                    }`}
+                  >
+                    {isCompleted ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      <IconComponent className="w-4 h-4" />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="text-center mt-2 text-sm text-gray-600">
+            步骤 {currentStep} / {FORM_STEPS.length}: {FORM_STEPS[currentStep - 1].title}
+          </div>
         </div>
 
         {/* Submission Guidelines */}
@@ -386,14 +516,25 @@ const SubmitToolPage = () => {
         </div>
 
         {/* Submission Form */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* 基本信息 */}
-            <div className="border-b border-gray-200 pb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <FileText className="w-5 h-5 mr-2 text-blue-600" />
-                基本信息
-              </h3>
+            <div className={`p-8 border-b transition-all duration-300 ${
+              currentStep >= 2 ? 'border-blue-200 bg-blue-50/30' : 'border-gray-200'
+            }`}>
+              <div className="flex items-center mb-4">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 transition-all duration-300 ${
+                  stepCompletion[2] ? 'bg-green-500 text-white' : currentStep === 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
+                }`}>
+                  {stepCompletion[2] ? <Check className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">基本信息</h3>
+                {stepCompletion[2] && (
+                  <span className="ml-auto text-sm text-green-600 flex items-center">
+                    <Check className="w-4 h-4 mr-1" /> 已完成
+                  </span>
+                )}
+              </div>
               
               <div className="max-w-md">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -464,11 +605,22 @@ const SubmitToolPage = () => {
             </div>
 
             {/* 分类和功能 */}
-            <div className="border-b border-gray-200 pb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Tag className="w-5 h-5 mr-2 text-blue-600" />
-                分类和功能
-              </h3>
+            <div className={`p-8 border-b transition-all duration-300 ${
+              currentStep >= 3 ? 'border-blue-200 bg-blue-50/30' : 'border-gray-200'
+            }`}>
+              <div className="flex items-center mb-4">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 transition-all duration-300 ${
+                  stepCompletion[3] ? 'bg-green-500 text-white' : currentStep === 3 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
+                }`}>
+                  {stepCompletion[3] ? <Check className="w-4 h-4" /> : <Tag className="w-4 h-4" />}
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">分类和功能</h3>
+                {stepCompletion[3] && (
+                  <span className="ml-auto text-sm text-green-600 flex items-center">
+                    <Check className="w-4 h-4 mr-1" /> 已完成
+                  </span>
+                )}
+              </div>
               
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -520,11 +672,22 @@ const SubmitToolPage = () => {
             </div>
 
             {/* 定价和Logo */}
-            <div className="border-b border-gray-200 pb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <DollarSign className="w-5 h-5 mr-2 text-blue-600" />
-                定价和Logo
-              </h3>
+            <div className={`p-8 border-b transition-all duration-300 ${
+              currentStep >= 4 ? 'border-blue-200 bg-blue-50/30' : 'border-gray-200'
+            }`}>
+              <div className="flex items-center mb-4">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 transition-all duration-300 ${
+                  stepCompletion[4] ? 'bg-green-500 text-white' : currentStep === 4 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
+                }`}>
+                  {stepCompletion[4] ? <Check className="w-4 h-4" /> : <DollarSign className="w-4 h-4" />}
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">定价和Logo</h3>
+                {stepCompletion[4] && (
+                  <span className="ml-auto text-sm text-green-600 flex items-center">
+                    <Check className="w-4 h-4 mr-1" /> 已完成
+                  </span>
+                )}
+              </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -589,10 +752,15 @@ const SubmitToolPage = () => {
             </div>
 
             {/* 联系信息 */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                联系信息
-              </h3>
+            <div className="p-8">
+              <div className="flex items-center mb-4">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 transition-all duration-300 ${
+                  currentStep === 5 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
+                }`}>
+                  <Upload className="w-4 h-4" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">联系信息（选填）</h3>
+              </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -615,11 +783,14 @@ const SubmitToolPage = () => {
             </div>
 
             {/* Submit Button */}
-            <div className="pt-6">
+            <div className="pt-6 flex items-center justify-between">
+              <div className="text-sm text-gray-500">
+                完成度: <span className="font-semibold text-blue-600">{Object.values(stepCompletion).filter(Boolean).length} / 5</span>
+              </div>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-8 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:scale-105"
               >
                 {isSubmitting ? (
                   <>
@@ -647,6 +818,25 @@ const SubmitToolPage = () => {
           </p>
         </div>
       </div>
+
+      {/* 成功庆祝动画 */}
+      {showSuccess && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl p-8 max-w-md mx-4 text-center animate-in zoom-in duration-300">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+              <Check className="w-10 h-10 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">提交成功！</h2>
+            <p className="text-gray-600 mb-4">
+              工具提交成功！我们会在1-3个工作日内审核，审核结果将通过邮件通知您。
+            </p>
+            <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
+              <span>正在自动关闭...</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
