@@ -201,14 +201,82 @@ export async function getToolsViaAPI(
 }
 
 /**
+ * 通过筛选 API 获取工具列表
+ * 当有筛选条件时使用此 API，可以获取所有匹配的工具（不受分页限制）
+ */
+export async function getToolsFiltered(
+  filters?: ToolSearchFilters,
+  limit = 100,
+  offset = 0,
+  sortBy = 'upvotes'
+): Promise<{ tools: Tool[]; count: number }> {
+  try {
+    const url = new URL('/api/tools-filtered', window.location.origin)
+    url.searchParams.set('limit', limit.toString())
+    url.searchParams.set('offset', offset.toString())
+    url.searchParams.set('includeCount', 'true')
+    url.searchParams.set('sortBy', sortBy)
+
+    // 添加筛选参数
+    if (filters?.categories && filters.categories.length > 0) {
+      url.searchParams.set('category', filters.categories[0])
+    }
+    if (filters?.pricing) {
+      url.searchParams.set('pricing', filters.pricing)
+    }
+    if (filters?.features && filters.features.length > 0) {
+      url.searchParams.set('features', filters.features.join(','))
+    }
+
+    const response = await fetch(url.toString())
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`)
+    }
+
+    const result = await response.json()
+    return {
+      tools: result.tools || [],
+      count: result.count || 0
+    }
+  } catch (error) {
+    console.error('Error fetching filtered tools via API:', error)
+    throw error
+  }
+}
+
+/**
  * 智能获取工具 - 自动选择最优数据源
  * 优先级：API代理 > 本地缓存 > 直连数据库
+ *
+ * @param limit 每页数量
+ * @param offset 偏移量
+ * @param includeCount 是否包含总数
+ * @param filters 可选的筛选条件（有筛选时使用筛选 API）
  */
 export async function getToolsSmart(
   limit = 12,
   offset = 0,
-  includeCount = true
+  includeCount = true,
+  filters?: ToolSearchFilters
 ): Promise<{ tools: Tool[]; count?: number }> {
+  // 检查是否有筛选条件
+  const hasFilters = filters &&
+    ((filters.categories && filters.categories.length > 0) ||
+     filters.pricing ||
+     (filters.features && filters.features.length > 0))
+
+  // 有筛选条件时使用筛选 API
+  if (hasFilters) {
+    try {
+      const sortBy = filters?.sortBy || 'upvotes'
+      return await getToolsFiltered(filters, limit, offset, sortBy)
+    } catch (apiError) {
+      console.warn('Filtered API failed, falling back to client-side filtering:', apiError)
+      // 回退到普通 API + 客户端筛选
+    }
+  }
+
   // 首先尝试通过 Vercel API（最快）
   try {
     return await getToolsViaAPI(limit, offset, includeCount)
