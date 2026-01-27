@@ -11,7 +11,8 @@ import {
   Wifi,
   Clock,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  X
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getTools, getCategories, getToolsCount, getToolsWithCache, getToolsCountWithCache, getToolsSmart } from '../lib/supabase';
@@ -19,6 +20,7 @@ import type { Tool, ToolSearchFilters } from '../types';
 import { addToFavorites, removeFromFavorites, isFavorited, batchCheckFavorites } from '../lib/community';
 import AuthModal from '../components/AuthModal';
 import ToolCard from '../components/ToolCard';
+import ToolCardSkeleton from '../components/ToolCardSkeleton';
 import { useCache } from '../hooks/useCache';
 import { usePerformance } from '../hooks/usePerformance';
 import { EMERGENCY_CATEGORIES, FALLBACK_FEATURES, PRICING_OPTIONS, SORT_OPTIONS } from '../lib/config';
@@ -461,13 +463,25 @@ const ToolsPage = React.memo(() => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">加载工具中...</p>
-          {loadError && (
-            <p className="text-red-500 mt-2">{loadError}</p>
-          )}
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* 页面标题骨架 */}
+          <div className="mb-8">
+            <div className="h-8 bg-gray-200 rounded w-32 animate-pulse mb-4"></div>
+            <div className="h-5 bg-gray-200 rounded w-64 animate-pulse"></div>
+          </div>
+
+          {/* 搜索栏骨架 */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+            <div className="h-12 bg-gray-200 rounded-lg animate-pulse"></div>
+          </div>
+
+          {/* 工具卡片骨架网格 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, index) => (
+              <ToolCardSkeleton key={index} viewMode="grid" />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -560,7 +574,26 @@ const ToolsPage = React.memo(() => {
         </div>
 
         {/* Search and Controls */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 md:p-6 mb-8">
+          {/* 移动端筛选按钮 */}
+          <div className="md:hidden mb-4">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-lg border transition-all ${
+                showFilters || activeFiltersCount > 0
+                  ? 'bg-blue-50 border-blue-200 text-blue-700'
+                  : 'bg-white border-gray-300 text-gray-700'
+              }`}
+            >
+              <Filter className="w-5 h-5" />
+              <span className="font-medium">筛选工具</span>
+              {activeFiltersCount > 0 && (
+                <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
+          </div>
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
             {/* Search Bar */}
             <div className="flex-1 max-w-2xl">
@@ -638,89 +671,135 @@ const ToolsPage = React.memo(() => {
 
           {/* Filters Panel */}
           {showFilters && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Categories */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">分类</h4>
-                  <div className="space-y-2">
-                    {categories.map(category => {
-                      const checkboxId = `category-${category.replace(/\s+/g, '-')}`;
-                      return (
-                        <label key={category} htmlFor={checkboxId} className="flex items-center cursor-pointer">
-                          <input
-                            id={checkboxId}
-                            type="checkbox"
-                            checked={filters.categories.includes(category)}
-                            onChange={() => handleCategoryToggle(category)}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">{category}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
+            <>
+              {/* 移动端遮罩 */}
+              <div
+                className="md:hidden fixed inset-0 bg-black/50 z-40"
+                onClick={() => setShowFilters(false)}
+              ></div>
 
-                {/* Features */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">功能特性</h4>
-                  <div className="space-y-2">
-                    {FALLBACK_FEATURES.map(feature => {
-                      const checkboxId = `feature-${feature.replace(/\s+/g, '-')}`;
-                      return (
-                        <label key={feature} htmlFor={checkboxId} className="flex items-center cursor-pointer">
-                          <input
-                            id={checkboxId}
-                            type="checkbox"
-                            checked={filters.features.includes(feature)}
-                            onChange={() => handleFeatureToggle(feature)}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">{feature}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Pricing */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">定价模式</h4>
-                  <div className="space-y-2">
-                    {PRICING_OPTIONS.map(option => {
-                      const radioId = `pricing-${option.value}`;
-                      return (
-                        <label key={option.value} htmlFor={radioId} className="flex items-center cursor-pointer">
-                          <input
-                            id={radioId}
-                            type="radio"
-                            name="pricing"
-                            value={option.value}
-                            checked={filters.pricing === option.value}
-                            onChange={(e) => handleFilterChange('pricing', e.target.value)}
-                            className="border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">{option.label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* Clear Filters */}
-              {activeFiltersCount > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
+              {/* 筛选面板 */}
+              <div className={`${
+                showFilters
+                  ? 'md:mt-6 md:pt-6 md:border-t relative md:relative fixed md:bg-transparent bg-white z-50'
+                  : 'hidden'
+              } md:block ${
+                showFilters ? 'block' : ''
+              } ${showFilters ? 'inset-y-0 left-0 w-full md:w-auto md:inset-auto' : ''}`}>
+                {/* 移动端关闭按钮 */}
+                <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900">筛选条件</h3>
                   <button
-                    onClick={clearFilters}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    onClick={() => setShowFilters(false)}
+                    className="p-2 hover:bg-gray-100 rounded-lg"
                   >
-                    清除所有筛选条件
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
-              )}
-            </div>
+
+                <div className="p-4 md:p-0 md:mt-6 md:pt-6 md:border-t border-gray-200 max-h-[60vh] md:max-h-none overflow-y-auto">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Categories */}
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-900 mb-3">分类</h4>
+                      <div className="space-y-2">
+                        {categories.map(category => {
+                          const checkboxId = `category-${category.replace(/\s+/g, '-')}`;
+                          return (
+                            <label key={category} htmlFor={checkboxId} className="flex items-center cursor-pointer">
+                              <input
+                                id={checkboxId}
+                                type="checkbox"
+                                checked={filters.categories.includes(category)}
+                                onChange={() => handleCategoryToggle(category)}
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <span className="ml-2 text-sm text-gray-700">{category}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Features */}
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-900 mb-3">功能特性</h4>
+                      <div className="space-y-2">
+                        {FALLBACK_FEATURES.map(feature => {
+                          const checkboxId = `feature-${feature.replace(/\s+/g, '-')}`;
+                          return (
+                            <label key={feature} htmlFor={checkboxId} className="flex items-center cursor-pointer">
+                              <input
+                                id={checkboxId}
+                                type="checkbox"
+                                checked={filters.features.includes(feature)}
+                                onChange={() => handleFeatureToggle(feature)}
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <span className="ml-2 text-sm text-gray-700">{feature}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Pricing */}
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-900 mb-3">定价模式</h4>
+                      <div className="space-y-2">
+                        {PRICING_OPTIONS.map(option => {
+                          const radioId = `pricing-${option.value}`;
+                          return (
+                            <label key={option.value} htmlFor={radioId} className="flex items-center cursor-pointer">
+                              <input
+                                id={radioId}
+                                type="radio"
+                                name="pricing"
+                                value={option.value}
+                                checked={filters.pricing === option.value}
+                                onChange={(e) => handleFilterChange('pricing', e.target.value)}
+                                className="border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <span className="ml-2 text-sm text-gray-700">{option.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Clear Filters */}
+                  {activeFiltersCount > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 hidden md:block">
+                      <button
+                        onClick={clearFilters}
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        清除所有筛选条件
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* 移动端应用按钮 */}
+                <div className="md:hidden sticky bottom-0 bg-white border-t border-gray-200 p-4 space-y-2">
+                  {activeFiltersCount > 0 && (
+                    <button
+                      onClick={clearFilters}
+                      className="w-full py-3 text-gray-700 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                    >
+                      清除所有筛选条件
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowFilters(false)}
+                    className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    应用筛选
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </div>
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Sparkles, Building2, Calculator, PenTool } from 'lucide-react';
+import CountUpAnimation from './CountUpAnimation';
 
 interface SiteStats {
   toolsCount: number;
@@ -150,24 +151,34 @@ const Hero = () => {
           </div>
           
           {/* 底部统计 */}
-          <div className="flex items-center justify-center space-x-8 text-gray-300">
+          <div className="flex items-center justify-center space-x-6 md:space-x-8 text-gray-300">
             <div className="text-center group cursor-default">
-              <div className="text-2xl font-bold text-blue-400 group-hover:text-blue-300 transition-colors">
-                {isLoading ? '...' : `${stats.toolsCount}+`}
+              <div className="text-2xl md:text-3xl font-bold text-blue-400 group-hover:text-blue-300 transition-colors">
+                {isLoading ? (
+                  <span className="inline-block animate-pulse">...</span>
+                ) : (
+                  <CountUpAnimation end={stats.toolsCount} suffix="+" duration={1500} className="inline-block" />
+                )}
               </div>
-              <div className="text-xs">专业工具</div>
+              <div className="text-xs mt-1">专业工具</div>
             </div>
             <div className="w-px h-8 bg-gray-600"></div>
             <div className="text-center group cursor-default">
-              <div className="text-2xl font-bold text-purple-400 group-hover:text-purple-300 transition-colors">
-                {isLoading ? '...' : `${stats.categoriesCount}+`}
+              <div className="text-2xl md:text-3xl font-bold text-purple-400 group-hover:text-purple-300 transition-colors">
+                {isLoading ? (
+                  <span className="inline-block animate-pulse">...</span>
+                ) : (
+                  <CountUpAnimation end={stats.categoriesCount} suffix="+" duration={1500} delay={200} className="inline-block" />
+                )}
               </div>
-              <div className="text-xs">工具分类</div>
+              <div className="text-xs mt-1">工具分类</div>
             </div>
             <div className="w-px h-8 bg-gray-600"></div>
             <div className="text-center group cursor-default">
-              <div className="text-2xl font-bold text-pink-400 group-hover:text-pink-300 transition-colors">持续更新</div>
-              <div className="text-xs">数据更新</div>
+              <div className="text-2xl md:text-3xl font-bold text-pink-400 group-hover:text-pink-300 transition-colors">
+                <span className="inline-block animate-pulse">∞</span>
+              </div>
+              <div className="text-xs mt-1">持续更新</div>
             </div>
           </div>
         </div>

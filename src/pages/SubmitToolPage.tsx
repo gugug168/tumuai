@@ -404,8 +404,8 @@ const SubmitToolPage = () => {
                   name="toolName"
                   value={formData.toolName}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.toolName ? 'border-red-300' : 'border-gray-300'
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
+                    errors.toolName ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 hover:border-gray-400'
                   } bg-white text-gray-900 placeholder-gray-500`}
                   placeholder="例如：StructuralGPT"
                 />
@@ -433,8 +433,8 @@ const SubmitToolPage = () => {
                   value={formData.shortDescription}
                   onChange={handleInputChange}
                   maxLength={100}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.shortDescription ? 'border-red-300' : 'border-gray-300'
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
+                    errors.shortDescription ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 hover:border-gray-400'
                   } bg-white text-gray-900 placeholder-gray-500`}
                   placeholder="简洁描述工具的核心功能和价值"
                 />
@@ -457,7 +457,7 @@ const SubmitToolPage = () => {
                   value={formData.detailedDescription}
                   onChange={handleInputChange}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-gray-400 transition-all duration-200 bg-white text-gray-900 placeholder-gray-500"
                   placeholder="详细描述工具的功能、特点、使用场景等..."
                 />
               </div>
@@ -513,7 +513,7 @@ const SubmitToolPage = () => {
                   name="mainFeatures"
                   value={formData.mainFeatures}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-gray-400 transition-all duration-200 bg-white text-gray-900 placeholder-gray-500"
                   placeholder="用逗号分隔，例如：AI优化, 参数化设计, 成本估算"
                 />
               </div>

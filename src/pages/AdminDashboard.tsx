@@ -474,10 +474,12 @@ const AdminDashboard = () => {
 
         {/* 概览卡片 */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-          <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="bg-white overflow-hidden shadow-sm rounded-xl border border-gray-200 hover:shadow-md hover:-translate-y-1 transition-all duration-300">
             <div className="px-4 py-5 sm:p-6">
               <div className="flex items-center">
-                <Database className="h-6 w-6 text-gray-400" />
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Database className="h-5 w-5 text-blue-600" />
+                </div>
                 <div className="ml-4">
                   <dt className="text-sm font-medium text-gray-500">工具总数</dt>
                   <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats.totalTools}</dd>
@@ -486,10 +488,12 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="bg-white overflow-hidden shadow-sm rounded-xl border border-gray-200 hover:shadow-md hover:-translate-y-1 transition-all duration-300">
             <div className="px-4 py-5 sm:p-6">
               <div className="flex items-center">
-                <Users className="h-6 w-6 text-gray-400" />
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Users className="h-5 w-5 text-green-600" />
+                </div>
                 <div className="ml-4">
                   <dt className="text-sm font-medium text-gray-500">用户总数</dt>
                   <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats.totalUsers}</dd>
@@ -498,10 +502,12 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="bg-white overflow-hidden shadow-sm rounded-xl border border-gray-200 hover:shadow-md hover:-translate-y-1 transition-all duration-300">
             <div className="px-4 py-5 sm:p-6">
               <div className="flex items-center">
-                <Clock className="h-6 w-6 text-orange-400" />
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <Clock className="h-5 w-5 text-orange-600" />
+                </div>
                 <div className="ml-4">
                   <dt className="text-sm font-medium text-gray-500">待审核</dt>
                   <dd className="mt-1 text-3xl font-semibold text-orange-600">{stats.pendingSubmissions}</dd>
@@ -510,25 +516,15 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="bg-white overflow-hidden shadow-sm rounded-xl border border-gray-200 hover:shadow-md hover:-translate-y-1 transition-all duration-300">
             <div className="px-4 py-5 sm:p-6">
               <div className="flex items-center">
-                <Tag className="h-6 w-6 text-purple-400" />
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Tag className="h-5 w-5 text-purple-600" />
+                </div>
                 <div className="ml-4">
                   <dt className="text-sm font-medium text-gray-500">分类总数</dt>
                   <dd className="mt-1 text-3xl font-semibold text-purple-600">{stats.totalCategories}</dd>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <div className="flex items-center">
-                <Settings className="h-6 w-6 text-gray-400" />
-                <div className="ml-4">
-                  <dt className="text-sm font-medium text-gray-500">系统日志</dt>
-                  <dd className="mt-1 text-3xl font-semibold text-gray-600">{stats.totalLogs}</dd>
                 </div>
               </div>
             </div>

@@ -82,13 +82,16 @@ const Header = () => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`font-medium transition-colors ${
+                  className={`font-medium relative transition-colors group ${
                     isActive(item.path)
                       ? 'text-accent-600'
                       : 'text-gray-700 hover:text-accent-600'
                   }`}
                 >
                   {item.label}
+                  <span className={`absolute -bottom-1 left-0 h-0.5 bg-accent-600 transition-all duration-300 ${
+                    isActive(item.path) ? 'w-full' : 'w-0 group-hover:w-full'
+                  }`}></span>
                 </Link>
               )
             ))}
@@ -169,7 +172,7 @@ const Header = () => {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden pb-4">
+          <div className="md:hidden pb-4 animate-in slide-in-from-top-2 duration-200">
             <nav className="flex flex-col space-y-3">
               {navItems.map((item) => (
                 (!item.requireAuth || user) && (

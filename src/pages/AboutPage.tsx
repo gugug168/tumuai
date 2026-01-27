@@ -1,5 +1,6 @@
 import React from 'react';
 import { Target, Users, Award, Lightbulb, Mail, Github, Linkedin } from 'lucide-react';
+import CountUpAnimation from '../components/CountUpAnimation';
 
 const teamMembers = [
   {
@@ -132,13 +133,16 @@ const AboutPage = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {teamMembers.map((member, index) => (
-              <div key={index} className="text-center">
-                <img
-                  src={member.avatar}
-                  alt={member.name}
-                  className="w-32 h-32 rounded-full mx-auto mb-4 object-cover"
-                />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{member.name}</h3>
+              <div key={index} className="text-center group">
+                <div className="relative inline-block mb-4">
+                  <img
+                    src={member.avatar}
+                    alt={member.name}
+                    className="w-32 h-32 rounded-full mx-auto object-cover group-hover:scale-105 group-hover:shadow-xl transition-all duration-300 border-4 border-white shadow-lg"
+                  />
+                  <div className="absolute inset-0 rounded-full bg-blue-600/0 group-hover:bg-blue-600/10 transition-all duration-300"></div>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">{member.name}</h3>
                 <p className="text-blue-600 font-medium mb-3">{member.role}</p>
                 <p className="text-gray-600 leading-relaxed">{member.description}</p>
               </div>
@@ -148,24 +152,32 @@ const AboutPage = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 bg-blue-600">
+      <section className="py-16 bg-gradient-to-r from-blue-600 to-indigo-600">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center text-white">
-            <div>
-              <div className="text-4xl font-bold mb-2">88+</div>
+            <div className="group cursor-default">
+              <div className="text-4xl md:text-5xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">
+                <CountUpAnimation end={88} suffix="+" duration={2000} />
+              </div>
               <div className="text-blue-100">收录工具</div>
             </div>
-            <div>
-              <div className="text-4xl font-bold mb-2">7+</div>
+            <div className="group cursor-default">
+              <div className="text-4xl md:text-5xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">
+                <CountUpAnimation end={7} suffix="+" duration={2000} delay={200} />
+              </div>
               <div className="text-blue-100">工具分类</div>
             </div>
-            <div>
-              <div className="text-4xl font-bold mb-2">持续更新</div>
-              <div className="text-blue-100">内容更新</div>
+            <div className="group cursor-default">
+              <div className="text-4xl md:text-5xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">
+                <span className="inline-block animate-pulse">∞</span>
+              </div>
+              <div className="text-blue-100">持续更新</div>
             </div>
-            <div>
-              <div className="text-4xl font-bold mb-2">用心服务</div>
-              <div className="text-blue-100">用户至上</div>
+            <div className="group cursor-default">
+              <div className="text-4xl md:text-5xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">
+                <CountUpAnimation end={100} suffix="%" duration={2000} delay={400} />
+              </div>
+              <div className="text-blue-100">用心服务</div>
             </div>
           </div>
         </div>

@@ -300,8 +300,19 @@ const ToolDetailPage = () => {
               <p className="text-lg text-gray-600 mb-4">{adaptedTool.shortDescription}</p>
               <div className="flex items-center space-x-4 text-sm text-gray-500">
                 <div className="flex items-center space-x-1">
-                  <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                  <span>{adaptedTool.rating} ({adaptedTool.reviews} 评价)</span>
+                  <div className="flex items-center">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`w-4 h-4 ${
+                          star <= Math.round(adaptedTool.rating)
+                            ? 'text-yellow-400 fill-current'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="ml-1">{adaptedTool.rating} ({adaptedTool.reviews} 评价)</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Eye className="w-4 h-4" />

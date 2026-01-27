@@ -100,12 +100,21 @@ const FavoritesPage = () => {
 
         {favorites.length === 0 ? (
           <div className="card p-12 text-center">
-            <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <div className="relative inline-block mb-6">
+              <Heart className="w-20 h-20 text-gray-200 mx-auto" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Heart className="w-10 h-10 text-gray-400" />
+              </div>
+            </div>
             <h3 className="text-xl font-semibold text-primary-800 mb-2">还没有收藏任何工具</h3>
             <p className="text-gray-600 mb-6">
-              去工具中心发现更多优质工具吧！
+              去工具中心发现更多优质工具，收藏您喜欢的工具吧！
             </p>
-            <Link to="/tools" className="btn-primary">
+            <Link
+              to="/tools"
+              className="btn-primary inline-flex items-center px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 hover:shadow-lg"
+            >
+              <Heart className="w-4 h-4 mr-2" />
               浏览工具中心
             </Link>
           </div>

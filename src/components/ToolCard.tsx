@@ -39,7 +39,7 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
 
   if (viewMode === 'list') {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow group flex items-center space-x-4">
+      <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-blue-200 transition-all duration-200 group flex items-center space-x-4 cursor-pointer">
         {/* Tool Logo */}
         <div className="flex-shrink-0">
           <OptimizedImage
@@ -102,24 +102,24 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
 
   // Grid view
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 overflow-hidden group">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 overflow-hidden group cursor-pointer">
       {/* Tool Image */}
       <div className="relative overflow-hidden">
         <OptimizedImage
           src={tool.logo_url || getFallbackLogo()}
           alt={tool.name}
-          className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"
+          className="w-full h-40 object-cover group-hover:scale-110 transition-transform duration-500"
           priority={false}
           lazyLoad={true}
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
         />
         <div className="absolute top-3 right-3">
-          <button 
+          <button
             onClick={handleFavoriteClick}
-            className="bg-white/90 p-1.5 rounded-full hover:bg-white transition-colors"
+            className="bg-white/90 backdrop-blur-sm p-1.5 rounded-full hover:bg-white hover:scale-110 transition-all duration-200 shadow-sm"
             aria-label={isFavorited ? '取消收藏' : '添加收藏'}
           >
-            <Heart className={`w-3 h-3 ${isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-600 hover:text-red-500'}`} />
+            <Heart className={`w-4 h-4 transition-all duration-200 ${isFavorited ? 'fill-red-500 text-red-500 scale-110' : 'text-gray-600 hover:text-red-500'}`} />
           </button>
         </div>
       </div>
@@ -182,10 +182,10 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
         {/* Action Button */}
         <Link
           to={`/tools/${tool.id}`}
-          className="w-full btn-primary py-2 px-3 text-sm flex items-center justify-center"
+          className="w-full btn-primary py-2.5 px-3 text-sm flex items-center justify-center hover:bg-blue-700 transition-colors duration-200 shadow-sm hover:shadow group-hover:shadow-md"
         >
           查看详情
-          <ExternalLink className="ml-1 w-3 h-3" />
+          <ExternalLink className="ml-1 w-3 h-3 group-hover:translate-x-0.5 transition-transform duration-200" />
         </Link>
       </div>
     </div>
