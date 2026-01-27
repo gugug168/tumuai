@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Users, 
-  BarChart3, 
-  FileText, 
-  Shield, 
+import {
+  Users,
+  BarChart3,
+  FileText,
+  Shield,
   CheckCircle,
   XCircle,
   Clock,
@@ -15,15 +15,27 @@ import {
   Tag,
   RefreshCw,
   ExternalLink,
-  Settings
+  Settings,
+  Download,
+  Ban,
+  Check,
+  MoreVertical
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  checkAdminStatus, 
+import {
+  checkAdminStatus,
   getAllAdminData,
   reviewToolSubmission,
   deleteTool,
   deleteCategory,
+  toggleUserStatus,
+  updateUserRole,
+  deleteUser,
+  updateToolStatus,
+  batchDeleteTools,
+  batchReviewSubmissions,
+  exportToolsToCSV,
+  exportUsersToCSV,
   type ToolSubmission,
   type AdminLog
 } from '../lib/admin';
@@ -89,6 +101,11 @@ const AdminDashboard = () => {
   const [showToolModal, setShowToolModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showSubmissionModal, setShowSubmissionModal] = useState<ToolSubmission | null>(null);
+  const [editingUser, setEditingUser] = useState<Record<string, unknown> | null>(null);
+  const [showUserModal, setShowUserModal] = useState(false);
+  // 批量选择状态
+  const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
+  const [selectedSubmissions, setSelectedSubmissions] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
 
   // 新增：立即进行权限检查
@@ -214,7 +231,7 @@ const AdminDashboard = () => {
 
   const handleDeleteCategory = async (categoryId: string) => {
     if (!confirm('确定删除该分类？相关工具将失去此分类。')) return;
-    
+
     try {
       await deleteCategory(categoryId);
       await loadData();
@@ -222,6 +239,142 @@ const AdminDashboard = () => {
       console.error('Delete category failed:', error);
       alert('删除分类失败，请重试');
     }
+  };
+
+  // 用户管理函数
+  const handleToggleUserStatus = async (userId: string, isActive: boolean) => {
+    try {
+      await toggleUserStatus(userId, isActive);
+      await loadData();
+    } catch (error) {
+      console.error('Toggle user status failed:', error);
+      alert('操作失败，请重试');
+    }
+  };
+
+  const handleUpdateUserRole = async (userId: string, role: string) => {
+    try {
+      await updateUserRole(userId, role);
+      await loadData();
+    } catch (error) {
+      console.error('Update user role failed:', error);
+      alert('更新角色失败，请重试');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('确定删除该用户？此操作不可撤销。')) return;
+
+    try {
+      await deleteUser(userId);
+      await loadData();
+    } catch (error) {
+      console.error('Delete user failed:', error);
+      alert('删除用户失败，请重试');
+    }
+  };
+
+  // 工具状态管理
+  const handleUpdateToolStatus = async (toolId: string, status: 'draft' | 'published' | 'archived') => {
+    try {
+      await updateToolStatus(toolId, status);
+      await loadData();
+    } catch (error) {
+      console.error('Update tool status failed:', error);
+      alert('更新工具状态失败，请重试');
+    }
+  };
+
+  // 批量删除工具
+  const handleBatchDeleteTools = async () => {
+    if (selectedTools.size === 0) return;
+    if (!confirm(`确定删除选中的 ${selectedTools.size} 个工具？此操作不可撤销。`)) return;
+
+    try {
+      const result = await batchDeleteTools(Array.from(selectedTools));
+      alert(`批量删除完成：成功 ${result.success} 个，失败 ${result.failed} 个`);
+      setSelectedTools(new Set());
+      await loadData();
+    } catch (error) {
+      console.error('Batch delete tools failed:', error);
+      alert('批量删除失败，请重试');
+    }
+  };
+
+  // 批量审核提交
+  const handleBatchReview = async (status: 'approved' | 'rejected') => {
+    if (selectedSubmissions.size === 0) return;
+    const confirmMsg = status === 'approved'
+      ? `确定通过选中的 ${selectedSubmissions.size} 个提交？`
+      : `确定拒绝选中的 ${selectedSubmissions.size} 个提交？`;
+    if (!confirm(confirmMsg)) return;
+
+    try {
+      const result = await batchReviewSubmissions(Array.from(selectedSubmissions), status);
+      alert(`批量审核完成：成功 ${result.success} 个，失败 ${result.failed} 个`);
+      setSelectedSubmissions(new Set());
+      await loadData();
+    } catch (error) {
+      console.error('Batch review failed:', error);
+      alert('批量审核失败，请重试');
+    }
+  };
+
+  // 数据导出函数
+  const handleExportTools = async () => {
+    try {
+      const csv = await exportToolsToCSV();
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `tools_export_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (error) {
+      console.error('Export tools failed:', error);
+      alert('导出工具列表失败，请重试');
+    }
+  };
+
+  const handleExportUsers = async () => {
+    try {
+      const csv = await exportUsersToCSV();
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `users_export_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (error) {
+      console.error('Export users failed:', error);
+      alert('导出用户列表失败，请重试');
+    }
+  };
+
+  // 切换工具选择
+  const toggleToolSelection = (toolId: string) => {
+    setSelectedTools(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(toolId)) {
+        newSet.delete(toolId);
+      } else {
+        newSet.add(toolId);
+      }
+      return newSet;
+    });
+  };
+
+  // 切换提交选择
+  const toggleSubmissionSelection = (submissionId: string) => {
+    setSelectedSubmissions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(submissionId)) {
+        newSet.delete(submissionId);
+      } else {
+        newSet.add(submissionId);
+      }
+      return newSet;
+    });
   };
 
   const filteredSubmissions = submissions.filter(submission => {
@@ -496,26 +649,68 @@ const AdminDashboard = () => {
                       <option value="approved">已通过</option>
                       <option value="rejected">已拒绝</option>
                     </select>
+                    {selectedSubmissions.size > 0 && (
+                      <>
+                        <button
+                          onClick={() => handleBatchReview('approved')}
+                          className="inline-flex items-center px-3 py-2 rounded-md bg-green-600 text-white text-sm hover:bg-green-700"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          批量通过 ({selectedSubmissions.size})
+                        </button>
+                        <button
+                          onClick={() => handleBatchReview('rejected')}
+                          className="inline-flex items-center px-3 py-2 rounded-md bg-red-600 text-white text-sm hover:bg-red-700"
+                        >
+                          <XCircle className="h-4 w-4 mr-1" />
+                          批量拒绝 ({selectedSubmissions.size})
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
                 {filteredSubmissions.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">暂无符合条件的工具提交</p>
                 ) : (
                   <div className="space-y-4">
+                    {/* 全选/取消全选 */}
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <input
+                        type="checkbox"
+                        checked={selectedSubmissions.size === filteredSubmissions.length && filteredSubmissions.length > 0}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedSubmissions(new Set(filteredSubmissions.map(s => s.id)));
+                          } else {
+                            setSelectedSubmissions(new Set());
+                          }
+                        }}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span>全选 ({filteredSubmissions.length})</span>
+                    </div>
                     {filteredSubmissions.map((submission) => (
-                      <div key={submission.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div key={submission.id} className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${selectedSubmissions.has(submission.id) ? 'bg-indigo-50 border-indigo-300' : 'border-gray-200'}`}>
                         <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-gray-900 text-lg">{submission.tool_name}</h4>
-                            <p className="text-sm text-gray-600 mt-1">{submission.tagline}</p>
-                            <p className="text-xs text-gray-500 mt-2">
-                              提交时间: {new Date(submission.created_at).toLocaleString()}
-                            </p>
-                            {submission.submitter_email && (
-                              <p className="text-xs text-gray-500">
-                                提交者: {submission.submitter_email}
+                          <div className="flex items-start space-x-3 flex-1">
+                            <input
+                              type="checkbox"
+                              checked={selectedSubmissions.has(submission.id)}
+                              onChange={() => toggleSubmissionSelection(submission.id)}
+                              className="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <div className="flex-1">
+                              <h4 className="font-medium text-gray-900 text-lg">{submission.tool_name}</h4>
+                              <p className="text-sm text-gray-600 mt-1">{submission.tagline}</p>
+                              <p className="text-xs text-gray-500 mt-2">
+                                提交时间: {new Date(submission.created_at).toLocaleString()}
                               </p>
-                            )}
+                              {submission.submitter_email && (
+                                <p className="text-xs text-gray-500">
+                                  提交者: {submission.submitter_email}
+                                </p>
+                              )}
+                            </div>
                           </div>
                           <div className="ml-4">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -579,13 +774,33 @@ const AdminDashboard = () => {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-medium text-gray-900">工具管理</h3>
-                  <button
-                    onClick={() => setShowToolModal(true)}
-                    className="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    新增工具
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    {selectedTools.size > 0 && (
+                      <>
+                        <button
+                          onClick={handleBatchDeleteTools}
+                          className="inline-flex items-center px-3 py-2 rounded-md bg-red-600 text-white text-sm hover:bg-red-700"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          批量删除 ({selectedTools.size})
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={handleExportTools}
+                      className="inline-flex items-center px-3 py-2 rounded-md bg-green-600 text-white text-sm hover:bg-green-700"
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      导出
+                    </button>
+                    <button
+                      onClick={() => setShowToolModal(true)}
+                      className="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      新增工具
+                    </button>
+                  </div>
                 </div>
                 {tools.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">暂无工具</p>
@@ -594,6 +809,20 @@ const AdminDashboard = () => {
                     <table className="min-w-full divide-y divide-gray-300">
                       <thead className="bg-gray-50">
                         <tr>
+                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-10">
+                            <input
+                              type="checkbox"
+                              checked={selectedTools.size === tools.length && tools.length > 0}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedTools(new Set(tools.map(t => t.id)));
+                                } else {
+                                  setSelectedTools(new Set());
+                                }
+                              }}
+                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                          </th>
                           <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">名称</th>
                           <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">分类</th>
                           <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">定价</th>
@@ -603,7 +832,15 @@ const AdminDashboard = () => {
                       </thead>
                       <tbody className="divide-y divide-gray-200 bg-white">
                         {tools.map((tool) => (
-                          <tr key={tool.id}>
+                          <tr key={tool.id} className={selectedTools.has(tool.id) ? 'bg-indigo-50' : ''}>
+                            <td className="px-3 py-4 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={selectedTools.has(tool.id)}
+                                onChange={() => toggleToolSelection(tool.id)}
+                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                              />
+                            </td>
                             <td className="whitespace-nowrap px-3 py-4 text-sm">
                               <div>
                                 <div className="font-medium text-gray-900">{tool.name}</div>
@@ -635,11 +872,24 @@ const AdminDashboard = () => {
                               </span>
                             </td>
                             <td className="whitespace-nowrap px-3 py-4 text-sm">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                tool.featured ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
-                              }`}>
-                                {tool.featured ? '精选' : '普通'}
-                              </span>
+                              <div className="flex items-center space-x-1">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  tool.featured ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {tool.featured ? '精选' : '普通'}
+                                </span>
+                                {/* 工具状态下拉菜单 */}
+                                <select
+                                  value={tool.status || 'published'}
+                                  onChange={(e) => handleUpdateToolStatus(tool.id, e.target.value as any)}
+                                  className="text-xs border rounded px-1 py-0.5"
+                                  title="更改状态"
+                                >
+                                  <option value="draft">草稿</option>
+                                  <option value="published">发布</option>
+                                  <option value="archived">下线</option>
+                                </select>
+                              </div>
                             </td>
                             <td className="whitespace-nowrap px-3 py-4 text-sm space-x-2">
                               <button
@@ -737,7 +987,16 @@ const AdminDashboard = () => {
             {/* 用户管理 */}
             {activeTab === 'users' && (
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">用户管理</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">用户管理</h3>
+                  <button
+                    onClick={handleExportUsers}
+                    className="inline-flex items-center px-3 py-2 rounded-md bg-green-600 text-white text-sm hover:bg-green-700"
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    导出用户
+                  </button>
+                </div>
                 {users.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">暂无用户数据</p>
                 ) : (
@@ -749,10 +1008,16 @@ const AdminDashboard = () => {
                             用户
                           </th>
                           <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                            邮箱
+                            角色
+                          </th>
+                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                            状态
                           </th>
                           <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                             注册时间
+                          </th>
+                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                            操作
                           </th>
                         </tr>
                       </thead>
@@ -760,11 +1025,56 @@ const AdminDashboard = () => {
                         {users.map((user) => (
                           <tr key={user.id}>
                             <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                              {user.email?.split('@')[0] || user.email}
+                              <div>
+                                <div className="font-medium">{user.email?.split('@')[0] || user.email}</div>
+                                <div className="text-gray-500 text-xs">{user.email}</div>
+                              </div>
                             </td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{user.email}</td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                user.role === 'super_admin' ? 'bg-purple-100 text-purple-800' :
+                                user.role === 'admin' ? 'bg-blue-100 text-blue-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {user.role === 'super_admin' ? '超级管理员' :
+                                 user.role === 'admin' ? '管理员' : '用户'}
+                              </span>
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                user.is_active !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {user.is_active !== false ? '正常' : '禁用'}
+                              </span>
+                            </td>
                             <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                               {new Date(user.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm space-x-2">
+                              {user.is_active !== false ? (
+                                <button
+                                  onClick={() => handleToggleUserStatus(user.id, false)}
+                                  className="text-orange-600 hover:text-orange-900"
+                                  title="禁用用户"
+                                >
+                                  <Ban className="h-4 w-4" />
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleToggleUserStatus(user.id, true)}
+                                  className="text-green-600 hover:text-green-900"
+                                  title="启用用户"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteUser(user.id)}
+                                className="text-red-600 hover:text-red-900"
+                                title="删除用户"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
                             </td>
                           </tr>
                         ))}

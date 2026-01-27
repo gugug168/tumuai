@@ -596,3 +596,242 @@ export async function deleteCategory(id: string) {
   }
 }
 export const createToolByAPI = createUnavailableFunction('通过API创建工具')
+
+// ==================== 用户管理功能 ====================
+
+// 用户信息接口
+export interface UserInfo {
+  id: string
+  email: string
+  role?: string
+  is_active?: boolean
+  created_at: string
+  last_login?: string
+}
+
+// 禁用/启用用户
+export async function toggleUserStatus(userId: string, isActive: boolean): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('admin_users')
+      .update({
+        is_active: isActive,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
+
+    if (error) {
+      // 如果表没有 is_active 字段，可能是表结构问题
+      if (error.message.includes('column') || error.code === '42703') {
+        console.warn('⚠️ admin_users表缺少is_active字段，请更新表结构')
+        throw new Error('用户状态管理功能需要更新数据库表结构')
+      }
+      throw error
+    }
+
+    console.log(`✅ 用户${isActive ? '启用' : '禁用'}成功:`, userId)
+  } catch (error) {
+    console.error('❌ 更新用户状态失败:', error)
+    throw error
+  }
+}
+
+// 更新用户角色
+export async function updateUserRole(userId: string, role: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('admin_users')
+      .update({
+        role,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
+
+    if (error) throw error
+
+    console.log(`✅ 用户角色更新成功:`, userId, '->', role)
+  } catch (error) {
+    console.error('❌ 更新用户角色失败:', error)
+    throw error
+  }
+}
+
+// 删除用户（从admin_users表移除）
+export async function deleteUser(userId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('admin_users')
+      .delete()
+      .eq('user_id', userId)
+
+    if (error) throw error
+
+    console.log('✅ 用户删除成功:', userId)
+  } catch (error) {
+    console.error('❌ 删除用户失败:', error)
+    throw error
+  }
+}
+
+// 获取用户详细信息
+export async function getUserDetails(userId: string): Promise<UserInfo | null> {
+  try {
+    const { data, error } = await supabase
+      .from('admin_users')
+      .select('*')
+      .eq('user_id', userId)
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // 用户不存在
+        return null
+      }
+      throw error
+    }
+
+    return {
+      id: data.user_id,
+      email: data.email || '',
+      role: data.role,
+      is_active: data.is_active ?? true,
+      created_at: data.created_at,
+      last_login: data.last_login
+    }
+  } catch (error) {
+    console.error('❌ 获取用户详情失败:', error)
+    return null
+  }
+}
+
+// 批量删除工具
+export async function batchDeleteTools(toolIds: string[]): Promise<{ success: number; failed: number }> {
+  let success = 0
+  let failed = 0
+
+  for (const toolId of toolIds) {
+    try {
+      await deleteTool(toolId)
+      success++
+    } catch (error) {
+      console.error(`❌ 删除工具失败 (${toolId}):`, error)
+      failed++
+    }
+  }
+
+  console.log(`✅ 批量删除完成: 成功${success}个, 失败${failed}个`)
+  return { success, failed }
+}
+
+// 批量审核提交
+export async function batchReviewSubmissions(
+  submissionIds: string[],
+  status: 'approved' | 'rejected'
+): Promise<{ success: number; failed: number }> {
+  let successCount = 0
+  let failedCount = 0
+
+  for (const submissionId of submissionIds) {
+    try {
+      await reviewToolSubmission(submissionId, status)
+      successCount++
+    } catch (error) {
+      console.error(`❌ 审核提交失败 (${submissionId}):`, error)
+      failedCount++
+    }
+  }
+
+  console.log(`✅ 批量审核完成: 成功${successCount}个, 失败${failedCount}个`)
+  return { success: successCount, failed: failedCount }
+}
+
+// 更新工具状态（草稿/发布/下线）
+export async function updateToolStatus(
+  toolId: string,
+  status: 'draft' | 'published' | 'archived'
+): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('tools')
+      .update({
+        status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', toolId)
+
+    if (error) throw error
+
+    console.log(`✅ 工具状态更新成功:`, toolId, '->', status)
+  } catch (error) {
+    console.error('❌ 更新工具状态失败:', error)
+    throw error
+  }
+}
+
+// 导出工具列表为CSV
+export async function exportToolsToCSV(): Promise<string> {
+  try {
+    const { data: tools, error } = await supabase
+      .from('tools')
+      .select('*')
+      .order('name', { ascending: true })
+
+    if (error) throw error
+
+    // CSV头部
+    const headers = ['ID', '名称', '标语', '分类', '定价', '状态', '精选', '浏览量', '点赞数', '评分', '添加日期']
+    const csvRows = [headers.join(',')]
+
+    // CSV数据行
+    for (const tool of tools || []) {
+      const row = [
+        tool.id,
+        `"${(tool.name || '').replace(/"/g, '""')}"`,
+        `"${(tool.tagline || '').replace(/"/g, '""')}"`,
+        `"${(tool.categories || []).join('; ')}"`,
+        tool.pricing || 'Free',
+        tool.status || 'published',
+        tool.featured ? '是' : '否',
+        tool.views || 0,
+        tool.upvotes || 0,
+        tool.rating || 0,
+        tool.date_added || ''
+      ]
+      csvRows.push(row.join(','))
+    }
+
+    return csvRows.join('\n')
+  } catch (error) {
+    console.error('❌ 导出工具列表失败:', error)
+    throw error
+  }
+}
+
+// 导出用户列表为CSV
+export async function exportUsersToCSV(): Promise<string> {
+  try {
+    const users = await getUsers(1, 1000)
+
+    // CSV头部
+    const headers = ['ID', '邮箱', '角色', '类型', '创建时间', '最后登录']
+    const csvRows = [headers.join(',')]
+
+    // CSV数据行
+    for (const user of users) {
+      const row = [
+        user.id,
+        `"${user.email || ''}"`,
+        user.role || 'user',
+        user.type || 'user',
+        user.created_at || '',
+        user.last_login || ''
+      ]
+      csvRows.push(row.join(','))
+    }
+
+    return csvRows.join('\n')
+  } catch (error) {
+    console.error('❌ 导出用户列表失败:', error)
+    throw error
+  }
+}
