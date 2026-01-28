@@ -38,45 +38,49 @@ export default async function handler(request: VercelRequest, response: VercelRe
       return response.status(403).json({ error: 'Forbidden' })
     }
 
+    // 解析查询参数 - 支持按需获取数据
+    const url = new URL(request.url || '', `http://${request.headers.host}`)
+    const sections = url.searchParams.get('sections') || 'all'
+    const page = parseInt(url.searchParams.get('page') || '1')
+    const limit = parseInt(url.searchParams.get('limit') || '50')
+    const requestedSections = sections === 'all'
+      ? ['stats', 'submissions', 'tools', 'categories', 'logs']
+      : sections.split(',')
+
     const supabase = createClient(supabaseUrl, serviceKey)
 
-    // 获取真实的认证用户数据
-    const { data: { users: authUsers }, error: usersError } = await supabase.auth.admin.listUsers()
-    
-    const [submissions, tools, logs, categories, stats] = await Promise.all([
-      supabase.from('tool_submissions').select('*').order('created_at', { ascending: false }).limit(50),
-      // 使用 * 避免列名不一致导致查询失败
-      supabase.from('tools').select('*').order('created_at', { ascending: false }).limit(50),
-      supabase.from('admin_logs').select('id,admin_id,action,target_type,target_id,details,ip_address,user_agent,created_at').order('created_at', { ascending: false }).limit(100),
-      supabase.from('categories').select('*').order('sort_order', { ascending: true }).order('name', { ascending: true }),
-      // 获取统计信息
+    // 只请求需要的数据部分
+    const [submissions, tools, logs, categories, stats, submissionCount, pendingCount, categoryCount] = await Promise.all([
+      // 只在请求时获取 submissions
+      requestedSections.includes('submissions')
+        ? supabase.from('tool_submissions').select('*').order('created_at', { ascending: false }).limit(limit)
+        : Promise.resolve({ data: [] }),
+      // 只在请求时获取 tools
+      requestedSections.includes('tools')
+        ? supabase.from('tools').select('*').order('created_at', { ascending: false }).limit(limit)
+        : Promise.resolve({ data: [] }),
+      // 只在请求时获取 logs
+      requestedSections.includes('logs')
+        ? supabase.from('admin_logs').select('id,admin_id,action,target_type,target_id,details,ip_address,user_agent,created_at').order('created_at', { ascending: false }).limit(100)
+        : Promise.resolve({ data: [] }),
+      // 只在请求时获取 categories
+      requestedSections.includes('categories')
+        ? supabase.from('categories').select('*').order('sort_order', { ascending: true }).order('name', { ascending: true })
+        : Promise.resolve({ data: [] }),
+      // 始终获取基本统计信息（轻量级）
       supabase.from('tools').select('id', { count: 'exact', head: true }),
-    ])
-    
-    // 处理用户数据 - 确保显示真实邮箱和正确的注册时间
-    const users = usersError ? [] : (authUsers || []).map(user => ({
-      id: user.id,
-      email: user.email || `用户-${user.id.slice(0, 8)}`,
-      created_at: user.created_at,
-      last_sign_in_at: user.last_sign_in_at,
-      email_confirmed_at: user.email_confirmed_at,
-      user_metadata: user.user_metadata,
-      app_metadata: user.app_metadata
-    }))
-
-    // 获取额外的统计数据
-    const [submissionCount, pendingCount, categoryCount] = await Promise.all([
+      // 额外统计
       supabase.from('tool_submissions').select('id', { count: 'exact', head: true }),
       supabase.from('tool_submissions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
       supabase.from('categories').select('id', { count: 'exact', head: true })
     ])
-    
-    // 用户数量基于真实认证用户
-    const actualUserCount = users.length
+
+    // 获取用户数量（不获取完整用户列表）
+    const { count: userCount } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 })
 
     const body = {
       submissions: submissions.data || [],
-      users: users || [], // 使用处理后的认证用户数据
+      users: [], // 不再返回完整用户列表，按需获取
       tools: (tools.data || []).map((t: ToolDataset) => ({
         ...t,
         reviews_count: t.reviews_count ?? t.review_count ?? 0,
@@ -86,7 +90,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
       categories: categories.data || [],
       stats: {
         totalTools: stats.count || 0,
-        totalUsers: actualUserCount, // 使用真实的认证用户数量
+        totalUsers: userCount || 0,
         totalSubmissions: submissionCount.count || 0,
         pendingSubmissions: pendingCount.count || 0,
         totalCategories: categoryCount.count || 0,
@@ -97,8 +101,8 @@ export default async function handler(request: VercelRequest, response: VercelRe
     return response.status(200).json(body)
   } catch (e: unknown) {
     console.error('Admin datasets error:', e)
-    return response.status(500).json({ 
-      error: (e as Error)?.message || 'Internal server error' 
+    return response.status(500).json({
+      error: (e as Error)?.message || 'Internal server error'
     })
   }
 }

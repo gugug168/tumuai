@@ -6,11 +6,14 @@ import { updateUserProfile } from '../lib/auth';
 import { getUserFavorites } from '../lib/community';
 import { generateInitialLogo } from '../lib/logoUtils';
 import { useNavigate, Link } from 'react-router-dom';
+import { useToast, createToastHelpers } from '../components/Toast';
 import type { Tool } from '../types';
 
 const ProfilePage = () => {
   const { user } = useAuth();
   const { profile, refreshProfile } = useProfile();
+  const { showToast } = useToast();
+  const toast = createToastHelpers(showToast);
   const [activeTab, setActiveTab] = useState('favorites');
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -83,10 +86,10 @@ const ProfilePage = () => {
       await updateUserProfile(user.id, editForm);
       await refreshProfile(); // 刷新profile数据
       setIsEditing(false);
-      alert('资料更新成功');
+      toast.success('更新成功', '个人资料已更新');
     } catch (error) {
       console.error('更新失败:', error);
-      alert('更新失败: ' + (error as Error).message);
+      toast.error('更新失败', (error as Error).message);
     }
   };
 

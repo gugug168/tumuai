@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { ADMIN_CONFIG, API_ENDPOINTS } from './config'
+import { unifiedCache } from './unified-cache-manager'
 
 // 基本类型定义
 export interface AdminUser {
@@ -77,74 +78,35 @@ export async function getAllAdminData() {
   }
 }
 
-// 检查用户是否为管理员 - 使用服务端验证
+// 检查用户是否为管理员 - 直接使用客户端验证（服务端API暂不可用）
 export async function checkAdminStatus(): Promise<AdminUser | null> {
   try {
     console.log('🔍 开始检查管理员权限...')
-    
+
     // 获取当前用户会话
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
+
     if (sessionError || !session) {
       console.log('❌ 无效的用户会话:', sessionError?.message || '会话不存在')
       return null
     }
-    
-    // 统一使用 Vercel API 路径
-    const apiPath = '/api/admin-auth-check'
-    
-    try {
-      console.log(`🔗 尝试调用API: ${apiPath}`)
-      
-      const response = await fetch(apiPath, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-      
-      console.log(`📡 API响应状态: ${response.status}, Content-Type: ${response.headers.get('content-type')}`)
-      
-      if (response.ok && response.headers.get('content-type')?.includes('application/json')) {
-        const data = await response.json()
-        
-        if (data.isAdmin) {
-          console.log('✅ 服务端管理员权限验证成功:', data.user.email)
-          
-          return {
-            user_id: data.user.user_id,
-            email: data.user.email,
-            role: data.user.role,
-            is_super_admin: data.user.is_super_admin,
-            permissions: data.user.permissions
-          } as AdminUser & { permissions?: any }
-        }
-      } else {
-        // 如果返回的是HTML，说明API路由有问题
-        const responseText = await response.text()
-        console.log(`⚠️ API返回非JSON响应 (${response.status}):`, responseText.substring(0, 200))
-      }
-    } catch (apiError) {
-      console.log('⚠️ 服务端API调用异常:', apiError instanceof Error ? apiError.message : apiError)
-    }
-    
-    // 兜底方案：使用客户端直接查询数据库
+
+    // 直接使用客户端验证（服务端API暂不可用，避免404错误）
     console.log('🔄 使用客户端验证管理员权限...')
-    
+
     const { data: adminUser, error: adminError } = await supabase
       .from('admin_users')
       .select('id, user_id, role, permissions, created_at, updated_at')
       .eq('user_id', session.user.id)
       .single()
-    
+
     if (adminError || !adminUser) {
       console.log('❌ 客户端验证：用户不是管理员')
       return null
     }
-    
-    console.log('✅ 客户端管理员权限验证成功:', session.user.email)
-    
+
+    console.log('✅ 客户端验证成功:', session.user.email)
+
     return {
       user_id: adminUser.user_id,
       email: session.user.email,
@@ -152,11 +114,51 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
       is_super_admin: adminUser.role === 'super_admin',
       permissions: adminUser.permissions
     } as AdminUser & { permissions?: any }
-    
+
   } catch (error) {
     console.error('❌ 管理员权限检查异常:', error)
     return null
   }
+}
+
+/**
+ * 带缓存的管理员权限检查
+ * 使用缓存减少重复调用，5分钟TTL
+ */
+export async function checkAdminStatusWithCache(): Promise<AdminUser | null> {
+  try {
+    // 先获取当前用户ID用于缓存键
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) {
+      return null
+    }
+
+    const cacheKey = `admin_status_${session.user.id}`
+
+    return unifiedCache.fetchWithCache(
+      cacheKey,
+      async () => {
+        const result = await checkAdminStatus()
+        return result
+      },
+      {
+        ttl: 5 * 60 * 1000, // 5分钟缓存
+        staleWhileRevalidate: true
+      }
+    )
+  } catch (error) {
+    console.error('❌ 缓存管理员权限检查异常:', error)
+    return null
+  }
+}
+
+/**
+ * 清除管理员状态缓存
+ * 当权限变更时调用
+ */
+export function clearAdminStatusCache(): void {
+  unifiedCache.invalidate('admin_status_*')
+  console.log('🗑️ 管理员状态缓存已清除')
 }
 
 // 获取系统统计数据 - 修复字段匹配问题
@@ -796,5 +798,116 @@ export async function exportUsersToCSV(): Promise<string> {
   } catch (error) {
     console.error('❌ 导出用户列表失败:', error)
     throw error
+  }
+}
+
+// ==================== Logo 刷新功能 ====================
+
+/**
+ * 刷新单个工具的 Logo
+ * 从网站自动提取最新图标
+ */
+export async function refreshToolLogo(toolId: string, websiteUrl: string): Promise<{ success: boolean; logoUrl?: string; error?: string }> {
+  try {
+    console.log('🔄 开始刷新工具 Logo:', toolId, websiteUrl)
+
+    const response = await fetch('/api/logo-extract', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        action: 'extract_single',
+        toolId,
+        websiteUrl
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      return { success: false, error: error.error || '提取失败' }
+    }
+
+    const data = await response.json()
+    console.log('✅ Logo 刷新成功:', data.logoUrl)
+
+    return {
+      success: true,
+      logoUrl: data.logoUrl
+    }
+  } catch (error) {
+    console.error('❌ 刷新工具 Logo 失败:', error)
+    return {
+      success: false,
+      error: (error as Error).message
+    }
+  }
+}
+
+/**
+ * 批量刷新工具 Logo
+ * 支持选择特定工具或刷新所有缺失 logo 的工具
+ */
+export async function batchRefreshToolLogos(toolIds?: string[]): Promise<{ success: number; failed: number; results: Array<{ toolId: string; logoUrl?: string; error?: string }> }> {
+  try {
+    console.log('🔄 开始批量刷新 Logo...')
+
+    const response = await fetch('/api/logo-extract', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        action: 'extract_batch',
+        toolIds: toolIds || []
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`API 调用失败: ${response.status}`)
+    }
+
+    const data = await response.json()
+    console.log(`✅ 批量刷新完成: ${data.updated} 个成功`)
+
+    return {
+      success: data.updated || 0,
+      failed: (data.total || 0) - (data.updated || 0),
+      results: data.results || []
+    }
+  } catch (error) {
+    console.error('❌ 批量刷新 Logo 失败:', error)
+    return { success: 0, failed: 0, results: [] }
+  }
+}
+
+/**
+ * 仅提取 Logo URL，不更新数据库
+ * 用于预览或用户提交页面
+ */
+export async function extractLogoForPreview(websiteUrl: string): Promise<string | null> {
+  try {
+    console.log('🔍 预览提取 Logo:', websiteUrl)
+
+    const response = await fetch('/api/logo-extract', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        action: 'extract_from_url',
+        websiteUrl
+      })
+    })
+
+    if (!response.ok) {
+      return null
+    }
+
+    const data = await response.json()
+    return data.logoUrl || null
+  } catch (error) {
+    console.error('❌ 预览提取 Logo 失败:', error)
+    return null
   }
 }

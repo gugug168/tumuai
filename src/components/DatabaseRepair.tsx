@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { Wrench, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useToast, createToastHelpers } from './Toast';
 
 const DatabaseRepair = () => {
+  const { showToast } = useToast();
+  const toast = createToastHelpers(showToast);
   const [repairing, setRepairing] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -32,9 +35,9 @@ const DatabaseRepair = () => {
     try {
       const { data: sessionRes } = await supabase.auth.getSession();
       const token = sessionRes?.session?.access_token || '';
-      
+
       // 直接提示功能已迁移
-      alert('分类刷新功能已迁移到服务器端，请联系管理员。')
+      toast.info('提示', '分类刷新功能已迁移到服务器端，请联系管理员')
       return
     } catch (err) {
       console.error('验证失败:', err);

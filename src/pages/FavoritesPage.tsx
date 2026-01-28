@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getUserFavorites, removeFromFavorites } from '../lib/community';
 import { generateInitialLogo } from '../lib/logoUtils';
 import AuthModal from '../components/AuthModal';
+import { useToast, createToastHelpers } from '../components/Toast';
 
 const FavoritesPage = () => {
   const { user } = useAuth();
@@ -12,6 +13,8 @@ const FavoritesPage = () => {
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const { showToast } = useToast();
+  const toast = createToastHelpers(showToast);
 
   // 批量选择状态
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
@@ -51,7 +54,7 @@ const FavoritesPage = () => {
       });
     } catch (error) {
       console.error('取消收藏失败:', error);
-      alert('取消收藏失败，请重试');
+      toast.error('取消失败', '取消收藏失败，请重试');
     }
   };
 
@@ -90,10 +93,10 @@ const FavoritesPage = () => {
       setFavorites(prev => prev.filter(fav => !selectedItems.has(fav.tool_id as string)));
       setSelectedItems(new Set());
 
-      alert(`成功取消 ${selectedItems.size} 个工具的收藏`);
+      toast.success('取消成功', `已取消 ${selectedItems.size} 个工具的收藏`);
     } catch (error) {
       console.error('批量取消收藏失败:', error);
-      alert('批量取消收藏失败，请重试');
+      toast.error('取消失败', '批量取消收藏失败，请重试');
     }
   };
 

@@ -18,6 +18,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getTools, getCategories, getToolsCount, getToolsWithCache, getToolsCountWithCache, getToolsSmart } from '../lib/supabase';
 import type { Tool, ToolSearchFilters } from '../types';
 import { addToFavorites, removeFromFavorites, isFavorited, batchCheckFavorites } from '../lib/community';
+import { useToast, createToastHelpers } from '../components/Toast';
 import AuthModal from '../components/AuthModal';
 import ToolCard from '../components/ToolCard';
 import ToolCardSkeleton from '../components/ToolCardSkeleton';
@@ -27,6 +28,8 @@ import { EMERGENCY_CATEGORIES, FALLBACK_FEATURES, PRICING_OPTIONS, SORT_OPTIONS 
 
 const ToolsPage = React.memo(() => {
   const { user } = useAuth();
+  const { showToast } = useToast();
+  const toast = createToastHelpers(showToast);
   const [searchParams, setSearchParams] = useSearchParams();
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
@@ -443,9 +446,9 @@ const ToolsPage = React.memo(() => {
       }
     } catch (error) {
       console.error('收藏操作失败:', error);
-      alert('操作失败，请重试');
+      toast.error('操作失败', '请重试');
     }
-  }, [user, favoriteStates, recordInteraction]);
+  }, [user, favoriteStates, recordInteraction, toast]);
 
   const clearFilters = () => {
     setFilters({

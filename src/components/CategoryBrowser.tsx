@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Brain, 
-  Wrench, 
-  Layers, 
-  Zap, 
-  Mountain, 
+import {
+  Brain,
+  Wrench,
+  Layers,
+  Zap,
+  Mountain,
   Users,
   ArrowRight,
   Building2,
@@ -23,8 +23,7 @@ import {
   ExternalLink,
   LoaderIcon
 } from 'lucide-react';
-import { getCategories } from '../lib/supabase';
-import { apiRequestWithRetry } from '../lib/api';
+import { getCategoriesWithCache } from '../lib/supabase';
 
 // 图标映射
 const iconMap: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
@@ -68,55 +67,65 @@ const getGradientClass = (hexColor: string) => {
   return gradientMap[hexColor] || 'from-gray-500 to-gray-600';
 };
 
-// 获取简单的颜色类
-const getSimpleColorClass = (hexColor: string) => {
-  const colorMap: Record<string, string> = {
-    '#EF4444': 'bg-red-500',
-    '#3B82F6': 'bg-blue-500',
-    '#10B981': 'bg-green-500',
-    '#8B5CF6': 'bg-purple-500',
-    '#F59E0B': 'bg-amber-500',
-    '#06B6D4': 'bg-cyan-500',
-    '#84CC16': 'bg-lime-500',
-    '#64748B': 'bg-gray-500',
-    '#F97316': 'bg-orange-500',
-    '#EC4899': 'bg-pink-500',
-    '#6366F1': 'bg-indigo-500',
-    '#14B8A6': 'bg-teal-500'
-  };
-  return colorMap[hexColor] || 'bg-gray-500';
-};
+// 获取简单的颜色类（保留备用）
+// const getSimpleColorClass = (hexColor: string) => {
+//   const colorMap: Record<string, string> = {
+//     '#EF4444': 'bg-red-500',
+//     '#3B82F6': 'bg-blue-500',
+//     '#10B981': 'bg-green-500',
+//     '#8B5CF6': 'bg-purple-500',
+//     '#F59E0B': 'bg-amber-500',
+//     '#06B6D4': 'bg-cyan-500',
+//     '#84CC16': 'bg-lime-500',
+//     '#64748B': 'bg-gray-500',
+//     '#F97316': 'bg-orange-500',
+//     '#EC4899': 'bg-pink-500',
+//     '#6366F1': 'bg-indigo-500',
+//     '#14B8A6': 'bg-teal-500'
+//   };
+//   return colorMap[hexColor] || 'bg-gray-500';
+// };
 
-const CategoryBrowser = () => {
+const CategoryBrowser = React.memo(() => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        setError(null);
-        console.log('🔍 CategoryBrowser: 开始获取分类数据...');
-        
-        // 获取分类数据
-        const categoriesData = await apiRequestWithRetry(() => getCategories(), 2, 1000);
-        
-        setCategories(categoriesData);
-        
-        console.log('✅ CategoryBrowser: 获取分类数据成功');
-        console.log(`   分类: ${categoriesData.length}个`);
-        
-      } catch (err) {
-        console.error('❌ CategoryBrowser: 获取数据失败:', err);
-        setError('获取数据失败，请刷新页面重试');
-      } finally {
-        setLoading(false);
-      }
+  // 使用 ref 防止重复请求
+  const isLoadingRef = useRef(false);
+
+  const fetchCategories = useCallback(async () => {
+    // 防止重复请求
+    if (isLoadingRef.current) {
+      return;
     }
 
-    fetchData();
+    isLoadingRef.current = true;
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('🔍 CategoryBrowser: 开始获取分类数据（带缓存）...');
+
+      // 使用带缓存的分类获取
+      const categoriesData = await getCategoriesWithCache();
+
+      setCategories(categoriesData);
+
+      console.log('✅ CategoryBrowser: 获取分类数据成功');
+      console.log(`   分类: ${categoriesData.length}个`);
+
+    } catch (err) {
+      console.error('❌ CategoryBrowser: 获取数据失败:', err);
+      setError('获取数据失败，请刷新页面重试');
+    } finally {
+      setLoading(false);
+      isLoadingRef.current = false;
+    }
   }, []);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   if (loading) {
     return (
@@ -222,6 +231,8 @@ const CategoryBrowser = () => {
       </div>
     </section>
   );
-};
+});
+
+CategoryBrowser.displayName = 'CategoryBrowser';
 
 export default CategoryBrowser;

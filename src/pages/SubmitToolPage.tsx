@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Link as LinkIcon, Tag, DollarSign, Image, FileText, AlertCircle, Sparkles, Check } from 'lucide-react';
+import { Upload, Link as LinkIcon, Tag, DollarSign, Image, FileText, AlertCircle, Sparkles, Check, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { uploadToolLogo, validateImageFile } from '../lib/storage';
 import { SUBMIT_PRICING_OPTIONS, EMERGENCY_CATEGORIES } from '../lib/config';
 import { getCategories } from '../lib/supabase';
-import { autoGenerateLogo, generateInitialLogo } from '../lib/logoUtils';
+import { autoGenerateLogo, generateInitialLogo, extractLogoFromHtml } from '../lib/logoUtils';
 import SmartURLInput from '../components/SmartURLInput';
+import { useToast, createToastHelpers } from '../components/Toast';
 import type { DuplicateCheckResult } from '../lib/duplicate-checker';
 
 // 表单步骤定义
@@ -30,6 +31,9 @@ interface AIAnalysisResult {
 }
 
 const SubmitToolPage = () => {
+  const { showToast } = useToast();
+  const toast = createToastHelpers(showToast);
+
   const [formData, setFormData] = useState({
     toolName: '',
     officialWebsite: '',
@@ -49,6 +53,11 @@ const SubmitToolPage = () => {
   // 动态分类数据状态
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  // Logo 相关状态
+  const [fetchedLogoUrl, setFetchedLogoUrl] = useState<string | null>(null);
+  const [isFetchingLogo, setIsFetchingLogo] = useState(false);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
 
   // 表单步骤状态跟踪
   const [currentStep, setCurrentStep] = useState(1);
@@ -106,6 +115,78 @@ const SubmitToolPage = () => {
     }
   }, [formData]);
 
+  // 自动获取网站 Logo（防抖）
+  useEffect(() => {
+    const autoFetchLogo = async () => {
+      if (formData.officialWebsite && isValidUrl(formData.officialWebsite)) {
+        // 如果用户已上传文件，不自动覆盖
+        if (formData.logoFile) return;
+
+        setIsFetchingLogo(true);
+        try {
+          console.log('🔍 自动获取网站图标...');
+          const logoUrl = await extractLogoFromHtml(formData.officialWebsite);
+
+          if (logoUrl) {
+            setFetchedLogoUrl(logoUrl);
+            setLogoPreviewUrl(logoUrl);
+            console.log('✅ 成功获取图标:', logoUrl);
+          }
+        } catch (error) {
+          console.warn('⚠️ 自动获取图标失败:', error);
+        } finally {
+          setIsFetchingLogo(false);
+        }
+      } else {
+        // 清空获取的图标
+        setFetchedLogoUrl(null);
+        if (!formData.logoFile) {
+          setLogoPreviewUrl(null);
+        }
+      }
+    };
+
+    // 防抖：800ms 后执行
+    const timeoutId = setTimeout(autoFetchLogo, 800);
+    return () => clearTimeout(timeoutId);
+  }, [formData.officialWebsite, formData.logoFile]);
+
+  // URL 验证函数
+  function isValidUrl(url: string): boolean {
+    try {
+      new URL(url.startsWith('http') ? url : `https://${url}`);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // 手动刷新图标
+  const handleRefreshLogo = async () => {
+    if (!formData.officialWebsite || !isValidUrl(formData.officialWebsite)) {
+      toast.error('无效网址', '请先输入有效的网站地址');
+      return;
+    }
+
+    setIsFetchingLogo(true);
+    try {
+      const logoUrl = await extractLogoFromHtml(formData.officialWebsite);
+
+      if (logoUrl) {
+        setFetchedLogoUrl(logoUrl);
+        setLogoPreviewUrl(logoUrl);
+        toast.success('图标已更新', '成功从网站获取最新图标');
+      } else {
+        toast.error('获取失败', '无法从网站获取图标，请稍后重试');
+      }
+    } catch (error) {
+      console.error('刷新图标失败:', error);
+      toast.error('刷新失败', '请稍后重试');
+    } finally {
+      setIsFetchingLogo(false);
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -155,7 +236,12 @@ const SubmitToolPage = () => {
         ...prev,
         logoFile: file
       }));
-      
+
+      // 创建预览 URL
+      setLogoPreviewUrl(URL.createObjectURL(file));
+      // 清除自动获取的图标
+      setFetchedLogoUrl(null);
+
       if (errors.logoFile) {
         setErrors(prev => ({
           ...prev,
@@ -203,7 +289,10 @@ const SubmitToolPage = () => {
     
     // 显示成功提示
     const confidence = Math.round((data.confidence || 0) * 100);
-    alert(`🎉 AI分析完成！\n\n✅ 置信度: ${confidence}%\n💡 推理: ${data.reasoning || '基于网站内容分析'}\n\n请检查并完善AI填入的信息。`);
+    toast.success(
+      'AI分析完成',
+      `置信度: ${confidence}% | ${data.reasoning || '基于网站内容分析'}`
+    );
   };
 
   const validateForm = () => {
@@ -270,22 +359,29 @@ const SubmitToolPage = () => {
     try {
       console.log('开始提交工具...', formData);
       
-      // 处理Logo：上传用户文件或自动生成
+      // 处理Logo：优先使用自动获取的，其次上传用户文件，最后生成
       let logoUrl = null;
-      
-      if (formData.logoFile) {
-        // 用户上传了Logo文件
+
+      // 1. 优先使用自动获取的图标
+      if (fetchedLogoUrl && !formData.logoFile) {
+        console.log('✅ 使用自动获取的图标:', fetchedLogoUrl);
+        logoUrl = fetchedLogoUrl;
+      } else if (formData.logoFile) {
+        // 2. 用户上传了Logo文件
         try {
           console.log('🖼️ 开始上传用户Logo文件:', formData.logoFile.name);
           logoUrl = await uploadToolLogo(formData.logoFile, formData.toolName);
           console.log('✅ 用户Logo上传成功:', logoUrl);
         } catch (uploadError) {
           console.error('❌ Logo上传失败:', uploadError);
-          alert(`📷 图片上传失败！\n\n${(uploadError as Error).message}\n\n💡 建议：\n• 检查网络连接是否正常\n• 确保图片文件小于5MB\n• 尝试选择其他格式的图片（JPG、PNG）`);
+          toast.error(
+            '图片上传失败',
+            `${(uploadError as Error).message}。建议：检查网络连接、确保图片小于5MB、尝试JPG/PNG格式`
+          );
           return;
         }
       } else {
-        // 自动生成Logo
+        // 3. 兜底：自动生成Logo
         try {
           console.log('🎨 开始自动生成Logo...');
           logoUrl = await autoGenerateLogo(formData.toolName, formData.officialWebsite, formData.categories);
@@ -321,7 +417,7 @@ const SubmitToolPage = () => {
       
       if (error) {
         console.error('数据库插入错误:', error);
-        alert(`提交失败: ${error.message}`);
+        toast.error('提交失败', error.message);
         return;
       }
 
@@ -345,13 +441,17 @@ const SubmitToolPage = () => {
           logoFile: null,
           submitterEmail: ''
         });
+        // 重置 Logo 相关状态
+        setFetchedLogoUrl(null);
+        setLogoPreviewUrl(null);
+        setIsFetchingLogo(false);
         setStepCompletion({ 1: false, 2: false, 3: false, 4: false, 5: false });
         setCurrentStep(1);
       }, 3000);
       
     } catch (error) {
       console.error('提交过程中发生错误:', error);
-      alert('提交失败: ' + (error as Error).message);
+      toast.error('提交失败', (error as Error).message);
     } finally {
       setIsSubmitting(false);
     }
@@ -716,37 +816,99 @@ const SubmitToolPage = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    上传工具Logo (可选)
+                    工具Logo (可选)
                   </label>
-                  <div className="relative">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="hidden"
-                      id="logo-upload"
-                    />
-                    <label
-                      htmlFor="logo-upload"
-                      className={`w-full px-3 py-2 border-2 border-dashed rounded-lg cursor-pointer hover:border-blue-400 transition-colors flex items-center justify-center ${
-                        errors.logoFile ? 'border-red-300' : 'border-gray-300'
-                      }`}
-                    >
-                      <Image className="w-5 h-5 mr-2 text-gray-400" />
-                      <span className="text-gray-600">
-                        {formData.logoFile ? formData.logoFile.name : '点击上传图片'}
-                      </span>
-                    </label>
-                  </div>
-                  {errors.logoFile && (
-                    <p className="mt-1 text-sm text-red-600">{errors.logoFile}</p>
+
+                  {/* Logo 预览区域 */}
+                  {(logoPreviewUrl || fetchedLogoUrl) && (
+                    <div className="mb-3 flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-white shadow-sm flex items-center justify-center">
+                        <img
+                          src={logoPreviewUrl || fetchedLogoUrl || undefined}
+                          alt="Logo预览"
+                          className="w-full h-full object-contain"
+                          onError={() => setLogoPreviewUrl(null)}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-700">
+                          {formData.logoFile ? formData.logoFile.name : '自动获取的图标'}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {formData.logoFile ? '用户上传' : '来自网站自动提取'}
+                        </p>
+                      </div>
+                      {fetchedLogoUrl && !formData.logoFile && (
+                        <button
+                          type="button"
+                          onClick={handleRefreshLogo}
+                          disabled={isFetchingLogo}
+                          className="p-2 text-blue-600 hover:text-blue-700 disabled:opacity-50"
+                          title="刷新图标"
+                        >
+                          <RefreshCw className={`w-4 h-4 ${isFetchingLogo ? 'animate-spin' : ''}`} />
+                        </button>
+                      )}
+                    </div>
                   )}
-                  <p className="mt-1 text-xs text-gray-500">
-                    支持 JPG、PNG 格式，文件大小不超过 5MB
-                  </p>
-                  <p className="mt-1 text-xs text-blue-600">
-                    💡 未上传Logo？我们会自动从网站获取favicon或生成首字母Logo
-                  </p>
+
+                  {/* 自动获取状态 */}
+                  {isFetchingLogo && (
+                    <div className="mb-3 flex items-center text-sm text-blue-600">
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                      正在从网站获取图标...
+                    </div>
+                  )}
+
+                  {/* 上传区域 */}
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileChange}
+                          className="hidden"
+                          id="logo-upload"
+                        />
+                        <label
+                          htmlFor="logo-upload"
+                          className={`w-full px-3 py-2 border-2 border-dashed rounded-lg cursor-pointer hover:border-blue-400 transition-colors flex items-center justify-center ${
+                            errors.logoFile ? 'border-red-300' : 'border-gray-300'
+                          }`}
+                        >
+                          <Image className="w-5 h-5 mr-2 text-gray-400" />
+                          <span className="text-gray-600">
+                            {formData.logoFile ? formData.logoFile.name : '点击上传图片'}
+                          </span>
+                        </label>
+                      </div>
+
+                      {/* 手动刷新按钮 */}
+                      {formData.officialWebsite && (
+                        <button
+                          type="button"
+                          onClick={handleRefreshLogo}
+                          disabled={isFetchingLogo}
+                          className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                          title="从网站重新获取图标"
+                        >
+                          <RefreshCw className={`w-4 h-4 mr-1 ${isFetchingLogo ? 'animate-spin' : ''}`} />
+                          刷新
+                        </button>
+                      )}
+                    </div>
+
+                    {errors.logoFile && (
+                      <p className="mt-1 text-sm text-red-600">{errors.logoFile}</p>
+                    )}
+                    <p className="mt-1 text-xs text-gray-500">
+                      支持 JPG、PNG 格式，文件大小不超过 5MB
+                    </p>
+                    <p className="mt-1 text-xs text-blue-600">
+                      💡 输入网址后会自动获取图标，也可点击"刷新"按钮手动获取
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

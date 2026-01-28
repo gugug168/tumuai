@@ -4,12 +4,35 @@
  */
 
 /**
+ * 图标优先级配置
+ * 按质量和可用性排序
+ */
+interface LogoCandidate {
+  url: string;
+  type: string;
+  size?: string;
+  quality: number; // 0-100，越高越优先
+  isSvg?: boolean;
+}
+
+const LOGO_PRIORITY = [
+  { pattern: /apple\-touch\-icon.*?(\.png|\.jpg)/, quality: 95, type: 'apple-touch-icon' },
+  { pattern: /icon\.svg/, quality: 100, type: 'svg' }, // 矢量图，最高优先级
+  { pattern: /icon.*?(\.png|\.jpg).*?sizes=["'](\d+)x(\d+)/, quality: 85, type: 'sized-icon' },
+  { pattern: /icon.*?(\.png|\.jpg)/, quality: 80, type: 'icon' },
+  { pattern: /og\:image/, quality: 70, type: 'og-image' },
+  { pattern: /favicon\.ico/, quality: 50, type: 'favicon' },
+  { pattern: /shortcut\s+icon/, quality: 45, type: 'shortcut-icon' },
+  { pattern: /mask\-icon/, quality: 60, type: 'mask-icon' }
+];
+
+/**
  * 带超时的fetch请求
  */
 async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = 5000): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  
+
   try {
     const response = await fetch(url, {
       ...options,
@@ -21,6 +44,167 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
     clearTimeout(timeoutId);
     throw error;
   }
+}
+
+/**
+ * 解析 HTML 提取所有图标候选
+ * 按优先级排序返回
+ */
+function extractLogoCandidates(html: string, baseUrl: string): LogoCandidate[] {
+  const candidates: LogoCandidate[] = [];
+  const base = new URL(baseUrl);
+
+  // 匹配所有 link 标签中的图标
+  const linkRegex = /<link\s+([^>]*?)>/gi;
+  let match;
+
+  while ((match = linkRegex.exec(html)) !== null) {
+    const linkAttrs = match[1];
+    const relMatch = linkAttrs.match(/rel=["']([^"']+)["']/i);
+    const hrefMatch = linkAttrs.match(/href=["']([^"']+)["']/i);
+    const sizesMatch = linkAttrs.match(/sizes=["']([^"']+)["']/i);
+    const typeMatch = linkAttrs.match(/type=["']([^"']+)["']/i);
+
+    if (!relMatch || !hrefMatch) continue;
+
+    const rel = relMatch[1];
+    let href = hrefMatch[1];
+
+    // 转换为绝对 URL
+    if (!href.startsWith('http') && !href.startsWith('//')) {
+      href = new URL(href, base.origin).href;
+    } else if (href.startsWith('//')) {
+      href = base.protocol + href;
+    }
+
+    // 检查是否是图标相关的 link
+    const iconRels = ['icon', 'shortcut icon', 'apple-touch-icon', 'mask-icon', 'fluid-icon'];
+    if (!iconRels.some(r => rel.toLowerCase().includes(r))) continue;
+
+    // 计算质量分数
+    let quality = 50;
+    let logoType = 'icon';
+
+    if (rel.toLowerCase().includes('apple-touch-icon')) {
+      quality = 95;
+      logoType = 'apple-touch-icon';
+    } else if (typeMatch && typeMatch[1].includes('svg')) {
+      quality = 100;
+      logoType = 'svg';
+    } else if (href.endsWith('.svg')) {
+      quality = 100;
+      logoType = 'svg';
+    } else if (sizesMatch) {
+      const size = parseInt(sizesMatch[1].split('x')[0]);
+      // 优先选择较大的图标 (192x192 或更高)
+      quality = 60 + Math.min(size / 10, 30);
+      logoType = 'sized-icon';
+    }
+
+    candidates.push({
+      url: href,
+      type: logoType,
+      size: sizesMatch?.[1],
+      quality,
+      isSvg: href.endsWith('.svg') || typeMatch?.[1].includes('svg')
+    });
+  }
+
+  // 匹配 og:image
+  const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
+  if (ogImageMatch) {
+    let ogImage = ogImageMatch[1];
+    if (!ogImage.startsWith('http') && !ogImage.startsWith('//')) {
+      ogImage = new URL(ogImage, base.origin).href;
+    } else if (ogImage.startsWith('//')) {
+      ogImage = base.protocol + ogImage;
+    }
+    candidates.push({
+      url: ogImage,
+      type: 'og-image',
+      quality: 70
+    });
+  }
+
+  // 按质量排序
+  return candidates.sort((a, b) => b.quality - a.quality);
+}
+
+/**
+ * 从网站 HTML 中提取高质量图标
+ * 优先级: SVG > apple-touch-icon > 大尺寸 icon > og:image > favicon
+ */
+export async function extractLogoFromHtml(websiteUrl: string): Promise<string | null> {
+  console.log('🔍 开始提取网站图标:', websiteUrl);
+
+  try {
+    const url = new URL(websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`);
+    const origin = url.origin;
+
+    // 1. 抓取网站 HTML
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+
+    let html: string;
+    try {
+      const response = await fetch(origin, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'text/html,application/xhtml+xml'
+        }
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      html = await response.text();
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      console.warn('⚠️ 无法抓取网站HTML，使用备用方案:', fetchError);
+      // 直接返回备用服务
+      return getFallbackLogo(origin);
+    }
+
+    // 2. 提取图标候选
+    const candidates = extractLogoCandidates(html, origin);
+
+    if (candidates.length === 0) {
+      console.log('❌ 未找到图标候选');
+      return getFallbackLogo(origin);
+    }
+
+    console.log(`✅ 找到 ${candidates.length} 个图标候选:`, candidates.map(c => ({ type: c.type, quality: c.quality })));
+
+    // 3. 按优先级验证并返回第一个可用的
+    for (const candidate of candidates) {
+      if (await validateLogoUrl(candidate.url)) {
+        console.log(`✅ 成功获取图标: ${candidate.type} (${candidate.url})`);
+        return candidate.url;
+      }
+    }
+
+    // 4. 如果所有候选都失败，使用备用服务
+    console.log('⚠️ 所有图标候选都无法访问，使用备用服务');
+    return getFallbackLogo(origin);
+
+  } catch (error) {
+    console.error('❌ 提取图标失败:', error);
+    return null;
+  }
+}
+
+/**
+ * 获取备用图标 (第三方服务)
+ */
+function getFallbackLogo(websiteOrigin: string): string {
+  const url = new URL(websiteOrigin);
+  const domain = url.hostname;
+
+  // 使用 IconHorse (高质量)
+  return `https://cdn2.iconhorse.com/icons/${domain}.png`;
 }
 
 // 默认占位符logo列表 - 根据工具类型匹配
@@ -37,41 +221,44 @@ const DEFAULT_LOGOS = {
 };
 
 /**
- * 从网站URL获取favicon
+ * 从网站URL获取favicon (增强版 - 支持 HTML 解析)
  */
 export async function getFaviconUrl(websiteUrl: string): Promise<string | null> {
   try {
+    // 首先尝试使用智能提取
+    const smartLogo = await extractLogoFromHtml(websiteUrl);
+    if (smartLogo) {
+      return smartLogo;
+    }
+
+    // 兜底方案：尝试常见路径
     const url = new URL(websiteUrl);
     const domain = url.origin;
-    
-    // 尝试常见的favicon路径
+
     const faviconUrls = [
       `${domain}/favicon.ico`,
-      `${domain}/favicon.png`, 
+      `${domain}/favicon.png`,
       `${domain}/apple-touch-icon.png`,
       `${domain}/android-chrome-192x192.png`,
       `${domain}/logo.png`,
       `${domain}/logo.svg`
     ];
 
-    // 检查哪个favicon存在且可访问
     for (const faviconUrl of faviconUrls) {
       try {
-        const response = await fetchWithTimeout(faviconUrl, { 
-          method: 'HEAD', 
+        const response = await fetchWithTimeout(faviconUrl, {
+          method: 'HEAD',
           mode: 'no-cors'
         }, 5000);
-        
-        // no-cors模式下，如果没有错误说明资源存在
         return faviconUrl;
       } catch {
         continue;
       }
     }
 
-    // 使用第三方服务获取favicon
-    return `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`;
-    
+    // 最终兜底：Google favicon API
+    return `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=128`;
+
   } catch (error) {
     console.warn('获取favicon失败:', error);
     return null;
@@ -219,28 +406,29 @@ function getColorByCategory(categories: string[]): string {
 }
 
 /**
- * 自动获取工具Logo - 综合方案
+ * 自动获取工具Logo - 综合方案 (增强版)
  */
 export async function autoGenerateLogo(toolName: string, websiteUrl: string, categories: string[] = []): Promise<string> {
   console.log('🎨 开始自动获取Logo:', { toolName, websiteUrl, categories });
-  
+
   try {
-    // 1. 首先尝试获取网站favicon
-    const favicon = await getFaviconUrl(websiteUrl);
-    if (favicon) {
-      console.log('✅ 成功获取网站favicon:', favicon);
-      return favicon;
+    // 1. 首先使用智能提取 (HTML 解析)
+    console.log('🔍 尝试智能提取图标...');
+    const smartLogo = await extractLogoFromHtml(websiteUrl);
+    if (smartLogo) {
+      console.log('✅ 智能提取成功:', smartLogo);
+      return smartLogo;
     }
-    
-    console.log('⚠️ 无法获取favicon，使用生成logo');
+
+    console.log('⚠️ 智能提取失败，使用兜底方案');
   } catch (error) {
-    console.warn('获取favicon异常:', error);
+    console.warn('智能提取异常:', error);
   }
 
   // 2. 生成基于首字母的logo
   const generatedLogo = generateInitialLogo(toolName, categories);
   console.log('✅ 生成首字母Logo成功');
-  
+
   return generatedLogo;
 }
 

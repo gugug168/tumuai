@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { X, Mail, Lock, User } from 'lucide-react'
 import { signIn, signUp } from '../lib/auth'
+import { useToast, createToastHelpers } from './Toast'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -9,6 +10,8 @@ interface AuthModalProps {
 }
 
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'login' }) => {
+  const { showToast } = useToast()
+  const toast = createToastHelpers(showToast)
   const [mode, setMode] = useState<'login' | 'register'>(initialMode)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -51,8 +54,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
           username: formData.username,
           full_name: formData.full_name
         })
-        
-        alert('注册成功！请查看邮箱验证链接。')
+
+        toast.success('注册成功', '请查看邮箱验证链接')
         onClose()
       }
     } catch (err) {

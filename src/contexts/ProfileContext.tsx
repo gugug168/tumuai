@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { getUserProfile, updateUserProfile, type UserProfile } from '../lib/auth'
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
+import { getUserProfileWithCache, updateUserProfile, clearUserProfileCache, type UserProfile } from '../lib/auth'
 import { useAuth } from './AuthContext'
 
 interface ProfileContextType {
@@ -27,19 +27,29 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // 获取用户资料
+  // 使用ref防止重复调用
+  const isLoadingRef = useRef(false)
+
+  // 获取用户资料（带缓存）
   const refreshProfile = useCallback(async () => {
     if (!user) {
       setProfile(null)
       return
     }
 
+    // 防止重复调用
+    if (isLoadingRef.current) {
+      console.log('⏳ 用户资料正在加载中，跳过重复请求')
+      return
+    }
+
+    isLoadingRef.current = true
     setLoading(true)
     setError(null)
 
     try {
-      console.log('📄 获取用户资料...')
-      const profileData = await getUserProfile(user.id)
+      console.log('📄 获取用户资料（带缓存）...')
+      const profileData = await getUserProfileWithCache(user.id)
       setProfile(profileData)
       console.log('✅ 用户资料加载完成')
     } catch (err) {
@@ -49,6 +59,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       setProfile(null)
     } finally {
       setLoading(false)
+      isLoadingRef.current = false
     }
   }, [user])
 
@@ -65,6 +76,8 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       console.log('📝 更新用户资料...')
       const updatedProfile = await updateUserProfile(user.id, data)
       setProfile(updatedProfile)
+      // 清除缓存，确保下次获取最新数据
+      clearUserProfileCache(user.id)
       console.log('✅ 用户资料更新完成')
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '更新用户资料失败'

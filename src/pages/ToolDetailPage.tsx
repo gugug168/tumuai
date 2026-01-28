@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { 
-  ExternalLink, 
-  Heart, 
-  Star, 
-  Play, 
-  Check, 
+import {
+  ExternalLink,
+  Heart,
+  Star,
+  Play,
+  Check,
   ArrowLeft,
   Eye,
   Calendar,
@@ -14,8 +14,9 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { addToFavorites, removeFromFavorites, isFavorited, addToolReview, getToolReviews } from '../lib/community';
-import { getToolById, incrementToolViews, getTools } from '../lib/supabase';
+import { getToolById, incrementToolViews, getRelatedTools } from '../lib/supabase';
 import { generateInitialLogo } from '../lib/logoUtils';
+import { useToast, createToastHelpers } from '../components/Toast';
 import type { Tool } from '../types/index';
 
 interface Review {
@@ -29,6 +30,8 @@ interface Review {
 
 const ToolDetailPage = () => {
   const { toolId } = useParams();
+  const { showToast } = useToast();
+  const toast = createToastHelpers(showToast);
   const [selectedImage, setSelectedImage] = useState(0);
   const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
   const [isFavoritedTool, setIsFavoritedTool] = useState(false);
@@ -40,7 +43,7 @@ const ToolDetailPage = () => {
   const [error, setError] = useState<string | null>(null);
   
   const toolIdAsString = toolId || '';
-  
+
   // 相关工具推荐数据（动态从API获取）
   interface RelatedTool {
     id: string;
@@ -52,35 +55,32 @@ const ToolDetailPage = () => {
   }
   const [relatedTools, setRelatedTools] = useState<RelatedTool[]>([]);
   const [loadingRelated, setLoadingRelated] = useState(true);
-  
-  const fetchRelatedTools = async (currentCategory: string, currentToolId: string) => {
+
+  // 使用useMemo缓存相关工具的请求，防止重复调用
+  const loadRelatedTools = useCallback(async (currentCategory: string, currentToolId: string) => {
     try {
-      // 获取所有工具数据
-      const allTools = await getTools(100); // 获取更多工具以便筛选
-      
-      // 筛选同分类的工具，排除当前工具
-      const relatedToolsData = allTools
-        .filter(tool => 
-          tool.categories.includes(currentCategory) && 
-          tool.id !== currentToolId
-        )
-        .sort((a, b) => b.rating - a.rating) // 按评分降序排序
-        .slice(0, 3) // 只取前3个
-        .map(tool => ({
-          id: tool.id,
-          name: tool.name,
-          category: tool.categories[0] || currentCategory,
-          description: tool.tagline,
-          logo: tool.logo_url || generateInitialLogo(tool.name, tool.categories || []),
-          rating: tool.rating
-        }));
-      
-      return relatedToolsData;
+      setLoadingRelated(true);
+      // 使用专门的相关工具API，只获取3个工具，而不是全部100个
+      const relatedToolsData = await getRelatedTools(currentCategory, currentToolId, 3);
+
+      // 映射为组件需要的格式
+      const formattedTools = relatedToolsData.map(tool => ({
+        id: tool.id,
+        name: tool.name,
+        category: tool.categories[0] || currentCategory,
+        description: tool.tagline,
+        logo: tool.logo_url || generateInitialLogo(tool.name, tool.categories || []),
+        rating: tool.rating || 0
+      }));
+
+      setRelatedTools(formattedTools);
     } catch (error) {
       console.error('获取相关工具失败:', error);
-      return [];
+      setRelatedTools([]);
+    } finally {
+      setLoadingRelated(false);
     }
-  };
+  }, []);
   
   // 定义所有callback函数在useEffect之前
   const loadToolData = useCallback(async () => {
@@ -175,22 +175,9 @@ const ToolDetailPage = () => {
 
   useEffect(() => {
     if (adaptedTool) {
-      const loadRelatedTools = async () => {
-        try {
-          setLoadingRelated(true);
-          const related = await fetchRelatedTools(adaptedTool.category, adaptedTool.id);
-          setRelatedTools(related);
-        } catch (error) {
-          console.error('获取相关工具失败:', error);
-          setRelatedTools([]);
-        } finally {
-          setLoadingRelated(false);
-        }
-      };
-      
-      loadRelatedTools();
+      loadRelatedTools(adaptedTool.category, adaptedTool.id);
     }
-  }, [adaptedTool]);
+  }, [adaptedTool, loadRelatedTools]);
 
   if (loading) {
     return (
@@ -231,7 +218,7 @@ const ToolDetailPage = () => {
       }
     } catch (error) {
       console.error('收藏操作失败:', error);
-      alert('操作失败，请稍后重试');
+      toast.error('操作失败', '请稍后重试');
     } finally {
       setLoadingFavorite(false);
     }
@@ -246,10 +233,10 @@ const ToolDetailPage = () => {
       });
       setNewReview({ rating: 5, comment: '' });
       await loadReviews();
-      alert('评论提交成功！');
+      toast.success('提交成功', '评论已发布');
     } catch (error) {
       console.error('评论提交失败:', error);
-      alert('评论提交失败，请稍后重试');
+      toast.error('提交失败', '评论提交失败，请稍后重试');
     }
   };
 

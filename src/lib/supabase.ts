@@ -441,3 +441,65 @@ export async function searchTools(
 export async function getCategories() {
   return await CategoryManager.getCategories();
 }
+
+// 获取分类列表（带缓存）
+export async function getCategoriesWithCache() {
+  const cacheKey = 'categories_list_full';
+
+  return unifiedCache.fetchWithCache(
+    cacheKey,
+    () => getCategories(),
+    {
+      ttl: 15 * 60 * 1000, // 15分钟缓存 - 分类变化不频繁
+      staleWhileRevalidate: true
+    }
+  );
+}
+
+/**
+ * 获取相关工具（带缓存）
+ * 用于工具详情页的"相关工具推荐"
+ * @param categoryId 分类ID
+ * @param currentToolId 当前工具ID（需要排除）
+ * @param limit 返回数量限制
+ */
+export async function getRelatedTools(
+  categoryId: string,
+  currentToolId: string,
+  limit = 6
+): Promise<Tool[]> {
+  const cacheKey = `related_${categoryId}_${currentToolId}`;
+
+  return unifiedCache.fetchWithCache(
+    cacheKey,
+    async () => {
+      try {
+        console.log(`🔗 获取相关工具: 分类=${categoryId}, 排除=${currentToolId}`);
+
+        const { data, error } = await supabase
+          .from('tools')
+          .select('id,name,tagline,logo_url,categories,rating')
+          .eq('status', 'published')
+          .contains('categories', [categoryId])  // 使用contains查询包含该分类的工具
+          .neq('id', currentToolId)  // 排除当前工具
+          .order('rating', { ascending: false, nullsFirst: false })
+          .limit(limit);
+
+        if (error) {
+          console.error('获取相关工具失败:', error);
+          return [];
+        }
+
+        console.log(`✅ 找到 ${data?.length || 0} 个相关工具`);
+        return data as Tool[];
+      } catch (error) {
+        console.error('获取相关工具异常:', error);
+        return [];
+      }
+    },
+    {
+      ttl: 10 * 60 * 1000, // 10分钟缓存
+      staleWhileRevalidate: true
+    }
+  );
+}

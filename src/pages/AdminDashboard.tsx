@@ -19,12 +19,13 @@ import {
   Download,
   Ban,
   Check,
-  MoreVertical
+  MoreVertical,
+  Image
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 import {
   checkAdminStatus,
-  getAllAdminData,
   reviewToolSubmission,
   deleteTool,
   deleteCategory,
@@ -36,6 +37,8 @@ import {
   batchReviewSubmissions,
   exportToolsToCSV,
   exportUsersToCSV,
+  refreshToolLogo,
+  batchRefreshToolLogos,
   type ToolSubmission,
   type AdminLog
 } from '../lib/admin';
@@ -110,6 +113,22 @@ const AdminDashboard = () => {
   // 批量选择状态
   const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
   const [selectedSubmissions, setSelectedSubmissions] = useState<Set<string>>(new Set());
+  // Logo 刷新状态
+  const [refreshingLogos, setRefreshingLogos] = useState<Set<string>>(new Set());
+  const [batchRefreshing, setBatchRefreshing] = useState(false);
+  // 按需加载状态 - 每个 tab 独立的 loading 状态
+  const [loadingStates, setLoadingStates] = useState({
+    stats: true,
+    submissions: false,
+    tools: false,
+    categories: false,
+    users: false
+  });
+  // 已加载的 tab 标记
+  const [loadedTabs, setLoadedTabs] = useState<Set<string>>(new Set(['stats']));
+  // 用户分页
+  const [userPage, setUserPage] = useState(1);
+  const [userPagination, setUserPagination] = useState({ page: 1, perPage: 20, total: 0, totalPages: 1 });
   const navigate = useNavigate();
 
   // 新增：立即进行权限检查
@@ -141,75 +160,185 @@ const AdminDashboard = () => {
     checkAuth();
   }, [navigate]);
 
-  const loadData = useCallback(async () => {
+  // 按需加载统计信息（轻量级，总是加载）
+  const loadStats = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
-      console.log('🔄 开始加载管理数据...');
-      
-      // 检查管理员权限
-      const adminStatus = await checkAdminStatus();
-      
-      if (!adminStatus) {
-        console.error('❌ 用户不是管理员');
-        setError('您没有管理员权限，无法访问此页面');
-        navigate('/admin-login');
-        return;
-      }
-      
-      console.log('✅ 管理员权限验证通过');
-      
-      // 使用统一的数据获取API
-      const data = await getAllAdminData();
-      
-      // 设置所有数据状态
+      setLoadingStates(prev => ({ ...prev, stats: true }));
+      const accessToken = await getAccessToken();
+      if (!accessToken) throw new Error('未登录');
+
+      const response = await fetch('/api/admin-datasets?sections=stats', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+
+      if (!response.ok) throw new Error('获取统计失败');
+
+      const data = await response.json();
       if (data.stats) {
         setStats(prevStats => ({ ...prevStats, ...data.stats }));
       }
-      
-      if (data.submissions) {
-        setSubmissions(data.submissions);
-      }
-      
-      if (data.users) {
-        setUsers(data.users); // 使用修复的真实用户数据
-      }
-      
-      if (data.tools) {
-        setTools(data.tools);
-      }
-      
-      if (data.logs) {
-        setLogs(data.logs);
-      }
-      
-      if (data.categories) {
-        setCategories(data.categories);
-      }
-
-      console.log('🎉 管理数据加载完成');
-    } catch (error: unknown) {
-      const err = error as Error
-      console.error('❌ 管理数据加载失败:', error);
-      setError(`管理数据加载失败: ${err.message || '请检查网络连接或联系技术支持'}`);
+      setLoadedTabs(prev => new Set(prev).add('stats'));
+    } catch (error) {
+      console.error('加载统计失败:', error);
     } finally {
-      setLoading(false);
+      setLoadingStates(prev => ({ ...prev, stats: false }));
     }
-  }, [navigate]);
+  }, []);
 
-  // 所有单独的load函数已移除，现在使用统一的getAllAdminData()函数
+  // 按需加载提交列表
+  const loadSubmissions = useCallback(async () => {
+    try {
+      setLoadingStates(prev => ({ ...prev, submissions: true }));
+      const accessToken = await getAccessToken();
+      if (!accessToken) throw new Error('未登录');
 
+      const response = await fetch('/api/admin-datasets?sections=submissions', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+
+      if (!response.ok) throw new Error('获取提交失败');
+
+      const data = await response.json();
+      setSubmissions(data.submissions || []);
+      setLoadedTabs(prev => new Set(prev).add('submissions'));
+    } catch (error) {
+      console.error('加载提交失败:', error);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, submissions: false }));
+    }
+  }, []);
+
+  // 按需加载工具列表
+  const loadTools = useCallback(async () => {
+    try {
+      setLoadingStates(prev => ({ ...prev, tools: true }));
+      const accessToken = await getAccessToken();
+      if (!accessToken) throw new Error('未登录');
+
+      const response = await fetch('/api/admin-datasets?sections=tools', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+
+      if (!response.ok) throw new Error('获取工具失败');
+
+      const data = await response.json();
+      setTools(data.tools || []);
+      setLoadedTabs(prev => new Set(prev).add('tools'));
+    } catch (error) {
+      console.error('加载工具失败:', error);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, tools: false }));
+    }
+  }, []);
+
+  // 按需加载分类列表
+  const loadCategories = useCallback(async () => {
+    try {
+      setLoadingStates(prev => ({ ...prev, categories: true }));
+      const accessToken = await getAccessToken();
+      if (!accessToken) throw new Error('未登录');
+
+      const response = await fetch('/api/admin-datasets?sections=categories', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+
+      if (!response.ok) throw new Error('获取分类失败');
+
+      const data = await response.json();
+      setCategories(data.categories || []);
+      setLoadedTabs(prev => new Set(prev).add('categories'));
+    } catch (error) {
+      console.error('加载分类失败:', error);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, categories: false }));
+    }
+  }, []);
+
+  // 按需加载用户列表（带分页）
+  const loadUsers = useCallback(async (page = 1) => {
+    try {
+      setLoadingStates(prev => ({ ...prev, users: true }));
+      const accessToken = await getAccessToken();
+      if (!accessToken) throw new Error('未登录');
+
+      const searchParam = searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : '';
+      const response = await fetch(`/api/admin-users?page=${page}&perPage=20${searchParam}`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+
+      if (!response.ok) throw new Error('获取用户失败');
+
+      const data = await response.json();
+      setUsers(data.users || []);
+      setUserPagination(data.pagination);
+      setLoadedTabs(prev => new Set(prev).add('users'));
+    } catch (error) {
+      console.error('加载用户失败:', error);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, users: false }));
+    }
+  }, [searchTerm]);
+
+  // 获取访问令牌辅助函数
+  async function getAccessToken() {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || null;
+  }
+
+  // 监听 activeTab 变化，按需加载数据
   useEffect(() => {
-    // 只有权限验证通过后才加载数据
-    if (isAuthorized) {
-      loadData();
+    if (!isAuthorized) return;
+
+    // 统计信息总是加载
+    loadStats();
+
+    // 根据当前 tab 加载对应数据
+    if (activeTab === 'submissions' && !loadedTabs.has('submissions')) {
+      loadSubmissions();
+    } else if (activeTab === 'tools' && !loadedTabs.has('tools')) {
+      loadTools();
+    } else if (activeTab === 'categories' && !loadedTabs.has('categories')) {
+      loadCategories();
+    } else if (activeTab === 'users' && !loadedTabs.has('users')) {
+      loadUsers(1);
     }
-  }, [isAuthorized, loadData]);
+  }, [activeTab, isAuthorized, loadStats, loadSubmissions, loadTools, loadCategories, loadUsers, loadedTabs]);
+
+  // 手动刷新当前 tab 的数据
+  const refreshCurrentTab = useCallback(() => {
+    switch (activeTab) {
+      case 'overview':
+        loadStats();
+        break;
+      case 'submissions':
+        setLoadedTabs(prev => { const next = new Set(prev); next.delete('submissions'); return next; });
+        loadSubmissions();
+        break;
+      case 'tools':
+        setLoadedTabs(prev => { const next = new Set(prev); next.delete('tools'); return next; });
+        loadTools();
+        break;
+      case 'categories':
+        setLoadedTabs(prev => { const next = new Set(prev); next.delete('categories'); return next; });
+        loadCategories();
+        break;
+      case 'users':
+        setLoadedTabs(prev => { const next = new Set(prev); next.delete('users'); return next; });
+        loadUsers(userPage);
+        break;
+    }
+  }, [activeTab, loadStats, loadSubmissions, loadTools, loadCategories, loadUsers, userPage]);
 
   const handleReviewSubmission = async (submissionId: string, status: 'approved' | 'rejected', notes?: string) => {
     try {
       await reviewToolSubmission(submissionId, status, notes);
-      await loadData();
+      // 增量更新：从列表中移除已处理的提交
+      setSubmissions(prev => prev.filter(s => s.id !== submissionId));
+      // 直接更新统计：减少待审核数量
+      setStats(prev => ({
+        ...prev,
+        pendingSubmissions: Math.max(0, prev.pendingSubmissions - 1)
+      }));
       setShowSubmissionModal(null);
     } catch (error) {
       console.error('Review failed:', error);
@@ -217,14 +346,18 @@ const AdminDashboard = () => {
     }
   };
 
-
-
   const handleDeleteTool = async (toolId: string) => {
     if (!confirm('确定删除该工具？此操作不可撤销。')) return;
 
     try {
       await deleteTool(toolId);
-      await loadData();
+      // 增量更新：从列表中移除已删除的工具
+      setTools(prev => prev.filter(t => t.id !== toolId));
+      // 直接更新统计：减少工具数量
+      setStats(prev => ({
+        ...prev,
+        totalTools: Math.max(0, prev.totalTools - 1)
+      }));
     } catch (error) {
       const message = error instanceof Error ? error.message : '未知错误';
       console.error('Delete tool failed:', error);
@@ -232,14 +365,13 @@ const AdminDashboard = () => {
     }
   };
 
-
-
   const handleDeleteCategory = async (categoryId: string) => {
     if (!confirm('确定删除该分类？相关工具将失去此分类。')) return;
 
     try {
       await deleteCategory(categoryId);
-      await loadData();
+      // 增量更新：从列表中移除已删除的分类
+      setCategories(prev => prev.filter(c => c.id !== categoryId));
     } catch (error) {
       console.error('Delete category failed:', error);
       toast.error('删除失败', '删除分类失败，请重试');
@@ -250,7 +382,10 @@ const AdminDashboard = () => {
   const handleToggleUserStatus = async (userId: string, isActive: boolean) => {
     try {
       await toggleUserStatus(userId, isActive);
-      await loadData();
+      // 增量更新用户状态
+      setUsers(prev => prev.map(u =>
+        u.id === userId ? { ...u, is_active: isActive } : u
+      ));
     } catch (error) {
       console.error('Toggle user status failed:', error);
       toast.error('操作失败', '请重试');
@@ -260,7 +395,10 @@ const AdminDashboard = () => {
   const handleUpdateUserRole = async (userId: string, role: string) => {
     try {
       await updateUserRole(userId, role);
-      await loadData();
+      // 增量更新用户角色
+      setUsers(prev => prev.map(u =>
+        u.id === userId ? { ...u, role } : u
+      ));
     } catch (error) {
       console.error('Update user role failed:', error);
       toast.error('更新失败', '更新角色失败，请重试');
@@ -272,7 +410,8 @@ const AdminDashboard = () => {
 
     try {
       await deleteUser(userId);
-      await loadData();
+      // 增量更新：从列表中移除已删除的用户
+      setUsers(prev => prev.filter(u => u.id !== userId));
     } catch (error) {
       console.error('Delete user failed:', error);
       toast.error('删除失败', '删除用户失败，请重试');
@@ -283,7 +422,10 @@ const AdminDashboard = () => {
   const handleUpdateToolStatus = async (toolId: string, status: 'draft' | 'published' | 'archived') => {
     try {
       await updateToolStatus(toolId, status);
-      await loadData();
+      // 增量更新工具状态
+      setTools(prev => prev.map(t =>
+        t.id === toolId ? { ...t, status } : t
+      ));
     } catch (error) {
       console.error('Update tool status failed:', error);
       toast.error('更新失败', '更新工具状态失败，请重试');
@@ -296,10 +438,17 @@ const AdminDashboard = () => {
     if (!confirm(`确定删除选中的 ${selectedTools.size} 个工具？此操作不可撤销。`)) return;
 
     try {
+      const deletedCount = selectedTools.size;
       const result = await batchDeleteTools(Array.from(selectedTools));
       toast.success('批量删除完成', `成功 ${result.success} 个，失败 ${result.failed} 个`);
+      // 增量更新：从列表中移除已删除的工具
+      setTools(prev => prev.filter(t => !selectedTools.has(t.id)));
       setSelectedTools(new Set());
-      await loadData();
+      // 直接更新统计：减少工具数量
+      setStats(prev => ({
+        ...prev,
+        totalTools: Math.max(0, prev.totalTools - deletedCount)
+      }));
     } catch (error) {
       const message = error instanceof Error ? error.message : '未知错误';
       console.error('Batch delete tools failed:', error);
@@ -316,10 +465,17 @@ const AdminDashboard = () => {
     if (!confirm(confirmMsg)) return;
 
     try {
+      const processedCount = selectedSubmissions.size;
       const result = await batchReviewSubmissions(Array.from(selectedSubmissions), status);
       toast.success('批量审核完成', `成功 ${result.success} 个，失败 ${result.failed} 个`);
+      // 增量更新：从列表中移除已处理的提交
+      setSubmissions(prev => prev.filter(s => !selectedSubmissions.has(s.id)));
       setSelectedSubmissions(new Set());
-      await loadData();
+      // 直接更新统计：减少待审核数量
+      setStats(prev => ({
+        ...prev,
+        pendingSubmissions: Math.max(0, prev.pendingSubmissions - processedCount)
+      }));
     } catch (error) {
       console.error('Batch review failed:', error);
       toast.error('批量审核失败', '请重试');
@@ -354,6 +510,68 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Export users failed:', error);
       toast.error('导出失败', '导出用户列表失败，请重试');
+    }
+  };
+
+  // ==================== Logo 刷新功能 ====================
+
+  // 刷新单个工具的 Logo
+  const handleRefreshSingleLogo = async (toolId: string, websiteUrl: string) => {
+    setRefreshingLogos(prev => new Set(prev).add(toolId));
+
+    try {
+      const result = await refreshToolLogo(toolId, websiteUrl);
+
+      if (result.success) {
+        toast.success('图标已更新', `成功获取 ${result.logoUrl}`);
+        // 增量更新：更新工具的 logo_url
+        setTools(prev => prev.map(t =>
+          t.id === toolId ? { ...t, logo_url: result.logoUrl } : t
+        ));
+      } else {
+        toast.error('刷新失败', result.error || '无法获取网站图标');
+      }
+    } catch (error) {
+      console.error('Refresh logo failed:', error);
+      toast.error('刷新失败', '请稍后重试');
+    } finally {
+      setRefreshingLogos(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(toolId);
+        return newSet;
+      });
+    }
+  };
+
+  // 批量刷新 Logo
+  const handleBatchRefreshLogos = async () => {
+    const toolsToRefresh = selectedTools.size > 0
+      ? Array.from(selectedTools)
+      : tools.filter(t => !t.logo_url || t.logo_url.includes('google') || t.logo_url.includes('placeholder')).map(t => t.id);
+
+    if (toolsToRefresh.length === 0) {
+      toast.info('提示', '请先选择需要刷新图标的工具');
+      return;
+    }
+
+    if (!confirm(`确定刷新 ${toolsToRefresh.length} 个工具的图标？`)) return;
+
+    setBatchRefreshing(true);
+
+    try {
+      const result = await batchRefreshToolLogos(toolsToRefresh);
+      toast.success(
+        '批量刷新完成',
+        `成功 ${result.success} 个，失败 ${result.failed} 个`
+      );
+      setSelectedTools(new Set());
+      // 批量刷新后，图标已经通过 API 更新到数据库
+      // 用户可以手动点击"刷新数据"按钮查看最新 logo，避免自动刷新影响体验
+    } catch (error) {
+      console.error('Batch refresh logos failed:', error);
+      toast.error('批量刷新失败', '请稍后重试');
+    } finally {
+      setBatchRefreshing(false);
     }
   };
 
@@ -429,17 +647,6 @@ const AdminDashboard = () => {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">加载管理数据...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow">
@@ -450,7 +657,7 @@ const AdminDashboard = () => {
               <h1 className="ml-3 text-2xl font-bold text-gray-900" data-testid="admin-dashboard-title">管理员控制台</h1>
             </div>
             <button
-              onClick={loadData}
+              onClick={refreshCurrentTab}
               className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               data-testid="refresh-data-button"
             >
@@ -671,7 +878,12 @@ const AdminDashboard = () => {
                     )}
                   </div>
                 </div>
-                {filteredSubmissions.length === 0 ? (
+                {loadingStates.submissions ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                    <p className="text-gray-600">加载提交列表...</p>
+                  </div>
+                ) : filteredSubmissions.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">暂无符合条件的工具提交</p>
                 ) : (
                   <div className="space-y-4">
@@ -780,6 +992,14 @@ const AdminDashboard = () => {
                     {selectedTools.size > 0 && (
                       <>
                         <button
+                          onClick={handleBatchRefreshLogos}
+                          disabled={batchRefreshing}
+                          className="inline-flex items-center px-3 py-2 rounded-md bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <RefreshCw className={`h-4 w-4 mr-1 ${batchRefreshing ? 'animate-spin' : ''}`} />
+                          批量刷新图标 ({selectedTools.size})
+                        </button>
+                        <button
                           onClick={handleBatchDeleteTools}
                           className="inline-flex items-center px-3 py-2 rounded-md bg-red-600 text-white text-sm hover:bg-red-700"
                         >
@@ -804,7 +1024,12 @@ const AdminDashboard = () => {
                     </button>
                   </div>
                 </div>
-                {tools.length === 0 ? (
+                {loadingStates.tools ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                    <p className="text-gray-600">加载工具列表...</p>
+                  </div>
+                ) : tools.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">暂无工具</p>
                 ) : (
                   <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
@@ -897,12 +1122,22 @@ const AdminDashboard = () => {
                               <button
                                 onClick={() => setEditingTool(tool)}
                                 className="text-indigo-600 hover:text-indigo-900"
+                                title="编辑"
                               >
                                 <Edit className="h-4 w-4" />
                               </button>
                               <button
+                                onClick={() => handleRefreshSingleLogo(tool.id, tool.website_url)}
+                                disabled={refreshingLogos.has(tool.id)}
+                                className="text-green-600 hover:text-green-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="刷新图标"
+                              >
+                                <RefreshCw className={`h-4 w-4 ${refreshingLogos.has(tool.id) ? 'animate-spin' : ''}`} />
+                              </button>
+                              <button
                                 onClick={() => handleDeleteTool(tool.id)}
                                 className="text-red-600 hover:text-red-900"
+                                title="删除"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -911,6 +1146,7 @@ const AdminDashboard = () => {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-gray-600 hover:text-gray-900"
+                                title="访问网站"
                               >
                                 <ExternalLink className="h-4 w-4" />
                               </a>
@@ -937,7 +1173,12 @@ const AdminDashboard = () => {
                     新增分类
                   </button>
                 </div>
-                {categories.length === 0 ? (
+                {loadingStates.categories ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                    <p className="text-gray-600">加载分类列表...</p>
+                  </div>
+                ) : categories.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">暂无分类</p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -999,7 +1240,12 @@ const AdminDashboard = () => {
                     导出用户
                   </button>
                 </div>
-                {users.length === 0 ? (
+                {loadingStates.users ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                    <p className="text-gray-600">加载用户列表...</p>
+                  </div>
+                ) : users.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">暂无用户数据</p>
                 ) : (
                   <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
@@ -1094,7 +1340,7 @@ const AdminDashboard = () => {
       <ToolManagementModal
         isOpen={showToolModal || !!editingTool}
         onClose={() => { setShowToolModal(false); setEditingTool(null) }}
-        onSave={() => { loadData() }}
+        onSave={() => { refreshCurrentTab() }}
         tool={editingTool || undefined}
         categories={categories.map(c => ({ id: c.id, name: c.name }))}
         mode={editingTool ? 'edit' : 'create'}
@@ -1103,7 +1349,7 @@ const AdminDashboard = () => {
       <CategoryManagementModal
         isOpen={showCategoryModal || !!editingCategory}
         onClose={() => { setShowCategoryModal(false); setEditingCategory(null) }}
-        onSave={() => { loadData() }}
+        onSave={() => { refreshCurrentTab() }}
         category={editingCategory || undefined}
         mode={editingCategory ? 'edit' : 'create'}
       />
