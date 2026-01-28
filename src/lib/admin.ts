@@ -354,16 +354,6 @@ export async function createTool(tool: {
   }
 }
 
-// 批量删除工具 - 简化版本
-export async function deleteTools(toolIds: string[]) {
-  const { error } = await supabase
-    .from('tools')
-    .delete()
-    .in('id', toolIds)
-  
-  if (error) throw error
-}
-
 // 实现管理员函数 - 调用Vercel Functions
 export async function getUsers(page = 1, limit = 20) {
   try {
@@ -512,7 +502,9 @@ export async function deleteTool(toolId: string) {
     throw error
   }
 }
-// 创建分类
+// ==================== 分类管理 API 调用 ====================
+
+// 创建分类 - 通过 API 调用
 export async function createCategory(category: {
   name: string
   slug?: string
@@ -524,26 +516,14 @@ export async function createCategory(category: {
   is_active?: boolean
 }) {
   try {
-    const { data, error } = await supabase
-      .from('categories')
-      .insert([{
-        ...category,
-        slug: category.slug || category.name.toLowerCase().replace(/\s+/g, '-'),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }])
-      .select()
-      .single()
-
-    if (error) throw error
-    return data
+    return await callAdminAction('create_category', { category })
   } catch (error) {
     console.error('❌ 创建分类失败:', error)
     throw error
   }
 }
 
-// 更新分类  
+// 更新分类 - 通过 API 调用
 export async function updateCategory(id: string, updates: Partial<{
   name: string
   slug: string
@@ -555,33 +535,17 @@ export async function updateCategory(id: string, updates: Partial<{
   is_active: boolean
 }>) {
   try {
-    const { data, error } = await supabase
-      .from('categories')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (error) throw error
-    return data
+    return await callAdminAction('update_category', { id, updates })
   } catch (error) {
     console.error('❌ 更新分类失败:', error)
     throw error
   }
 }
 
-// 删除分类
+// 删除分类 - 通过 API 调用
 export async function deleteCategory(id: string) {
   try {
-    const { error } = await supabase
-      .from('categories')
-      .delete()
-      .eq('id', id)
-
-    if (error) throw error
+    return await callAdminAction('delete_category', { id })
   } catch (error) {
     console.error('❌ 删除分类失败:', error)
     throw error
