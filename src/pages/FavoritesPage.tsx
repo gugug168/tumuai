@@ -257,11 +257,13 @@ const FavoritesPage = () => {
 
                   <div className="p-6">
                     <div className="flex items-start space-x-3 mb-4">
-                      <img
-                        src={tool.logo_url || generateInitialLogo(tool.name, tool.categories || [])}
-                        alt={tool.name}
-                        className="w-12 h-12 rounded-lg object-cover"
-                      />
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 flex-shrink-0">
+                        <img
+                          src={tool.logo_url || generateInitialLogo(tool.name, tool.categories || [])}
+                          alt={tool.name}
+                          className="w-full h-full object-contain p-2"
+                        />
+                      </div>
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
                           {tool.name}

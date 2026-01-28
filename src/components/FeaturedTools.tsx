@@ -109,11 +109,13 @@ const FeaturedTools = React.memo(() => {
               className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow group flex items-center space-x-4"
             >
               {/* Tool Logo */}
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 rounded-lg overflow-hidden border border-gray-100">
                 <OptimizedImage
                   src={tool.logo_url || generateInitialLogo(tool.name, tool.categories || [])}
                   alt={tool.name}
-                  className="w-12 h-12 rounded-lg"
+                  className="w-12 h-12"
+                  objectFit="contain"
+                  background={true}
                   priority={true}
                   lazyLoad={false}
                   sizes="48px"

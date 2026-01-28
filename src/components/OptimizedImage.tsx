@@ -8,6 +8,8 @@ interface OptimizedImageProps {
   sizes?: string;
   priority?: boolean; // 优先加载
   lazyLoad?: boolean; // 懒加载
+  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down'; // 图片适配方式
+  background?: boolean; // 是否添加背景色（用于图标）
   onLoad?: () => void;
   onError?: () => void;
 }
@@ -20,6 +22,8 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   sizes = '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw',
   priority = false,
   lazyLoad = true,
+  objectFit = 'cover',
+  background = false,
   onLoad,
   onError
 }) => {
@@ -113,19 +117,22 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     )}`;
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className={`relative overflow-hidden ${className}`}
-      style={{ backgroundColor: '#f3f4f6' }}
+      style={{
+        backgroundColor: background ? '#f9fafb' : '#f3f4f6'
+      }}
     >
       {/* 占位符 */}
       {!isLoaded && !hasError && (
         <img
           src={placeholderUrl}
           alt=""
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+          className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${
             isInView ? 'opacity-100' : 'opacity-100'
           }`}
+          style={{ objectFit }}
           aria-hidden="true"
         />
       )}
@@ -151,9 +158,12 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
           alt={alt}
           loading={priority ? 'eager' : 'lazy'}
           decoding="async"
-          className={`w-full h-full object-cover transition-opacity duration-500 ${
+          className={`w-full h-full transition-opacity duration-500 ${
+            objectFit === 'contain' ? 'p-3' : ''
+          } ${
             isLoaded ? 'opacity-100' : 'opacity-0'
           }`}
+          style={{ objectFit }}
           onLoad={handleLoad}
           onError={handleError}
           // 预连接域名以优化加载速度

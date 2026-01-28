@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Star, ExternalLink, Heart, Eye, Clock } from 'lucide-react';
 import { getLatestTools } from '../lib/supabase';
 import { generateInitialLogo } from '../lib/logoUtils';
+import OptimizedImage from './OptimizedImage';
 import type { Tool } from '../types';
 
 const LatestTools = () => {
@@ -80,11 +81,15 @@ const LatestTools = () => {
               className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 overflow-hidden group"
             >
               {/* Tool Image */}
-              <div className="relative overflow-hidden">
-                <img
+              <div className="relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+                <OptimizedImage
                   src={tool.logo_url || generateInitialLogo(tool.name, tool.categories || [])}
                   alt={tool.name}
-                  className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-40 group-hover:scale-105 transition-transform duration-300"
+                  objectFit="contain"
+                  background={true}
+                  priority={false}
+                  lazyLoad={true}
                 />
                 <div className="absolute top-3 left-3">
                   <span className="bg-green-600 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">

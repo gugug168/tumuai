@@ -272,11 +272,13 @@ const ToolDetailPage = () => {
         {/* 页面顶部 */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-8">
           <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-6">
-            <img
-              src={adaptedTool.logo}
-              alt={adaptedTool.name}
-              className="w-20 h-20 rounded-xl object-cover"
-            />
+            <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
+              <img
+                src={adaptedTool.logo}
+                alt={adaptedTool.name}
+                className="w-full h-full object-contain p-2"
+              />
+            </div>
             <div className="flex-1">
               <div className="flex items-center space-x-3 mb-2">
                 <h1 className="text-3xl font-bold text-gray-900">{adaptedTool.name}</h1>
@@ -664,11 +666,13 @@ const ToolDetailPage = () => {
                     </button>
                     
                     <div className="flex items-center space-x-3 mb-3">
-                      <img
-                        src={relatedTool.logo}
-                        alt={relatedTool.name}
-                        className="w-12 h-12 rounded-lg object-cover"
-                      />
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
+                        <img
+                          src={relatedTool.logo}
+                          alt={relatedTool.name}
+                          className="w-full h-full object-contain p-2"
+                        />
+                      </div>
                       <div>
                         <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
                           {relatedTool.name}

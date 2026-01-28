@@ -41,11 +41,13 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-blue-200 transition-all duration-200 group flex items-center space-x-4 cursor-pointer">
         {/* Tool Logo */}
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 rounded-lg overflow-hidden border border-gray-100">
           <OptimizedImage
             src={tool.logo_url || getFallbackLogo()}
             alt={tool.name}
-            className="w-12 h-12 rounded-lg"
+            className="w-12 h-12"
+            objectFit="contain"
+            background={true}
             priority={false}
             lazyLoad={true}
             sizes="48px"
@@ -104,11 +106,13 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 overflow-hidden group cursor-pointer">
       {/* Tool Image */}
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
         <OptimizedImage
           src={tool.logo_url || getFallbackLogo()}
           alt={tool.name}
-          className="w-full h-40 object-cover group-hover:scale-110 transition-transform duration-500"
+          className="w-full h-40 group-hover:scale-110 transition-transform duration-500"
+          objectFit="contain"
+          background={true}
           priority={false}
           lazyLoad={true}
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"

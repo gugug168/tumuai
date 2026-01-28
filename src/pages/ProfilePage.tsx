@@ -211,11 +211,13 @@ const ProfilePage = () => {
                       return (
                         <div key={favorite.id} className="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-shadow">
                           <div className="flex items-center space-x-3 mb-3">
-                            <img
-                              src={tool.logo_url || generateInitialLogo(tool.name, tool.categories || [])}
-                              alt={tool.name}
-                              className="w-10 h-10 rounded-lg object-cover"
-                            />
+                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 flex-shrink-0">
+                              <img
+                                src={tool.logo_url || generateInitialLogo(tool.name, tool.categories || [])}
+                                alt={tool.name}
+                                className="w-full h-full object-contain p-1"
+                              />
+                            </div>
                             <div className="flex-1">
                               <h4 className="font-medium text-gray-900 text-sm">{tool.name}</h4>
                               <p className="text-xs text-gray-500">{tool.categories?.[0] || '工具'}</p>
