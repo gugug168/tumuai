@@ -81,13 +81,13 @@ const LatestTools = () => {
               className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 overflow-hidden group"
             >
               {/* Tool Image */}
-              <div className="relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+              <div className="relative w-full h-40 bg-gray-50 flex items-center justify-center p-10">
                 <OptimizedImage
                   src={tool.logo_url || generateInitialLogo(tool.name, tool.categories || [])}
                   alt={tool.name}
-                  className="w-full h-40 group-hover:scale-105 transition-transform duration-300"
+                  className="max-w-[80px] max-h-[80px] w-auto h-auto"
                   objectFit="contain"
-                  background={true}
+                  background={false}
                   priority={false}
                   lazyLoad={true}
                 />

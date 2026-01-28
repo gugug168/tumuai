@@ -119,9 +119,12 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`relative overflow-hidden ${className}`}
+      className={`relative ${className}`}
       style={{
-        backgroundColor: background ? '#f9fafb' : '#f3f4f6'
+        backgroundColor: background ? '#f3f4f6' : 'transparent',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}
     >
       {/* 占位符 */}
@@ -129,9 +132,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
         <img
           src={placeholderUrl}
           alt=""
-          className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${
-            isInView ? 'opacity-100' : 'opacity-100'
-          }`}
+          className="absolute inset-0 w-full h-full transition-opacity duration-300"
           style={{ objectFit }}
           aria-hidden="true"
         />
@@ -158,12 +159,16 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
           alt={alt}
           loading={priority ? 'eager' : 'lazy'}
           decoding="async"
-          className={`w-full h-full transition-opacity duration-500 ${
-            objectFit === 'contain' ? 'p-3' : ''
-          } ${
+          className={`transition-opacity duration-500 ${
             isLoaded ? 'opacity-100' : 'opacity-0'
           }`}
-          style={{ objectFit }}
+          style={{
+            objectFit,
+            maxWidth: '100%',
+            maxHeight: '100%',
+            width: 'auto',
+            height: 'auto'
+          }}
           onLoad={handleLoad}
           onError={handleError}
           // 预连接域名以优化加载速度
