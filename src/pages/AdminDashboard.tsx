@@ -42,6 +42,7 @@ import {
 import ToolManagementModal from '../components/ToolManagementModal';
 import CategoryManagementModal from '../components/CategoryManagementModal';
 import SubmissionDetailModal from '../components/SubmissionDetailModal';
+import { useToast, createToastHelpers } from '../components/Toast';
 
 interface Category {
   id: string;
@@ -75,6 +76,9 @@ interface Tool {
 }
 
 const AdminDashboard = () => {
+  const { showToast } = useToast();
+  const toast = createToastHelpers(showToast);
+
   const [loading, setLoading] = useState(false);
   const [authChecking, setAuthChecking] = useState(true); // 新增：权限检查状态
   const [isAuthorized, setIsAuthorized] = useState(false); // 新增：权限状态
@@ -209,7 +213,7 @@ const AdminDashboard = () => {
       setShowSubmissionModal(null);
     } catch (error) {
       console.error('Review failed:', error);
-      alert('操作失败，请重试');
+      toast.error('操作失败', '请重试');
     }
   };
 
@@ -217,13 +221,14 @@ const AdminDashboard = () => {
 
   const handleDeleteTool = async (toolId: string) => {
     if (!confirm('确定删除该工具？此操作不可撤销。')) return;
-    
+
     try {
       await deleteTool(toolId);
       await loadData();
     } catch (error) {
+      const message = error instanceof Error ? error.message : '未知错误';
       console.error('Delete tool failed:', error);
-      alert('删除失败，请重试');
+      toast.error('删除失败', `原因: ${message}`);
     }
   };
 
@@ -237,7 +242,7 @@ const AdminDashboard = () => {
       await loadData();
     } catch (error) {
       console.error('Delete category failed:', error);
-      alert('删除分类失败，请重试');
+      toast.error('删除失败', '删除分类失败，请重试');
     }
   };
 
@@ -248,7 +253,7 @@ const AdminDashboard = () => {
       await loadData();
     } catch (error) {
       console.error('Toggle user status failed:', error);
-      alert('操作失败，请重试');
+      toast.error('操作失败', '请重试');
     }
   };
 
@@ -258,7 +263,7 @@ const AdminDashboard = () => {
       await loadData();
     } catch (error) {
       console.error('Update user role failed:', error);
-      alert('更新角色失败，请重试');
+      toast.error('更新失败', '更新角色失败，请重试');
     }
   };
 
@@ -270,7 +275,7 @@ const AdminDashboard = () => {
       await loadData();
     } catch (error) {
       console.error('Delete user failed:', error);
-      alert('删除用户失败，请重试');
+      toast.error('删除失败', '删除用户失败，请重试');
     }
   };
 
@@ -281,7 +286,7 @@ const AdminDashboard = () => {
       await loadData();
     } catch (error) {
       console.error('Update tool status failed:', error);
-      alert('更新工具状态失败，请重试');
+      toast.error('更新失败', '更新工具状态失败，请重试');
     }
   };
 
@@ -292,12 +297,13 @@ const AdminDashboard = () => {
 
     try {
       const result = await batchDeleteTools(Array.from(selectedTools));
-      alert(`批量删除完成：成功 ${result.success} 个，失败 ${result.failed} 个`);
+      toast.success('批量删除完成', `成功 ${result.success} 个，失败 ${result.failed} 个`);
       setSelectedTools(new Set());
       await loadData();
     } catch (error) {
+      const message = error instanceof Error ? error.message : '未知错误';
       console.error('Batch delete tools failed:', error);
-      alert('批量删除失败，请重试');
+      toast.error('批量删除失败', `原因: ${message}`);
     }
   };
 
@@ -311,12 +317,12 @@ const AdminDashboard = () => {
 
     try {
       const result = await batchReviewSubmissions(Array.from(selectedSubmissions), status);
-      alert(`批量审核完成：成功 ${result.success} 个，失败 ${result.failed} 个`);
+      toast.success('批量审核完成', `成功 ${result.success} 个，失败 ${result.failed} 个`);
       setSelectedSubmissions(new Set());
       await loadData();
     } catch (error) {
       console.error('Batch review failed:', error);
-      alert('批量审核失败，请重试');
+      toast.error('批量审核失败', '请重试');
     }
   };
 
@@ -332,7 +338,7 @@ const AdminDashboard = () => {
       URL.revokeObjectURL(link.href);
     } catch (error) {
       console.error('Export tools failed:', error);
-      alert('导出工具列表失败，请重试');
+      toast.error('导出失败', '导出工具列表失败，请重试');
     }
   };
 
@@ -347,7 +353,7 @@ const AdminDashboard = () => {
       URL.revokeObjectURL(link.href);
     } catch (error) {
       console.error('Export users failed:', error);
-      alert('导出用户列表失败，请重试');
+      toast.error('导出失败', '导出用户列表失败，请重试');
     }
   };
 

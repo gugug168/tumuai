@@ -547,6 +547,38 @@ export default async function handler(request: VercelRequest, response: VercelRe
         }
       }
 
+      case 'batch_delete_tools': {
+        const { toolIds } = body || {}
+        if (!Array.isArray(toolIds) || toolIds.length === 0) {
+          return response.status(400).json({ error: 'Invalid toolIds' })
+        }
+
+        try {
+          // 使用 Supabase 的 .in() 方法批量删除
+          const { error } = await supabase
+            .from('tools')
+            .delete()
+            .in('id', toolIds)
+
+          if (error) {
+            console.error('Batch delete error:', error)
+            return response.status(500).json({ error: error.message })
+          }
+
+          // 记录日志
+          await logAdminAction('batch_delete_tools', 'tool', undefined, {
+            count: toolIds.length,
+            tool_ids: toolIds
+          })
+
+          return response.status(200).json({ success: true, deleted: toolIds.length })
+        } catch (error: unknown) {
+          console.error('Error in batch_delete_tools:', error)
+          const err = error as ErrorResponse
+          return response.status(500).json({ error: err.message || 'Internal server error' })
+        }
+      }
+
       case 'get_categories': {
         try {
           const { data: categories, error } = await supabase

@@ -310,7 +310,31 @@ export async function rejectToolSubmission(toolId: string) {
   return await reviewToolSubmission(toolId, 'rejected')
 }
 
-// 新增工具 - 保持原有实现
+// ==================== 工具管理 API 调用 ====================
+
+// 辅助函数 - 调用 admin-actions API
+async function callAdminAction(action: string, data?: Record<string, unknown>) {
+  const accessToken = await ensureAccessToken()
+  if (!accessToken) throw new Error('用户未登录')
+
+  const response = await fetch('/api/admin-actions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ action, ...data })
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || '操作失败')
+  }
+
+  return response.json()
+}
+
+// 新增工具 - 通过 API 调用
 export async function createTool(tool: {
   name: string
   tagline?: string
@@ -323,24 +347,7 @@ export async function createTool(tool: {
   featured?: boolean
 }) {
   try {
-    const { data, error } = await supabase
-      .from('tools')
-      .insert([{
-        ...tool,
-        status: 'published',  // 修复：使用数据库允许的状态值
-        views: 0,
-        upvotes: 0,
-        rating: 0,
-        review_count: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        date_added: new Date().toISOString()
-      }])
-      .select()
-      .single()
-
-    if (error) throw error
-    return data
+    return await callAdminAction('create_tool', { tool })
   } catch (error) {
     console.error('❌ 创建工具失败:', error)
     throw error
@@ -484,37 +491,22 @@ const createUnavailableFunction = (functionName: string) => {
 export const approveToolSubmissionDirect = createUnavailableFunction('工具直接审批')
 export const rejectToolSubmissionDirect = createUnavailableFunction('工具直接拒绝')
 export const getToolsMetrics = createUnavailableFunction('获取工具指标')
-export const getCategoriesMetrics = createUnavailableFunction('获取分类指标') 
-// 更新工具
+export const getCategoriesMetrics = createUnavailableFunction('获取分类指标')
+
+// 更新工具 - 通过 API 调用
 export async function updateTool(toolId: string, updates: Partial<Tool>) {
   try {
-    const { data, error } = await supabase
-      .from('tools')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', toolId)
-      .select()
-      .single()
-
-    if (error) throw error
-    return data
+    return await callAdminAction('update_tool', { id: toolId, updates })
   } catch (error) {
     console.error('❌ 更新工具失败:', error)
     throw error
   }
 }
 
-// 删除单个工具
+// 删除单个工具 - 通过 API 调用
 export async function deleteTool(toolId: string) {
   try {
-    const { error } = await supabase
-      .from('tools')
-      .delete()
-      .eq('id', toolId)
-
-    if (error) throw error
+    return await callAdminAction('delete_tool', { id: toolId })
   } catch (error) {
     console.error('❌ 删除工具失败:', error)
     throw error
@@ -704,23 +696,30 @@ export async function getUserDetails(userId: string): Promise<UserInfo | null> {
   }
 }
 
-// 批量删除工具
+// 批量删除工具 - 通过 API 调用
 export async function batchDeleteTools(toolIds: string[]): Promise<{ success: number; failed: number }> {
-  let success = 0
-  let failed = 0
+  try {
+    const result = await callAdminAction('batch_delete_tools', { toolIds })
+    console.log(`✅ 批量删除完成: ${result.deleted} 个工具`)
+    return { success: result.deleted || 0, failed: 0 }
+  } catch (error) {
+    console.error('❌ 批量删除失败:', error)
+    // 如果 API 调用失败，回退到逐个删除
+    let success = 0
+    let failed = 0
 
-  for (const toolId of toolIds) {
-    try {
-      await deleteTool(toolId)
-      success++
-    } catch (error) {
-      console.error(`❌ 删除工具失败 (${toolId}):`, error)
-      failed++
+    for (const toolId of toolIds) {
+      try {
+        await deleteTool(toolId)
+        success++
+      } catch (err) {
+        console.error(`❌ 删除工具失败 (${toolId}):`, err)
+        failed++
+      }
     }
-  }
 
-  console.log(`✅ 批量删除完成: 成功${success}个, 失败${failed}个`)
-  return { success, failed }
+    return { success, failed }
+  }
 }
 
 // 批量审核提交
