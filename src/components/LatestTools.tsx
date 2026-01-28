@@ -11,6 +11,85 @@ const LatestTools = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 判断 logo_url 是否有效
+  const isValidLogoUrl = (logoUrl?: string): boolean => {
+    if (!logoUrl) return false;
+    if (logoUrl.includes('google.com/s2/favicons')) return false;
+    if (logoUrl.includes('placeholder')) return false;
+    if (logoUrl.includes('iconhorse')) return false;
+    return true;
+  };
+
+  // 获取要显示的 logo URL
+  const getDisplayLogo = (tool: Tool): string => {
+    if (isValidLogoUrl(tool.logo_url)) {
+      return tool.logo_url!;
+    }
+    return generateInitialLogo(tool.name, tool.categories || []);
+  };
+
+  // 生成兜底 SVG 图标
+  const getFallbackIcon = (tool: Tool): React.ReactNode => {
+    const initials = (() => {
+      if (!tool.name) return 'T';
+      const cleanName = tool.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, ' ');
+      const words = cleanName.trim().split(/\s+/);
+      if (words.length === 1) {
+        return words[0].substring(0, 2).toUpperCase();
+      } else {
+        return words.slice(0, 2).map(word => word.charAt(0)).join('').toUpperCase();
+      }
+    })();
+
+    const color = (() => {
+      const categoryColors: Record<string, string> = {
+        'AI工具': '#6366f1',
+        '结构设计': '#059669',
+        'BIM建模': '#0891b2',
+        '工程计算': '#dc2626',
+        '项目管理': '#9333ea',
+        '数据分析': '#ea580c',
+        '建筑设计': '#16a34a',
+        '施工管理': '#0f172a',
+        'default': '#6b7280'
+      };
+
+      const primaryCategory = tool.categories?.[0] || '';
+      if (categoryColors[primaryCategory]) {
+        return categoryColors[primaryCategory];
+      }
+      for (const [key, c] of Object.entries(categoryColors)) {
+        if (primaryCategory.includes(key) || key.includes(primaryCategory)) {
+          return c;
+        }
+      }
+      return categoryColors.default;
+    })();
+
+    return (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 80 80"
+        className="w-full h-full"
+        style={{ maxWidth: '80px', maxHeight: '80px' }}
+      >
+        <rect width="80" height="80" fill={color} rx="12"/>
+        <text
+          x="40"
+          y="40"
+          fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif"
+          fontSize="28"
+          fontWeight="bold"
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="white"
+        >
+          {initials}
+        </text>
+      </svg>
+    );
+  };
+
   const fetchLatestTools = async () => {
     try {
       setLoading(true);
@@ -83,11 +162,12 @@ const LatestTools = () => {
               {/* Tool Image */}
               <div className="relative w-full h-40 bg-gray-50 flex items-center justify-center p-10">
                 <OptimizedImage
-                  src={tool.logo_url || generateInitialLogo(tool.name, tool.categories || [])}
+                  src={getDisplayLogo(tool)}
                   alt={tool.name}
                   className="max-w-[80px] max-h-[80px] w-auto h-auto"
                   objectFit="contain"
                   background={false}
+                  fallback={getFallbackIcon(tool)}
                   priority={false}
                   lazyLoad={true}
                 />

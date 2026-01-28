@@ -19,22 +19,89 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
     onFavoriteToggle(tool.id);
   }, [tool.id, onFavoriteToggle]);
 
+  // 判断 logo_url 是否有效
+  const isValidLogoUrl = React.useMemo(() => {
+    if (!tool.logo_url) return false;
+    // 排除无效的 logo 来源
+    if (tool.logo_url.includes('google.com/s2/favicons')) return false;
+    if (tool.logo_url.includes('placeholder')) return false;
+    if (tool.logo_url.includes('iconhorse')) return false;
+    return true;
+  }, [tool.logo_url]);
+
   // 生成兜底Logo的函数
   const getFallbackLogo = React.useCallback(() => {
-    try {
-      return generateInitialLogo(tool.name, tool.categories || []);
-    } catch (error) {
-      console.warn('生成兜底Logo失败:', error);
-      // 最终兜底：简单的SVG
-      return `data:image/svg+xml,${encodeURIComponent(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
-          <rect width="100" height="100" fill="#6b7280" rx="12"/>
-          <text x="50" y="50" font-family="Arial" font-size="24" text-anchor="middle" dominant-baseline="central" fill="white">
-            ${tool.name?.charAt(0)?.toUpperCase() || 'T'}
-          </text>
-        </svg>
-      `)}`;
-    }
+    // 直接使用 generateInitialLogo，它已经包含了完善的兜底逻辑
+    return generateInitialLogo(tool.name, tool.categories || []);
+  }, [tool.name, tool.categories]);
+
+  // 获取要显示的 logo URL
+  const displayLogoUrl = React.useMemo(() => {
+    return isValidLogoUrl ? tool.logo_url : getFallbackLogo();
+  }, [isValidLogoUrl, tool.logo_url, getFallbackLogo]);
+
+  // 生成兜底 SVG 元素
+  const fallbackIcon = React.useMemo(() => {
+    const initials = (() => {
+      if (!tool.name) return 'T';
+      const cleanName = tool.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, ' ');
+      const words = cleanName.trim().split(/\s+/);
+      if (words.length === 1) {
+        return words[0].substring(0, 2).toUpperCase();
+      } else {
+        return words.slice(0, 2).map(word => word.charAt(0)).join('').toUpperCase();
+      }
+    })();
+
+    const color = (() => {
+      const categoryColors: Record<string, string> = {
+        'AI工具': '#6366f1',
+        '结构设计': '#059669',
+        'BIM建模': '#0891b2',
+        '工程计算': '#dc2626',
+        '项目管理': '#9333ea',
+        '数据分析': '#ea580c',
+        '建筑设计': '#16a34a',
+        '施工管理': '#0f172a',
+        'Computer Vision': '#0891b2',
+        'AI结构设计': '#6366f1',
+        'default': '#6b7280'
+      };
+
+      const primaryCategory = tool.categories?.[0] || '';
+      if (categoryColors[primaryCategory]) {
+        return categoryColors[primaryCategory];
+      }
+      for (const [key, color] of Object.entries(categoryColors)) {
+        if (primaryCategory.includes(key) || key.includes(primaryCategory)) {
+          return color;
+        }
+      }
+      return categoryColors.default;
+    })();
+
+    return (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 80 80"
+        className="w-full h-full"
+        style={{ maxWidth: '80px', maxHeight: '80px' }}
+      >
+        <rect width="80" height="80" fill={color} rx="12"/>
+        <text
+          x="40"
+          y="40"
+          fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif"
+          fontSize="28"
+          fontWeight="bold"
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="white"
+        >
+          {initials}
+        </text>
+      </svg>
+    );
   }, [tool.name, tool.categories]);
 
   if (viewMode === 'list') {
@@ -43,11 +110,12 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
         {/* Tool Logo */}
         <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-100 p-2">
           <OptimizedImage
-            src={tool.logo_url || getFallbackLogo()}
+            src={displayLogoUrl}
             alt={tool.name}
             className="w-8 h-8"
             objectFit="contain"
             background={false}
+            fallback={fallbackIcon}
             priority={false}
             lazyLoad={true}
             sizes="32px"
@@ -108,11 +176,12 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
       {/* Tool Image */}
       <div className="relative w-full h-40 bg-gray-50 flex items-center justify-center p-10">
         <OptimizedImage
-          src={tool.logo_url || getFallbackLogo()}
+          src={displayLogoUrl}
           alt={tool.name}
           className="max-w-[80px] max-h-[80px] w-auto h-auto"
           objectFit="contain"
           background={false}
+          fallback={fallbackIcon}
           priority={false}
           lazyLoad={true}
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"

@@ -16,10 +16,87 @@ const FeaturedTools = React.memo(() => {
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // 性能监控和缓存hooks
   const { fetchWithCache } = useCache();
   const { recordApiCall, recordInteraction } = usePerformance('FeaturedTools');
+
+  // 判断 logo_url 是否有效
+  const isValidLogoUrl = (logoUrl?: string): boolean => {
+    if (!logoUrl) return false;
+    if (logoUrl.includes('google.com/s2/favicons')) return false;
+    if (logoUrl.includes('placeholder')) return false;
+    if (logoUrl.includes('iconhorse')) return false;
+    return true;
+  };
+
+  // 获取要显示的 logo URL
+  const getDisplayLogo = (tool: Tool): string => {
+    if (isValidLogoUrl(tool.logo_url)) {
+      return tool.logo_url!;
+    }
+    return generateInitialLogo(tool.name, tool.categories || []);
+  };
+
+  // 生成兜底 SVG 图标
+  const getFallbackIcon = (tool: Tool): React.ReactNode => {
+    const initials = (() => {
+      if (!tool.name) return 'T';
+      const cleanName = tool.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, ' ');
+      const words = cleanName.trim().split(/\s+/);
+      if (words.length === 1) {
+        return words[0].substring(0, 2).toUpperCase();
+      } else {
+        return words.slice(0, 2).map(word => word.charAt(0)).join('').toUpperCase();
+      }
+    })();
+
+    const color = (() => {
+      const categoryColors: Record<string, string> = {
+        'AI工具': '#6366f1',
+        '结构设计': '#059669',
+        'BIM建模': '#0891b2',
+        '工程计算': '#dc2626',
+        '项目管理': '#9333ea',
+        '数据分析': '#ea580c',
+        '建筑设计': '#16a34a',
+        '施工管理': '#0f172a',
+        'default': '#6b7280'
+      };
+
+      const primaryCategory = tool.categories?.[0] || '';
+      if (categoryColors[primaryCategory]) {
+        return categoryColors[primaryCategory];
+      }
+      for (const [key, c] of Object.entries(categoryColors)) {
+        if (primaryCategory.includes(key) || key.includes(primaryCategory)) {
+          return c;
+        }
+      }
+      return categoryColors.default;
+    })();
+
+    return (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 32 32"
+        className="w-8 h-8"
+      >
+        <rect width="32" height="32" fill={color} rx="6"/>
+        <text
+          x="16"
+          y="17"
+          fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif"
+          fontSize="12"
+          fontWeight="bold"
+          textAnchor="middle"
+          fill="white"
+        >
+          {initials}
+        </text>
+      </svg>
+    );
+  };
 
   // 优化的数据获取逻辑 - 使用缓存和性能监控
   const fetchFeaturedTools = useCallback(async () => {
@@ -111,11 +188,12 @@ const FeaturedTools = React.memo(() => {
               {/* Tool Logo */}
               <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-100 p-2">
                 <OptimizedImage
-                  src={tool.logo_url || generateInitialLogo(tool.name, tool.categories || [])}
+                  src={getDisplayLogo(tool)}
                   alt={tool.name}
                   className="w-8 h-8"
                   objectFit="contain"
                   background={false}
+                  fallback={getFallbackIcon(tool)}
                   priority={true}
                   lazyLoad={false}
                   sizes="32px"

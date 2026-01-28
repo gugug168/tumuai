@@ -329,24 +329,19 @@ function safeBase64Encode(str: string): string {
 export function generateInitialLogo(toolName: string, categories: string[] = []): string {
   const initials = getInitials(toolName);
   const color = getColorByCategory(categories);
-  
+
+  // 直接使用 encodeURIComponent 编码，更可靠
   const svgContent = `
     <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
-      <rect width="100" height="100" fill="${color}" rx="12"/>
-      <text x="50" y="50" font-family="Arial, sans-serif" font-size="32" font-weight="bold" 
-            text-anchor="middle" dominant-baseline="central" fill="white">
+      <rect width="100" height="100" fill="${color}" rx="16"/>
+      <text x="50" y="55" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif"
+            font-size="36" font-weight="bold" text-anchor="middle" fill="white">
         ${initials}
       </text>
     </svg>
   `;
-  
-  try {
-    return `data:image/svg+xml;base64,${safeBase64Encode(svgContent)}`;
-  } catch (error) {
-    // 最终兜底：直接使用URI编码的SVG
-    console.warn('SVG编码失败，使用URI编码兜底:', error);
-    return `data:image/svg+xml,${encodeURIComponent(svgContent)}`;
-  }
+
+  return `data:image/svg+xml,${encodeURIComponent(svgContent)}`;
 }
 
 /**
