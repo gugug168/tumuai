@@ -32,3 +32,7 @@ dist-ssr
 # Local Netlify folder
 .netlify
 .vercel
+
+# Database backups
+数据库supabase存档/
+**/*.csv

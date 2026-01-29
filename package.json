@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test:e2e": "playwright test --reporter=list",
-    "test:e2e:headed": "playwright test --headed --project=chromium"
+    "test:e2e:headed": "playwright test --headed --project=chromium",
+    "db:indexes": "node database/scripts/execute-indexes.js"
   },
   "dependencies": {
     "@supabase/mcp-server-supabase": "^0.4.5",
@@ -40,6 +41,7 @@
     "eslint-plugin-react-refresh": "^0.4.11",
     "express": "^5.1.0",
     "globals": "^15.9.0",
+    "pg": "^8.17.2",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.5.3",
