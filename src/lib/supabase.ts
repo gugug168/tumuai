@@ -363,26 +363,14 @@ export async function getToolById(id: string) {
   }
 }
 
-// 增加工具浏览量
+// 增加工具浏览量 - 使用 RPC 函数原子性更新
 export async function incrementToolViews(id: string) {
   try {
-    // 先获取当前浏览量
-    const { data: currentTool, error: fetchError } = await supabase
-      .from('tools')
-      .select('views')
-      .eq('id', id)
-      .single()
-
-    if (fetchError) {
-      console.error('Error fetching current views:', fetchError)
-      return
-    }
-
-    // 更新浏览量
-    const { error } = await supabase
-      .from('tools')
-      .update({ views: (currentTool?.views || 0) + 1 })
-      .eq('id', id)
+    // 使用 Supabase RPC 函数进行原子性更新
+    const { error } = await supabase.rpc('increment_views', {
+      tool_id: id,
+      amount: 1
+    })
 
     if (error) {
       console.error('Error incrementing views:', error)
@@ -390,6 +378,135 @@ export async function incrementToolViews(id: string) {
   } catch (error) {
     console.error('Unexpected error incrementing views:', error)
   }
+}
+
+/**
+ * 批量增加工具浏览量 - 优化版本
+ *
+ * 用于记录多个工具的浏览量，减少数据库操作次数
+ * 支持延迟更新策略以进一步减少写入压力
+ *
+ * @param toolIds 工具ID数组
+ * @param delay 延迟更新时间（毫秒），0 表示立即更新
+ */
+export async function incrementToolsViewsBatch(
+  toolIds: string[],
+  delay: number = 5000
+): Promise<{ success: boolean; updated: number }> {
+  // 如果没有传入工具ID，直接返回
+  if (!toolIds || toolIds.length === 0) {
+    return { success: true, updated: 0 }
+  }
+
+  try {
+    // 优先使用批量更新 API
+    const response = await fetch('/api/increment-views', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ toolIds, delay })
+    })
+
+    if (response.ok) {
+      const result = await response.json()
+      return { success: true, updated: result.updated || 0 }
+    }
+  } catch (apiError) {
+    console.warn('Batch API failed, falling back to RPC:', apiError)
+  }
+
+  // 回退方案：使用 Supabase RPC 批量函数
+  try {
+    const { error } = await supabase.rpc('increment_views_batch', {
+      tool_ids: toolIds,
+      amount: 1
+    })
+
+    if (error) {
+      console.error('Error batch incrementing views:', error)
+      return { success: false, updated: 0 }
+    }
+
+    return { success: true, updated: toolIds.length }
+  } catch (error) {
+    console.error('Unexpected error batch incrementing views:', error)
+    return { success: false, updated: 0 }
+  }
+}
+
+/**
+ * 浏览量更新队列 - 客户端延迟更新
+ *
+ * 在客户端累积浏览量更新，批量发送到服务器
+ */
+class ViewUpdateQueue {
+  private queue: Set<string> = new Set()
+  private timeout: NodeJS.Timeout | null = null
+  private readonly delay: number
+  private readonly batchSize: number
+
+  constructor(delay: number = 5000, batchSize: number = 20) {
+    this.delay = delay
+    this.batchSize = batchSize
+  }
+
+  /**
+   * 添加工具ID到队列
+   */
+  add(toolId: string): void {
+    this.queue.add(toolId)
+
+    // 如果队列达到批量大小，立即发送
+    if (this.queue.size >= this.batchSize) {
+      this.flush()
+      return
+    }
+
+    // 否则安排延迟发送
+    this.scheduleFlush()
+  }
+
+  /**
+   * 安排延迟刷新
+   */
+  private scheduleFlush(): void {
+    if (this.timeout) clearTimeout(this.timeout)
+    this.timeout = setTimeout(() => this.flush(), this.delay)
+  }
+
+  /**
+   * 立即发送队列中的更新
+   */
+  async flush(): Promise<void> {
+    if (this.queue.size === 0) return
+
+    const toolIds = Array.from(this.queue)
+    this.queue.clear()
+
+    if (this.timeout) {
+      clearTimeout(this.timeout)
+      this.timeout = null
+    }
+
+    await incrementToolsViewsBatch(toolIds, 0)
+  }
+
+  /**
+   * 清空队列（页面卸载时调用）
+   */
+  destroy(): void {
+    if (this.timeout) clearTimeout(this.timeout)
+    this.flush() // 尝试发送剩余的更新
+  }
+}
+
+// 创建全局浏览量更新队列实例
+export const viewUpdateQueue = new ViewUpdateQueue(5000, 20)
+
+/**
+ * 便捷函数：记录工具浏览（使用队列）
+ */
+export function trackToolView(toolId: string): void {
+  viewUpdateQueue.add(toolId)
 }
 
 // 搜索工具 - 使用严格类型

@@ -1,469 +1,222 @@
-import React, { useState, useEffect, useCallback, useMemo, useDeferredValue, useTransition, useId, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import {
-  Filter,
-  Grid,
-  List,
-  Search,
-  WifiOff,
-  RefreshCw,
-  AlertCircle,
-  Wifi,
-  Clock,
-  ChevronLeft,
-  ChevronRight,
-  X
-} from 'lucide-react';
+import React, { useState, useEffect, useMemo, useId, useCallback } from 'react';
+import { WifiOff, RefreshCw, AlertCircle, Wifi, Clock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getTools, getCategories, getToolsCount, getToolsWithCache, getToolsCountWithCache, getToolsSmart } from '../lib/supabase';
-import type { Tool, ToolSearchFilters } from '../types';
-import { addToFavorites, removeFromFavorites, isFavorited, batchCheckFavorites } from '../lib/community';
 import { useToast, createToastHelpers } from '../components/Toast';
 import AuthModal from '../components/AuthModal';
-import ToolCard from '../components/ToolCard';
 import ToolCardSkeleton from '../components/ToolCardSkeleton';
-import { useCache } from '../hooks/useCache';
+import ToolFilters from '../components/ToolFilters';
+import ToolGrid from '../components/ToolGrid';
+import { useToolFilters, filterTools } from '../hooks/useToolFilters';
+import { useToolData } from '../hooks/useToolData';
 import { usePerformance } from '../hooks/usePerformance';
-import { EMERGENCY_CATEGORIES, FALLBACK_FEATURES, PRICING_OPTIONS, SORT_OPTIONS } from '../lib/config';
+import type { ToolSearchFilters } from '../types';
 
+/**
+ * ToolsPage 组件 - 工具中心页面
+ *
+ * 架构优化:
+ * - 使用 useToolFilters 管理筛选状态
+ * - 使用 useToolData 管理数据获取
+ * - 使用 ToolFilters 和 ToolGrid 组件分离UI
+ * - 使用 useReducer 合并相关状态
+ * - 使用 React.memo 优化渲染
+ */
 const ToolsPage = React.memo(() => {
+  // Hooks
   const { user } = useAuth();
   const { showToast } = useToast();
   const toast = createToastHelpers(showToast);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [tools, setTools] = useState<Tool[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const searchId = useId();
+
+  // 性能监控
+  const { recordApiCall, recordInteraction, printReport } = usePerformance('ToolsPage');
+
+  // 筛选状态管理
+  const {
+    filters,
+    deferredSearch,
+    isPending,
+    activeFiltersCount,
+    hasActiveFilters,
+    needsServerFiltering,
+    handleFilterChange,
+    handleCategoryToggle,
+    handleFeatureToggle,
+    clearFilters,
+    initializeFromUrl,
+    cleanup: cleanupFilters
+  } = useToolFilters();
+
+  // 数据获取
+  const {
+    tools,
+    allFilteredTools,
+    totalToolsCount,
+    filteredToolsCount,
+    loading,
+    loadError,
+    isOffline,
+    retryCount,
+    currentPage,
+    categories,
+    favoriteStates,
+    loadTools,
+    loadCategories,
+    loadFavoriteStates,
+    toggleFavorite,
+    retryLoad,
+    setCurrentPage,
+    setUserId,
+    TOOLS_PER_PAGE
+  } = useToolData({ recordApiCall, recordInteraction });
+
+  // UI 状态
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [favoriteStates, setFavoriteStates] = useState<{[key: string]: boolean}>({});
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [retryCount, setRetryCount] = useState(0);
-  const [categories, setCategories] = useState<string[]>([]);
 
-  // 分页状态 - 每页显示12个工具
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalToolsCount, setTotalToolsCount] = useState(0);
-  const [filteredToolsCount, setFilteredToolsCount] = useState(0); // 筛选后的总数
-  const [allFilteredTools, setAllFilteredTools] = useState<Tool[]>([]); // 所有筛选结果
-  const TOOLS_PER_PAGE = 12;
+  // ========================================
+  // 数据加载
+  // ========================================
 
-  // 搜索防抖：使用 useRef 存储防抖定时器
-  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // 性能监控和缓存hooks
-  const { fetchWithCache, clearCache } = useCache();
-  const { recordApiCall, recordInteraction, getMetrics, printReport } = usePerformance('ToolsPage');
-  
-  // 筛选状态
-  const [filters, setFilters] = useState({
-    search: searchParams.get('search') || '',
-    categories: [] as string[],
-    features: [] as string[],
-    pricing: '',
-    sortBy: 'upvotes'
-  });
-
-  // React 18优化：使用useDeferredValue优化搜索体验
-  const deferredSearch = useDeferredValue(filters.search);
-  const [isPending, startTransition] = useTransition();
-  const searchId = useId();
-
-  // 筛选逻辑函数 - 使用useMemo优化性能
-  const filteredTools = useMemo(() => {
-    let filtered = [...tools];
-
-    // 搜索筛选 - 使用deferred值优化性能
-    if (deferredSearch) {
-      const searchLower = deferredSearch.toLowerCase();
-      filtered = filtered.filter(tool =>
-        tool.name.toLowerCase().includes(searchLower) ||
-        tool.tagline.toLowerCase().includes(searchLower) ||
-        tool.description?.toLowerCase().includes(searchLower) ||
-        (tool.categories || []).some(cat => cat?.toLowerCase().includes(searchLower)) ||
-        (tool.features || []).some(feat => feat?.toLowerCase().includes(searchLower))
-      );
-    }
-
-    // 分类筛选 - 添加空值保护
-    if (filters.categories.length > 0) {
-      filtered = filtered.filter(tool =>
-        filters.categories.some(category => (tool.categories || []).includes(category))
-      );
-    }
-
-    // 功能筛选 - 修改为匹配所有选择的功能特性
-    if (filters.features.length > 0) {
-      filtered = filtered.filter(tool =>
-        filters.features.every(feature => (tool.features || []).includes(feature))
-      );
-    }
-
-    // 定价筛选
-    if (filters.pricing) {
-      filtered = filtered.filter(tool => tool.pricing === filters.pricing);
-    }
-
-    // 排序
-    filtered.sort((a, b) => {
-      switch (filters.sortBy) {
-        case 'date_added':
-          return new Date(b.date_added).getTime() - new Date(a.date_added).getTime();
-        case 'rating':
-          return b.rating - a.rating;
-        case 'views':
-          return b.views - a.views;
-        case 'upvotes':
-        default:
-          return b.upvotes - a.upvotes;
-      }
-    });
-
-    return filtered;
-  }, [tools, deferredSearch, filters.categories, filters.features, filters.pricing, filters.sortBy]);
-
-  // 记录筛选交互（仅开发环境，移除useMemo中的副作用）
+  // 初始加载
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      const filterCount = Object.keys(filters).filter(key =>
-        key === 'search' ? filters[key] :
-        Array.isArray(filters[key]) ? filters[key].length > 0 :
-        Boolean(filters[key])
-      ).length;
-      if (filterCount > 0) {
-        recordInteraction('filter_tools', { filterCount });
-      }
-    }
-  }, [filters, recordInteraction]);
+    const loadInitialData = async () => {
+      await Promise.all([
+        loadTools(false, 1),
+        loadCategories()
+      ]);
+    };
 
-  // 分页重置 - 筛选条件变化时重置到第一页
-  // 服务端筛选条件变化时需要重新加载数据
+    loadInitialData();
+  }, [loadCategories]); // loadTools 通过依赖触发
+
+  // 从 URL 参数初始化筛选
+  useEffect(() => {
+    const hasCategory = initializeFromUrl();
+    if (hasCategory) {
+      setShowFilters(true);
+    }
+  }, [initializeFromUrl]);
+
+  // 筛选条件变化时重新加载数据 (服务端筛选)
+  useEffect(() => {
+    if (needsServerFiltering) {
+      const searchFilters: ToolSearchFilters = {};
+      if (filters.categories.length > 0) searchFilters.categories = filters.categories;
+      if (filters.pricing) searchFilters.pricing = filters.pricing;
+      if (filters.features.length > 0) searchFilters.features = filters.features;
+      searchFilters.sortBy = filters.sortBy as any;
+
+      loadTools(false, 1, searchFilters);
+    }
+  }, [filters.categories, filters.pricing, filters.features, filters.sortBy, needsServerFiltering, loadTools]);
+
+  // 重置到第一页当筛选条件变化
   useEffect(() => {
     setCurrentPage(1);
-  }, [deferredSearch, filters.categories, filters.features, filters.pricing]);
+  }, [deferredSearch, filters.categories, filters.features, filters.pricing, setCurrentPage]);
 
-  // 当服务端筛选条件变化时重新加载数据
+  // 页码变化时加载数据 (仅无服务端筛选时)
   useEffect(() => {
-    const needsServerFiltering = filters.categories.length > 0 ||
-      filters.pricing ||
-      filters.features.length > 0;
-
-    if (needsServerFiltering) {
-      loadTools(false, 1);
+    if (currentPage > 1 && !needsServerFiltering) {
+      loadTools(false, currentPage);
     }
-  }, [filters.categories, filters.pricing, filters.features]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentPage, needsServerFiltering, loadTools]);
 
-  // 计算筛选后的工具（客户端筛选）
-  const hasActiveFilters = filters.search ||
-    filters.categories.length > 0 ||
-    filters.features.length > 0 ||
-    filters.pricing;
+  // 用户变化时加载收藏状态
+  useEffect(() => {
+    if (user) {
+      setUserId(user.id);
+      const toolIds = tools.map(t => t.id);
+      if (toolIds.length > 0) {
+        loadFavoriteStates(toolIds, user.id);
+      }
+    }
+  }, [user, tools, setUserId, loadFavoriteStates]);
 
-  // 判断是否需要使用筛选 API（有分类/定价/功能筛选时）
-  const needsServerFiltering = filters.categories.length > 0 ||
-    filters.pricing ||
-    filters.features.length > 0;
+  // ========================================
+  // 计算派生状态
+  // ========================================
 
-  // 计算分页显示
-  // 如果有服务端筛选条件，使用从服务器获取的筛选结果
-  // 如果只有搜索，使用客户端筛选结果
-  // 否则使用服务器返回的分页数据
-  const displayTools = needsServerFiltering ? allFilteredTools :
-    hasActiveFilters ? filteredTools : tools;
-  const totalPages = needsServerFiltering
-    ? Math.ceil(filteredToolsCount / TOOLS_PER_PAGE)
-    : hasActiveFilters
-    ? Math.ceil(filteredTools.length / TOOLS_PER_PAGE)
-    : Math.ceil(totalToolsCount / TOOLS_PER_PAGE);
+  // 客户端筛选结果
+  const filteredTools = useMemo(() => {
+    return filterTools(tools, deferredSearch, filters);
+  }, [tools, deferredSearch, filters]);
 
+  // 计算总页数
+  const totalPages = useMemo(() => {
+    const count = needsServerFiltering
+      ? filteredToolsCount
+      : hasActiveFilters
+      ? filteredTools.length
+      : totalToolsCount;
+    return Math.ceil(count / TOOLS_PER_PAGE);
+  }, [needsServerFiltering, filteredToolsCount, hasActiveFilters, filteredTools.length, totalToolsCount, TOOLS_PER_PAGE]);
+
+  // 计算显示的工具数量
+  const displayCount = useMemo(() => {
+    return needsServerFiltering
+      ? filteredToolsCount
+      : hasActiveFilters
+      ? filteredTools.length
+      : totalToolsCount;
+  }, [needsServerFiltering, filteredToolsCount, hasActiveFilters, filteredTools.length, totalToolsCount]);
+
+  // 当前页的工具
   const paginatedTools = useMemo(() => {
     if (needsServerFiltering) {
-      // 有服务端筛选时，客户端分页显示筛选结果
       const startIndex = (currentPage - 1) * TOOLS_PER_PAGE;
       const endIndex = startIndex + TOOLS_PER_PAGE;
       return allFilteredTools.slice(startIndex, endIndex);
     }
     if (hasActiveFilters) {
-      // 只有搜索时，客户端分页显示筛选结果
       const startIndex = (currentPage - 1) * TOOLS_PER_PAGE;
       const endIndex = startIndex + TOOLS_PER_PAGE;
       return filteredTools.slice(startIndex, endIndex);
     }
-    // 无筛选条件时，直接显示服务器返回的当前页数据
     return tools;
-  }, [needsServerFiltering, allFilteredTools, hasActiveFilters, filteredTools, currentPage, tools]);
+  }, [needsServerFiltering, allFilteredTools, hasActiveFilters, filteredTools, currentPage, tools, TOOLS_PER_PAGE]);
 
-  // 收藏状态加载函数 - 只检查当前页的收藏状态
-  const loadFavoriteStates = useCallback(async () => {
-    if (!user || tools.length === 0) return;
+  // ========================================
+  // 事件处理
+  // ========================================
 
-    try {
-      // 使用批量查询替代循环单独查询
-      const toolIds = tools.map(t => t.id);
-      const states = await batchCheckFavorites(toolIds);
-      setFavoriteStates(states);
-    } catch (error) {
-      console.error('批量检查收藏状态失败:', error);
-      setFavoriteStates({});
-    }
-  }, [user, tools]);
-
-  // 工具数据加载函数 - 统一使用服务器端分页 + 多层缓存优化
-  const loadTools = useCallback(async (autoRetry = false, page = currentPage) => {
-    setLoadError(null);
-    setLoading(true);
-    if (!autoRetry) {
-      setRetryCount(prev => prev + 1);
-    }
-
-    try {
-      // 判断是否需要使用筛选 API
-      const needsServerFiltering = filters.categories.length > 0 ||
-        filters.pricing ||
-        filters.features.length > 0;
-
-      if (needsServerFiltering) {
-        // 使用筛选 API 获取所有匹配的工具（最多200个）
-        console.log(`🔄 使用筛选 API 加载数据...`);
-
-        const searchFilters: ToolSearchFilters = {};
-        if (filters.categories.length > 0) searchFilters.categories = filters.categories;
-        if (filters.pricing) searchFilters.pricing = filters.pricing;
-        if (filters.features.length > 0) searchFilters.features = filters.features;
-        searchFilters.sortBy = filters.sortBy as any;
-
-        const result = await recordApiCall('load_tools_filtered', async () => {
-          return await getToolsSmart(200, 0, true, searchFilters);
-        }, { autoRetry, retryCount });
-
-        console.log(`✅ 筛选数据加载成功: ${result.tools.length}个工具, 总数${result.count}`);
-        setAllFilteredTools(Array.isArray(result.tools) ? result.tools : []);
-        setFilteredToolsCount(result.count || 0);
-      } else {
-        // 普通分页加载
-        const limit = TOOLS_PER_PAGE;
-        const offset = (page - 1) * TOOLS_PER_PAGE;
-
-        console.log(`🔄 开始加载工具数据 (limit: ${limit}, offset: ${offset}, page: ${page})...`);
-
-        const result = await recordApiCall('load_tools_smart', async () => {
-          return await getToolsSmart(limit, offset, true);
-        }, { autoRetry, retryCount });
-
-        console.log(`✅ 工具数据加载成功: ${result.tools.length}个工具, 总数${result.count}`);
-        setTools(Array.isArray(result.tools) ? result.tools : []);
-        if (result.count !== undefined) {
-          setTotalToolsCount(result.count);
-        }
-      }
-      setRetryCount(0);
-    } catch (error) {
-      console.error('❌ 加载工具失败:', error);
-
-      // 最后兜底：直接使用原始方法
-      try {
-        const [data, totalCount] = await Promise.all([
-          getTools(TOOLS_PER_PAGE, (page - 1) * TOOLS_PER_PAGE),
-          getToolsCount()
-        ]);
-        setTools(Array.isArray(data) ? data : []);
-        setTotalToolsCount(totalCount);
-        setRetryCount(0);
-      } catch (fallbackError) {
-        // 错误分类和用户友好的错误信息
-        let errorMessage = '加载失败，请稍后重试';
-
-        if (error instanceof Error) {
-          if (error.message.includes('网络') || error.message.includes('fetch')) {
-            errorMessage = isOffline ? '网络连接已断开，请检查网络设置' : '网络连接不稳定，正在重试...';
-          } else if (error.message.includes('404')) {
-            errorMessage = '服务暂时不可用，请稍后再试';
-          } else if (error.message.includes('500')) {
-            errorMessage = '服务器繁忙，请稍后再试';
-          } else {
-            errorMessage = error.message;
-          }
-        }
-
-        setLoadError(errorMessage);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [currentPage, filters.categories, filters.pricing, filters.features, filters.sortBy, isOffline, recordApiCall, retryCount]);
-
-  // 当页码变化时重新加载数据（仅在没有服务端筛选条件时）
-  useEffect(() => {
-    // 只有在没有服务端筛选条件且页码大于1时才从服务器加载新数据
-    if (currentPage > 1 && !needsServerFiltering) {
-      loadTools(false, currentPage);
-    }
-  }, [currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // 获取分类数据 - 使用缓存优化
-  const loadCategories = useCallback(async () => {
-    try {
-      console.log('🔍 开始获取分类数据...')
-      
-      const categoriesData = await recordApiCall('load_categories', async () => {
-        return await fetchWithCache('categories_list',
-          () => getCategories(),
-          { ttl: 10 * 60 * 1000 } // 10分钟缓存
-        );
-      });
-      
-      if (categoriesData && Array.isArray(categoriesData) && categoriesData.length > 0) {
-        const categoryNames = categoriesData.map(cat => cat.name).filter(Boolean)
-        setCategories(categoryNames)
-        console.log('✅ 分类数据加载成功:', categoryNames.length + '个分类')
-      } else {
-        console.log('⚠️ 数据库无分类数据，使用后备分类')
-        setCategories([...EMERGENCY_CATEGORIES])
-      }
-    } catch (error) {
-      console.error('❌ 获取分类失败，使用后备分类:', error)
-      setCategories([...FALLBACK_CATEGORIES])
-    }
-  }, [fetchWithCache, recordApiCall])
-
-  // 初始加载
-  useEffect(() => {
-    loadTools(false);
-    loadCategories();
-  }, [loadCategories]);
-
-  useEffect(() => {
-    // 从URL参数初始化搜索和分类筛选
-    const searchQuery = searchParams.get('search');
-    const categoryQuery = searchParams.get('category');
-
-    setFilters(prev => ({
-      ...prev,
-      search: searchQuery || '',
-      categories: categoryQuery ? [categoryQuery] : []
-    }));
-
-    // 如果有分类筛选，自动展开筛选面板
-    if (categoryQuery) {
-      setShowFilters(true);
-    }
-  }, [searchParams]);
-
-
-  useEffect(() => {
-    if (user && tools.length > 0) {
-      loadFavoriteStates();
-    }
-  }, [user, tools, loadFavoriteStates]);
-
-  // 离线状态监听
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOffline(false);
-      // 网络恢复时刷新页面重新加载
-      if (tools.length === 0 && loadError) {
-        window.location.reload();
-      }
-    };
-
-    const handleOffline = () => {
-      setIsOffline(true);
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [tools.length, loadError]);
-
-  // 清理防抖定时器
-  useEffect(() => {
-    return () => {
-      if (searchDebounceRef.current) {
-        clearTimeout(searchDebounceRef.current);
-      }
-    };
-  }, []);
-
-
-  // 优化的筛选处理函数 - 搜索添加300ms防抖
-  const handleFilterChange = useCallback((type: string, value: string | string[]) => {
-    if (type === 'search') {
-      // 搜索输入使用防抖优化
-      if (searchDebounceRef.current) {
-        clearTimeout(searchDebounceRef.current);
-      }
-
-      searchDebounceRef.current = setTimeout(() => {
-        setFilters(prev => ({ ...prev, [type]: value }));
-      }, 300);
-    } else {
-      // 其他筛选使用transition（非紧急更新）
-      startTransition(() => {
-        setFilters(prev => ({ ...prev, [type]: value }));
-      });
-    }
-  }, [startTransition]);
-
-  const handleCategoryToggle = (category: string) => {
-    setFilters(prev => ({
-      ...prev,
-      categories: prev.categories.includes(category)
-        ? prev.categories.filter(c => c !== category)
-        : [...prev.categories, category]
-    }));
-  };
-
-  const handleFeatureToggle = (feature: string) => {
-    setFilters(prev => ({
-      ...prev,
-      features: prev.features.includes(feature)
-        ? prev.features.filter(f => f !== feature)
-        : [...prev.features, feature]
-    }));
-  };
-
+  // 处理收藏切换
   const handleFavoriteToggle = useCallback(async (toolId: string) => {
     if (!user) {
       setShowAuthModal(true);
       return;
     }
 
-    try {
-      recordInteraction('favorite_toggle', { toolId, previousState: favoriteStates[toolId] });
-      
-      const currentState = favoriteStates[toolId];
-      if (currentState) {
-        await removeFromFavorites(toolId);
-        setFavoriteStates(prev => ({ ...prev, [toolId]: false }));
-      } else {
-        await addToFavorites(toolId);
-        setFavoriteStates(prev => ({ ...prev, [toolId]: true }));
-      }
-    } catch (error) {
-      console.error('收藏操作失败:', error);
+    const currentState = favoriteStates[toolId];
+    const success = await toggleFavorite(toolId, user.id, currentState);
+
+    if (!success) {
       toast.error('操作失败', '请重试');
     }
-  }, [user, favoriteStates, recordInteraction, toast]);
+  }, [user, favoriteStates, toggleFavorite, toast]);
 
-  const clearFilters = () => {
-    setFilters({
-      search: '',
-      categories: [],
-      features: [],
-      pricing: '',
-      sortBy: 'upvotes'
-    });
-    setSearchParams({});
-  };
+  // 处理页码变化
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, [setCurrentPage]);
 
-  const activeFiltersCount = filters.categories.length + filters.features.length + 
-    (filters.pricing ? 1 : 0) + (filters.search ? 1 : 0);
+  // 处理预加载下一页
+  const handlePreloadNext = useCallback(() => {
+    if (currentPage < totalPages) {
+      // 预加载下一页数据
+      if (!needsServerFiltering) {
+        loadTools(false, currentPage + 1);
+      }
+    }
+  }, [currentPage, totalPages, needsServerFiltering, loadTools]);
 
+  // ========================================
+  // 渲染
+  // ========================================
+
+  // 加载骨架屏
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -499,9 +252,10 @@ const ToolsPage = React.memo(() => {
           <p className="text-lg text-gray-600">
             发现最适合土木工程师的AI工具和效率工具
           </p>
+
+          {/* 错误提示 */}
           {loadError && (
             <div className="mt-4 p-4 border rounded-lg">
-              {/* 智能错误状态组件 */}
               <div className="flex items-start space-x-3">
                 {/* 状态图标 */}
                 <div className="flex-shrink-0 mt-1">
@@ -515,7 +269,7 @@ const ToolsPage = React.memo(() => {
                     <AlertCircle className="w-5 h-5 text-red-500" />
                   )}
                 </div>
-                
+
                 {/* 错误信息和状态 */}
                 <div className="flex-1 min-w-0">
                   <div className={`text-sm font-medium ${
@@ -523,11 +277,11 @@ const ToolsPage = React.memo(() => {
                     loading ? 'text-blue-700' :
                     retryCount > 0 ? 'text-orange-700' : 'text-red-700'
                   }`}>
-                    {isOffline ? '网络离线' : 
+                    {isOffline ? '网络离线' :
                      loading ? '正在加载...' :
                      retryCount > 0 ? `正在重试 (第${retryCount}次)` : '加载失败'}
                   </div>
-                  
+
                   <div className={`text-sm mt-1 ${
                     isOffline ? 'text-red-600 bg-red-50' :
                     loading ? 'text-blue-600 bg-blue-50' :
@@ -535,7 +289,7 @@ const ToolsPage = React.memo(() => {
                   } p-2 rounded`}>
                     {loadError}
                   </div>
-                  
+
                   {/* 重试计数和进度提示 */}
                   {retryCount > 0 && !loading && (
                     <div className="mt-2 text-xs text-orange-600 flex items-center space-x-1">
@@ -544,7 +298,7 @@ const ToolsPage = React.memo(() => {
                     </div>
                   )}
                 </div>
-                
+
                 {/* 操作按钮 */}
                 <div className="flex-shrink-0">
                   {isOffline ? (
@@ -559,10 +313,7 @@ const ToolsPage = React.memo(() => {
                     </div>
                   ) : !loading && (
                     <button
-                      onClick={() => {
-                        setRetryCount(0);
-                        loadTools(false);
-                      }}
+                      onClick={retryLoad}
                       disabled={loading}
                       className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -576,322 +327,62 @@ const ToolsPage = React.memo(() => {
           )}
         </div>
 
-        {/* Search and Controls */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 md:p-6 mb-8">
-          {/* 移动端筛选按钮 */}
-          <div className="md:hidden mb-4">
+        {/* Search and Filters */}
+        <ToolFilters
+          searchValue={filters.search}
+          onSearchChange={(value) => handleFilterChange('search', value)}
+          isPending={isPending}
+          searchInputId={searchId}
+          categories={categories}
+          selectedCategories={filters.categories}
+          onCategoryToggle={handleCategoryToggle}
+          selectedFeatures={filters.features}
+          onFeatureToggle={handleFeatureToggle}
+          pricingValue={filters.pricing}
+          onPricingChange={(value) => handleFilterChange('pricing', value)}
+          sortBy={filters.sortBy}
+          onSortChange={(value) => handleFilterChange('sortBy', value)}
+          sortOptions={[
+            { value: 'upvotes', label: '最受欢迎' },
+            { value: 'date_added', label: '最新收录' },
+            { value: 'rating', label: '评分最高' },
+            { value: 'views', label: '浏览最多' }
+          ]}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          showFilters={showFilters}
+          onFiltersToggle={() => setShowFilters(!showFilters)}
+          onClearFilters={clearFilters}
+        />
+
+        {/* Tools Grid */}
+        <ToolGrid
+          tools={tools}
+          totalCount={displayCount}
+          viewMode={viewMode}
+          paginatedTools={paginatedTools}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          toolsPerPage={TOOLS_PER_PAGE}
+          searchQuery={filters.search}
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={clearFilters}
+          favoriteStates={favoriteStates}
+          onFavoriteToggle={handleFavoriteToggle}
+          user={user}
+          onPreloadNext={handlePreloadNext}
+        />
+
+        {/* 开发模式性能报告按钮 */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-8 flex justify-center">
             <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-lg border transition-all ${
-                showFilters || activeFiltersCount > 0
-                  ? 'bg-blue-50 border-blue-200 text-blue-700'
-                  : 'bg-white border-gray-300 text-gray-700'
-              }`}
+              onClick={() => printReport()}
+              className="text-xs bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded text-gray-600"
             >
-              <Filter className="w-5 h-5" />
-              <span className="font-medium">筛选工具</span>
-              {activeFiltersCount > 0 && (
-                <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
-                  {activeFiltersCount}
-                </span>
-              )}
+              📊 性能报告
             </button>
-          </div>
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-            {/* Search Bar */}
-            <div className="flex-1 max-w-2xl">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  id={searchId}
-                  name="search"
-                  type="text"
-                  value={filters.search}
-                  onChange={(e) => handleFilterChange('search', e.target.value)}
-                  placeholder="搜索工具名称、功能、分类..."
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-                  aria-label="搜索AI工具"
-                />
-                {/* 加载指示器 */}
-                {isPending && (
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    <RefreshCw className="animate-spin text-gray-400 w-4 h-4" />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Controls */}
-            <div className="flex items-center space-x-4">
-              {/* Filter Toggle */}
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
-                  showFilters || activeFiltersCount > 0
-                    ? 'bg-blue-50 border-blue-200 text-blue-700'
-                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <Filter className="w-4 h-4" />
-                <span>筛选</span>
-                {activeFiltersCount > 0 && (
-                  <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
-                    {activeFiltersCount}
-                  </span>
-                )}
-              </button>
-
-              {/* Sort Dropdown */}
-              <select
-                value={filters.sortBy}
-                onChange={(e) => handleFilterChange('sortBy', e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
-              >
-                {SORT_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-
-              {/* View Mode Toggle */}
-              <div className="flex border border-gray-300 rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                >
-                  <Grid className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                >
-                  <List className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Filters Panel */}
-          {showFilters && (
-            <>
-              {/* 移动端遮罩 */}
-              <div
-                className="md:hidden fixed inset-0 bg-black/50 z-40"
-                onClick={() => setShowFilters(false)}
-              ></div>
-
-              {/* 筛选面板 */}
-              <div className={`${
-                showFilters
-                  ? 'md:mt-6 md:pt-6 md:border-t relative md:relative fixed md:bg-transparent bg-white z-50'
-                  : 'hidden'
-              } md:block ${
-                showFilters ? 'block' : ''
-              } ${showFilters ? 'inset-y-0 left-0 w-full md:w-auto md:inset-auto' : ''}`}>
-                {/* 移动端关闭按钮 */}
-                <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">筛选条件</h3>
-                  <button
-                    onClick={() => setShowFilters(false)}
-                    className="p-2 hover:bg-gray-100 rounded-lg"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="p-4 md:p-0 md:mt-6 md:pt-6 md:border-t border-gray-200 max-h-[60vh] md:max-h-none overflow-y-auto">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Categories */}
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-900 mb-3">分类</h4>
-                      <div className="space-y-2">
-                        {categories.map(category => {
-                          const checkboxId = `category-${category.replace(/\s+/g, '-')}`;
-                          return (
-                            <label key={category} htmlFor={checkboxId} className="flex items-center cursor-pointer">
-                              <input
-                                id={checkboxId}
-                                type="checkbox"
-                                checked={filters.categories.includes(category)}
-                                onChange={() => handleCategoryToggle(category)}
-                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                              />
-                              <span className="ml-2 text-sm text-gray-700">{category}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Features */}
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-900 mb-3">功能特性</h4>
-                      <div className="space-y-2">
-                        {FALLBACK_FEATURES.map(feature => {
-                          const checkboxId = `feature-${feature.replace(/\s+/g, '-')}`;
-                          return (
-                            <label key={feature} htmlFor={checkboxId} className="flex items-center cursor-pointer">
-                              <input
-                                id={checkboxId}
-                                type="checkbox"
-                                checked={filters.features.includes(feature)}
-                                onChange={() => handleFeatureToggle(feature)}
-                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                              />
-                              <span className="ml-2 text-sm text-gray-700">{feature}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Pricing */}
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-900 mb-3">定价模式</h4>
-                      <div className="space-y-2">
-                        {PRICING_OPTIONS.map(option => {
-                          const radioId = `pricing-${option.value}`;
-                          return (
-                            <label key={option.value} htmlFor={radioId} className="flex items-center cursor-pointer">
-                              <input
-                                id={radioId}
-                                type="radio"
-                                name="pricing"
-                                value={option.value}
-                                checked={filters.pricing === option.value}
-                                onChange={(e) => handleFilterChange('pricing', e.target.value)}
-                                className="border-gray-300 text-blue-600 focus:ring-blue-500"
-                              />
-                              <span className="ml-2 text-sm text-gray-700">{option.label}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Clear Filters */}
-                  {activeFiltersCount > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-200 hidden md:block">
-                      <button
-                        onClick={clearFilters}
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        清除所有筛选条件
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* 移动端应用按钮 */}
-                <div className="md:hidden sticky bottom-0 bg-white border-t border-gray-200 p-4 space-y-2">
-                  {activeFiltersCount > 0 && (
-                    <button
-                      onClick={clearFilters}
-                      className="w-full py-3 text-gray-700 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                    >
-                      清除所有筛选条件
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setShowFilters(false)}
-                    className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                  >
-                    应用筛选
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Results Summary */}
-        <div className="mb-6 flex items-center justify-between">
-          <p className="text-gray-600">
-            找到 <span className="font-semibold text-gray-900">{
-              needsServerFiltering ? filteredToolsCount :
-              hasActiveFilters ? filteredTools.length : totalToolsCount
-            }</span> 个工具
-            {filters.search && (
-              <span> 包含 "<span className="font-semibold">{filters.search}</span>"</span>
-            )}
-            {totalPages > 1 && (
-              <span className="ml-2 text-gray-500">
-                (第 {currentPage}/{totalPages} 页)
-              </span>
-            )}
-          </p>
-          <div className="flex items-center space-x-2">
-            {totalPages > 1 && (
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300 transition-all duration-200 shadow-sm hover:shadow"
-                >
-                  <ChevronLeft className="w-4 h-4 mr-1" />
-                  上一页
-                </button>
-
-                {/* 页码显示 */}
-                <div className="flex items-center px-4 py-2 bg-blue-50 rounded-lg font-medium text-blue-700">
-                  <span className="text-sm">第</span>
-                  <span className="mx-1 font-bold">{currentPage}</span>
-                  <span className="text-sm">/ {totalPages}</span>
-                  <span className="text-sm">页</span>
-                </div>
-
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300 transition-all duration-200 shadow-sm hover:shadow"
-                >
-                  下一页
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </button>
-              </div>
-            )}
-            {process.env.NODE_ENV === 'development' && (
-              <button
-                onClick={() => printReport()}
-                className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600"
-              >
-                📊 性能报告
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Tools Grid/List */}
-        {displayTools.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-            <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">未找到匹配的工具</h3>
-            <p className="text-gray-600 mb-6">
-              尝试调整筛选条件或搜索关键词
-            </p>
-            <button
-              onClick={clearFilters}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-            >
-              清除筛选条件
-            </button>
-          </div>
-        ) : (
-          <div className={viewMode === 'grid' 
-            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
-            : 'space-y-4'
-          }>
-            {paginatedTools.map((tool) => (
-              <ToolCard
-                key={tool.id}
-                tool={tool}
-                isFavorited={favoriteStates[tool.id] || false}
-                onFavoriteToggle={handleFavoriteToggle}
-                viewMode={viewMode}
-              />
-            ))}
           </div>
         )}
       </div>
