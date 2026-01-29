@@ -76,7 +76,8 @@ export default async function handler(request: VercelRequest, response: VercelRe
     ])
 
     // 获取用户数量（不获取完整用户列表）
-    const { count: userCount } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 })
+    const userResult = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 })
+    const userCount = userResult.data?.aud || 0
 
     const body = {
       submissions: submissions.data || [],

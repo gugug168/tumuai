@@ -59,7 +59,8 @@ export default async function handler(request: VercelRequest, response: VercelRe
     const search = url.searchParams.get('search') || ''
 
     // 获取用户总数
-    const { count: totalCount } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 })
+    const userResult = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 })
+    const totalCount = userResult.data?.aud || 0
 
     let users: unknown[] = []
     let filteredCount = totalCount || 0
