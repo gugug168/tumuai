@@ -331,6 +331,74 @@ class PerformanceMonitor {
     this.observers = [];
     this.metrics = [];
   }
+
+  // 打印格式化的性能报告
+  printReport() {
+    const report = this.getPerformanceReport();
+
+    console.group('📊 Performance Report');
+
+    // Core Web Vitals
+    console.group('Core Web Vitals');
+    console.table({
+      'LCP (目标 < 2.5s)': report.webVitals.LCP ? `${report.webVitals.LCP.toFixed(0)}ms` : 'N/A',
+      'FID (目标 < 100ms)': report.webVitals.FID ? `${report.webVitals.FID.toFixed(0)}ms` : 'N/A',
+      'CLS (目标 < 0.1)': report.webVitals.CLS ? report.webVitals.CLS.toFixed(3) : 'N/A',
+      'FCP (目标 < 1.8s)': report.webVitals.FCP ? `${report.webVitals.FCP.toFixed(0)}ms` : 'N/A',
+      'TTFB (目标 < 600ms)': report.webVitals.TTFB ? `${report.webVitals.TTFB.toFixed(0)}ms` : 'N/A'
+    });
+    console.groupEnd();
+
+    // 自定义指标摘要
+    if (report.summary.length > 0) {
+      console.group('Custom Metrics');
+      console.table(report.summary);
+      console.groupEnd();
+    }
+
+    console.groupEnd();
+  }
+
+  // 获取性能评分
+  getScore() {
+    let score = 100;
+    const issues: string[] = [];
+
+    if (this.webVitals.LCP) {
+      if (this.webVitals.LCP > 4000) {
+        score -= 25;
+        issues.push(`LCP 过慢: ${this.webVitals.LCP.toFixed(0)}ms`);
+      } else if (this.webVitals.LCP > 2500) {
+        score -= 10;
+      }
+    }
+
+    if (this.webVitals.FID) {
+      if (this.webVitals.FID > 300) {
+        score -= 25;
+        issues.push(`FID 过慢: ${this.webVitals.FID.toFixed(0)}ms`);
+      } else if (this.webVitals.FID > 100) {
+        score -= 10;
+      }
+    }
+
+    if (this.webVitals.CLS !== null && this.webVitals.CLS > 0) {
+      if (this.webVitals.CLS > 0.25) {
+        score -= 25;
+        issues.push(`CLS 过高: ${this.webVitals.CLS.toFixed(3)}`);
+      } else if (this.webVitals.CLS > 0.1) {
+        score -= 10;
+      }
+    }
+
+    const rating = score >= 90 ? 'good' : score >= 50 ? 'needs-improvement' : 'poor';
+
+    return {
+      score: Math.max(0, score),
+      rating,
+      issues
+    };
+  }
 }
 
 // 创建全局性能监控实例

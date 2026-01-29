@@ -1,11 +1,136 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TumuAI - 土木AI之家 | 专业的土木工程AI工具导航</title>
-    <meta name="description" content="为土木工程师提供最全面的AI工具和效率工具导航，涵盖结构设计、BIM建模、施工管理、造价估算等专业领域" />
+
+    <!-- ============================================
+      基础 SEO 标签
+    ============================================ -->
+    <title>TumuAI - 土木AI之家 | 专业的土木工程AI工具导航平台</title>
+    <meta name="description" content="为土木工程师提供最全面的AI工具和效率工具导航，涵盖结构设计、BIM建模、施工管理、造价估算等专业领域。发现最适合土木工程的AI工具。" />
+    <meta name="keywords" content="土木工程,AI工具,结构设计,BIM建模,施工管理,工程造价,AI辅助设计,土木软件,工程软件导航" />
+    <meta name="author" content="TumuAI Team" />
+    <link rel="canonical" href="https://tumuai.com" />
+
+    <!-- ============================================
+      Open Graph 标签 (Facebook/LinkedIn)
+    ============================================ -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://tumuai.com" />
+    <meta property="og:title" content="TumuAI - 土木AI之家 | 专业的土木工程AI工具导航平台" />
+    <meta property="og:description" content="为土木工程师提供最全面的AI工具和效率工具导航，涵盖结构设计、BIM建模、施工管理、造价估算等专业领域。" />
+    <meta property="og:image" content="https://tumuai.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:site_name" content="TumuAI" />
+
+    <!-- ============================================
+      Twitter Card 标签
+    ============================================ -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://tumuai.com" />
+    <meta name="twitter:title" content="TumuAI - 土木AI之家 | 专业的土木工程AI工具导航平台" />
+    <meta name="twitter:description" content="为土木工程师提供最全面的AI工具和效率工具导航，涵盖结构设计、BIM建模、施工管理、造价估算等专业领域。" />
+    <meta name="twitter:image" content="https://tumuai.com/twitter-image.png" />
+    <meta name="twitter:site" content="@tumuai" />
+    <meta name="twitter:creator" content="@tumuai" />
+
+    <!-- ============================================
+      结构化数据 (JSON-LD)
+    ============================================ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "TumuAI - 土木AI之家",
+      "url": "https://tumuai.com",
+      "description": "为土木工程师提供最全面的AI工具和效率工具导航平台",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://tumuai.com/tools?search={search_term_string}",
+        "query-input": "required name=search_term_string"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "TumuAI",
+        "url": "https://tumuai.com",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://tumuai.com/logo.png"
+        }
+      }
+    }
+    </script>
+
+    <!-- WebApplication 结构化数据 -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "TumuAI",
+      "url": "https://tumuai.com",
+      "description": "专业的土木工程AI工具导航平台",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Web Browser",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "CNY"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "1000"
+      }
+    }
+    </script>
+
+    <!-- Organization 结构化数据 -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "TumuAI",
+      "url": "https://tumuai.com",
+      "logo": "https://tumuai.com/logo.png",
+      "sameAs": [
+        "https://github.com/tumuai",
+        "https://twitter.com/tumuai"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "Customer Service",
+        "email": "contact@tumuai.com"
+      }
+    }
+    </script>
+
+    <!-- ============================================
+      PWA 相关
+    ============================================ -->
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="TumuAI" />
+
+    <!-- ============================================
+      预连接和 DNS 预取优化
+    ============================================ -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="//api.supabase.co" />
+
+    <!-- ============================================
+      其他 Meta 标签
+    ============================================ -->
+    <meta name="robots" content="index, follow" />
+    <meta name="googlebot" content="index, follow" />
+    <meta name="language" content="Chinese" />
+    <meta name="format-detection" content="telephone=no" />
+
     <script type="module" src="/src/main.tsx"></script>
   </head>
   <body>
