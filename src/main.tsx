@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { checkVersionAndRefresh, shouldCleanupCache, cleanupOldCache } from './lib/cache-cleanup';
-import { useServiceWorkerRegister } from './hooks/useServiceWorker';
 
 // 应用启动前的缓存清理和版本检查
 try {
@@ -18,8 +17,14 @@ try {
   console.warn('缓存清理过程出现问题:', error);
 }
 
-// 注册 Service Worker
-useServiceWorkerRegister();
+// 注册 Service Worker - 非 Hook 方式
+if ('serviceWorker' in navigator && typeof window !== 'undefined') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((error) => {
+      console.error('[SW] Registration failed:', error);
+    });
+  });
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
