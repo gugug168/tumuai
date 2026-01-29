@@ -10,6 +10,8 @@ interface OptimizedImageProps {
   objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
   background?: boolean;
   fallback?: React.ReactNode; // 自定义兜底内容
+  width?: string | number; // 强制容器宽度
+  height?: string | number; // 强制容器高度
 }
 
 const OptimizedImage: React.FC<OptimizedImageProps> = ({
@@ -19,9 +21,11 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   sizes = '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw',
   priority = false,
   lazyLoad = true,
-  objectFit = 'cover',
+  objectFit = 'contain', // 默认使用 contain 避免图片变形
   background = false,
-  fallback
+  fallback,
+  width,
+  height
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -63,6 +67,10 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     setHasError(true);
   };
 
+  // 将 width/height 转换为 CSS 值
+  const widthCss = typeof width === 'number' ? `${width}px` : width;
+  const heightCss = typeof height === 'number' ? `${height}px` : height;
+
   return (
     <div
       ref={containerRef}
@@ -71,7 +79,10 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
         backgroundColor: background ? '#f3f4f6' : 'transparent',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        // 当指定 width/height 时，强制使用固定尺寸
+        ...(widthCss && { width: widthCss }),
+        ...(heightCss && { height: heightCss })
       }}
     >
       {/* 实际图片 */}
@@ -91,7 +102,10 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
             maxWidth: '100%',
             maxHeight: '100%',
             width: 'auto',
-            height: 'auto'
+            height: 'auto',
+            // 当容器有固定尺寸时，图片也应该填充容器
+            ...(widthCss && { maxWidth: widthCss }),
+            ...(heightCss && { maxHeight: heightCss })
           }}
           onLoad={handleLoad}
           onError={handleError}

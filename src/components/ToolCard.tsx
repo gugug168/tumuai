@@ -176,7 +176,8 @@ const ToolCard = React.memo(({
           <OptimizedImage
             src={displayLogoUrl}
             alt={tool.name}
-            className="w-8 h-8"
+            width="32px"
+            height="32px"
             objectFit="contain"
             background={false}
             fallback={fallbackIcon}
@@ -273,7 +274,9 @@ const ToolCard = React.memo(({
         <OptimizedImage
           src={displayLogoUrl}
           alt={tool.name}
-          className="max-w-[80px] max-h-[80px] w-auto h-auto transition-transform duration-300 group-hover:scale-110"
+          width="80px"
+          height="80px"
+          className="transition-transform duration-300 group-hover:scale-110"
           objectFit="contain"
           background={false}
           fallback={fallbackIcon}
