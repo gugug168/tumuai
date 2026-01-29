@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, ExternalLink, Heart, Eye } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
@@ -10,19 +10,63 @@ interface ToolCardProps {
   isFavorited: boolean;
   onFavoriteToggle: (toolId: string) => void;
   viewMode: 'grid' | 'list';
+  className?: string;
 }
 
-const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: ToolCardProps) => {
+/**
+ * ToolCard 组件 - 增强交互体验版本
+ *
+ * 优化:
+ * - 收藏动画效果
+ * - 触摸反馈
+ * - 键盘导航支持
+ * - 更好的悬停效果
+ * - 无障碍性增强
+ */
+const ToolCard = React.memo(({
+  tool,
+  isFavorited,
+  onFavoriteToggle,
+  viewMode,
+  className = ''
+}: ToolCardProps) => {
+  const [favoriteAnimating, setFavoriteAnimating] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const favoriteButtonRef = useRef<HTMLButtonElement>(null);
+
+  // 处理收藏点击 - 带动画效果
   const handleFavoriteClick = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // 触发动画
+    setFavoriteAnimating(true);
+    setTimeout(() => setFavoriteAnimating(false), 300);
+
     onFavoriteToggle(tool.id);
   }, [tool.id, onFavoriteToggle]);
+
+  // 键盘导航支持
+  const handleKeyDown = React.useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      favoriteButtonRef.current?.click();
+    }
+  }, []);
+
+  // 触摸/鼠标按下效果
+  const handleMouseDown = React.useCallback(() => {
+    setIsPressed(true);
+  }, []);
+
+  const handleMouseUp = React.useCallback(() => {
+    setIsPressed(false);
+  }, []);
 
   // 判断 logo_url 是否有效
   const isValidLogoUrl = React.useMemo(() => {
     if (!tool.logo_url) return false;
-    // 排除无效的 logo 来源
     if (tool.logo_url.includes('google.com/s2/favicons')) return false;
     if (tool.logo_url.includes('placeholder')) return false;
     if (tool.logo_url.includes('iconhorse')) return false;
@@ -31,7 +75,6 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
 
   // 生成兜底Logo的函数
   const getFallbackLogo = React.useCallback(() => {
-    // 直接使用 generateInitialLogo，它已经包含了完善的兜底逻辑
     return generateInitialLogo(tool.name, tool.categories || []);
   }, [tool.name, tool.categories]);
 
@@ -72,9 +115,9 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
       if (categoryColors[primaryCategory]) {
         return categoryColors[primaryCategory];
       }
-      for (const [key, color] of Object.entries(categoryColors)) {
+      for (const [key, c] of Object.entries(categoryColors)) {
         if (primaryCategory.includes(key) || key.includes(primaryCategory)) {
-          return color;
+          return c;
         }
       }
       return categoryColors.default;
@@ -104,9 +147,30 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
     );
   }, [tool.name, tool.categories]);
 
+  // 收藏按钮动画类名
+  const favoriteAnimationClass = `
+    ${favoriteAnimating ? 'animate-favorite-bounce' : ''}
+    ${isFavorited ? 'fill-red-500 text-red-500' : ''}
+  `.trim();
+
+  // 列表视图
   if (viewMode === 'list') {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-blue-200 transition-all duration-200 group flex items-center space-x-4 cursor-pointer">
+      <article
+        ref={cardRef}
+        className={`
+          bg-white border border-gray-200 rounded-lg p-4
+          hover:shadow-lg hover:border-blue-300
+          active:scale-[0.99]
+          transition-all duration-200 ease-out
+          group flex items-center space-x-4 cursor-pointer
+          focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2
+          ${className}
+        `}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
         {/* Tool Logo */}
         <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-100 p-2">
           <OptimizedImage
@@ -152,33 +216,64 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
             </div>
             <span className="text-xs text-gray-500">{tool.pricing || '免费'}</span>
           </div>
-          <button 
+
+          {/* 收藏按钮 - 增强版 */}
+          <button
+            ref={favoriteButtonRef}
             onClick={handleFavoriteClick}
-            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+            onKeyDown={handleKeyDown}
+            className={`
+              p-2 rounded-full transition-all duration-200
+              ${isFavorited
+                ? 'text-red-500 bg-red-50 hover:bg-red-100'
+                : 'text-gray-400 hover:text-red-500 hover:bg-gray-100'
+              }
+              focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
+              active:scale-90
+              ${favoriteAnimating ? 'animate-heart-pop' : ''}
+            `}
             aria-label={isFavorited ? '取消收藏' : '添加收藏'}
+            aria-pressed={isFavorited}
+            type="button"
           >
-            <Heart className={`w-5 h-5 ${isFavorited ? 'fill-red-500 text-red-500' : ''}`} />
+            <Heart className={`w-5 h-5 ${favoriteAnimationClass}`} />
           </button>
+
           <Link
             to={`/tools/${tool.id}`}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors inline-block"
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium
+                     hover:bg-blue-700 active:bg-blue-800 active:scale-95
+                     transition-all duration-200 inline-block"
           >
             查看
           </Link>
         </div>
-      </div>
+      </article>
     );
   }
 
-  // Grid view
+  // 网格视图
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 overflow-hidden group cursor-pointer">
+    <article
+      ref={cardRef}
+      className={`
+        bg-white rounded-xl shadow-sm border border-gray-100
+        hover:shadow-xl hover:-translate-y-1 hover:border-blue-200
+        active:scale-[0.98] active:shadow-md
+        transition-all duration-300 ease-out overflow-hidden group cursor-pointer
+        focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2
+        ${className}
+      `}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+    >
       {/* Tool Image */}
       <div className="relative w-full h-40 bg-gray-50 flex items-center justify-center p-10">
         <OptimizedImage
           src={displayLogoUrl}
           alt={tool.name}
-          className="max-w-[80px] max-h-[80px] w-auto h-auto"
+          className="max-w-[80px] max-h-[80px] w-auto h-auto transition-transform duration-300 group-hover:scale-110"
           objectFit="contain"
           background={false}
           fallback={fallbackIcon}
@@ -186,13 +281,30 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
           lazyLoad={true}
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
         />
+
+        {/* 收藏按钮 - 增强版 */}
         <div className="absolute top-3 right-3">
           <button
+            ref={favoriteButtonRef}
             onClick={handleFavoriteClick}
-            className="bg-white/90 backdrop-blur-sm p-1.5 rounded-full hover:bg-white hover:scale-110 transition-all duration-200 shadow-sm"
+            onKeyDown={handleKeyDown}
+            className={`
+              bg-white/90 backdrop-blur-sm p-1.5 rounded-full
+              hover:bg-white hover:scale-110
+              active:scale-95
+              transition-all duration-200 shadow-sm
+              ${isFavorited
+                ? 'text-red-500 ring-2 ring-red-100'
+                : 'text-gray-600 hover:text-red-500'
+              }
+              focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
+              ${favoriteAnimating ? 'animate-heart-pop' : ''}
+            `}
             aria-label={isFavorited ? '取消收藏' : '添加收藏'}
+            aria-pressed={isFavorited}
+            type="button"
           >
-            <Heart className={`w-4 h-4 transition-all duration-200 ${isFavorited ? 'fill-red-500 text-red-500 scale-110' : 'text-gray-600 hover:text-red-500'}`} />
+            <Heart className={`w-4 h-4 transition-all duration-200 ${favoriteAnimationClass}`} />
           </button>
         </div>
       </div>
@@ -200,7 +312,7 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
       {/* Tool Content */}
       <div className="p-4">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold text-primary-800 group-hover:text-accent-600 transition-colors line-clamp-1">
+          <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">
             {tool.name}
           </h3>
           <div className="flex items-center space-x-1">
@@ -218,7 +330,7 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
         </p>
 
         <div className="mb-3">
-          <span className="tag-primary px-2 py-1 rounded-md text-xs font-medium">
+          <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-xs font-medium">
             {tool.categories?.[0] || '未分类'}
           </span>
         </div>
@@ -228,7 +340,7 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
           {tool.features?.slice(0, 3).map((feature, index) => (
             <span
               key={index}
-              className="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-xs"
+              className="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-xs transition-colors hover:bg-gray-200"
             >
               {feature}
             </span>
@@ -247,7 +359,7 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
               <span>{tool.review_count || 0}</span>
             </div>
           </div>
-          <span className="text-xs font-medium text-accent-600">
+          <span className="text-xs font-medium text-blue-600">
             {tool.pricing || '免费'}
           </span>
         </div>
@@ -255,13 +367,20 @@ const ToolCard = React.memo(({ tool, isFavorited, onFavoriteToggle, viewMode }: 
         {/* Action Button */}
         <Link
           to={`/tools/${tool.id}`}
-          className="w-full btn-primary py-2.5 px-3 text-sm flex items-center justify-center hover:bg-blue-700 transition-colors duration-200 shadow-sm hover:shadow group-hover:shadow-md"
+          className="
+            w-full bg-blue-600 text-white py-2.5 px-3 text-sm
+            flex items-center justify-center
+            hover:bg-blue-700 active:bg-blue-800
+            active:scale-[0.98]
+            transition-all duration-200 shadow-sm hover:shadow-md
+            group-hover:shadow
+          "
         >
           查看详情
           <ExternalLink className="ml-1 w-3 h-3 group-hover:translate-x-0.5 transition-transform duration-200" />
         </Link>
       </div>
-    </div>
+    </article>
   );
 });
 

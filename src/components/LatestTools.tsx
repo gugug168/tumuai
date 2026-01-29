@@ -4,6 +4,7 @@ import { Star, ExternalLink, Heart, Eye, Clock } from 'lucide-react';
 import { getLatestTools } from '../lib/supabase';
 import { generateInitialLogo } from '../lib/logoUtils';
 import OptimizedImage from './OptimizedImage';
+import { SkeletonCard, SkeletonWrapper } from './SkeletonLoader';
 import type { Tool } from '../types';
 
 const LatestTools = () => {
@@ -135,21 +136,25 @@ const LatestTools = () => {
           </div>
         )}
 
-        {/* 加载状态 */}
-        {loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {Array.from({ length: 12 }).map((_, index) => (
-              <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden animate-pulse">
-                <div className="w-full h-40 bg-gray-200"></div>
-                <div className="p-4">
-                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded mb-3"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+        {/* 加载状态 - 使用骨架屏 */}
+        <SkeletonWrapper
+          loading={loading}
+          skeleton={
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div key={index} className="stagger-in" style={{ animationDelay: `${index * 50}ms` }}>
+                  <SkeletonCard
+                    showAvatar={true}
+                    showTitle={true}
+                    textLines={3}
+                    showActions={true}
+                    className="border-0 shadow-sm"
+                  />
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          }
+        >
 
         {/* 工具列表 */}
         {!loading && !error && (
@@ -257,6 +262,7 @@ const LatestTools = () => {
             </button>
           </div>
         )}
+        </SkeletonWrapper>
       </div>
     </section>
   );

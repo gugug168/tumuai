@@ -7,6 +7,7 @@ import { generateInitialLogo } from '../lib/logoUtils';
 import { apiRequestWithRetry } from '../lib/api';
 import { useCache } from '../hooks/useCache';
 import { usePerformance } from '../hooks/usePerformance';
+import { SkeletonCard, SkeletonWrapper } from './SkeletonLoader';
 import type { Tool } from '../types/index';
 
 // 已移除硬编码的featuredTools数组，现在使用动态数据
@@ -139,13 +140,25 @@ const FeaturedTools = React.memo(() => {
           </div>
         </div>
 
-        {/* 加载状态 */}
-        {loading && (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-2 text-gray-600">加载精选工具中...</p>
-          </div>
-        )}
+        {/* 加载状态 - 使用骨架屏 */}
+        <SkeletonWrapper
+          loading={loading}
+          skeleton={
+            <div className="space-y-4">
+              {[...Array(4)].map((_, index) => (
+                <div key={index} className="stagger-in" style={{ animationDelay: `${index * 50}ms` }}>
+                  <SkeletonCard
+                    showAvatar={true}
+                    showTitle={true}
+                    textLines={2}
+                    showActions={true}
+                    className="border-0 shadow-none"
+                  />
+                </div>
+              ))}
+            </div>
+          }
+        >
 
         {/* 错误状态 */}
         {error && (
@@ -169,11 +182,11 @@ const FeaturedTools = React.memo(() => {
             {tools.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-gray-600">暂无精选工具数据</p>
-                <button 
+                <button
                   onClick={() => {
                     recordInteraction('retry_featured_tools');
                     fetchFeaturedTools();
-                  }} 
+                  }}
                   className="mt-2 text-blue-600 hover:underline"
                 >
                   重新加载
@@ -249,6 +262,7 @@ const FeaturedTools = React.memo(() => {
             )}
           </div>
         )}
+        </SkeletonWrapper>
       </div>
     </section>
   );
