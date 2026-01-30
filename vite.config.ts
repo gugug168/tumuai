@@ -89,10 +89,13 @@ export default defineConfig({
     
     // sourcemap配置 (生产环境关闭)
     sourcemap: false,
-    
+
+    // chunk 大小警告阈值 (KB)
+    chunkSizeWarningLimit: 500,
+
     // 构建报告
     reportCompressedSize: true,
-    
+
     // 清理输出目录
     emptyOutDir: true
   },
