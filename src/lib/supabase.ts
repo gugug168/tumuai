@@ -96,7 +96,7 @@ export async function getToolsCount(): Promise<number> {
 }
 
 // 获取工具列表（带缓存）- 阶段1优化
-// 缓存策略：5分钟TTL，支持stale-while-revalidate
+// 缓存策略：10分钟TTL，支持stale-while-revalidate
 export async function getToolsWithCache(limit = 12, offset = 0): Promise<Tool[]> {
   const cacheKey = `tools_list_${limit}_${offset}`
 
@@ -104,7 +104,7 @@ export async function getToolsWithCache(limit = 12, offset = 0): Promise<Tool[]>
     cacheKey,
     () => getTools(limit, offset),
     {
-      ttl: 5 * 60 * 1000, // 5分钟缓存
+      ttl: 10 * 60 * 1000, // 10分钟缓存
       staleWhileRevalidate: true // 过期后先返回旧数据，后台刷新
     }
   )
@@ -118,7 +118,7 @@ export async function getToolsCountWithCache(): Promise<number> {
     cacheKey,
     () => getToolsCount(),
     {
-      ttl: 5 * 60 * 1000,
+      ttl: 10 * 60 * 1000, // 10分钟缓存
       staleWhileRevalidate: true
     }
   )
@@ -146,7 +146,7 @@ export async function getLatestToolsWithCache(): Promise<Tool[]> {
     cacheKey,
     () => getLatestTools(),
     {
-      ttl: 5 * 60 * 1000,
+      ttl: 10 * 60 * 1000, // 10分钟缓存
       staleWhileRevalidate: true
     }
   )
@@ -246,8 +246,8 @@ export async function getToolsFiltered(
 }
 
 /**
- * 智能获取工具 - 自动选择最优数据源
- * 优先级：API代理 > 本地缓存 > 直连数据库
+ * 智能获取工具 - 并行策略，自动选择最优数据源
+ * 优先级：API代理 (并行) > 本地缓存 > 直连数据库
  *
  * @param limit 每页数量
  * @param offset 偏移量
@@ -277,11 +277,30 @@ export async function getToolsSmart(
     }
   }
 
-  // 首先尝试通过 Vercel API（最快）
+  // 并行策略：同时启动 API 请求和本地缓存，先返回的获胜
+  // API 超时设置为 2 秒，如果 2 秒内没响应则使用本地缓存
+  const API_TIMEOUT = 2000
+
   try {
-    return await getToolsViaAPI(limit, offset, includeCount)
-  } catch (apiError) {
-    console.warn('API proxy failed, falling back to cached direct connection:', apiError)
+    // 创建带超时的 API 请求
+    const apiPromise = getToolsViaAPI(limit, offset, includeCount)
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('API timeout')), API_TIMEOUT)
+    )
+
+    // 同时启动本地缓存请求（作为备用）
+    const cachePromise = getToolsWithCache(limit, offset).then(async (tools) => ({
+      tools,
+      count: includeCount ? await getToolsCountWithCache() : undefined
+    }))
+
+    // 等待 API 或超时，哪个先来用哪个
+    const result = await Promise.race([apiPromise, timeoutPromise])
+
+    console.log('✅ getToolsSmart: API 响应成功')
+    return result
+  } catch (error) {
+    console.warn('⚠️ getToolsSmart: API 请求失败或超时，使用本地缓存:', error)
 
     // 回退到本地缓存的直连方式
     const tools = await getToolsWithCache(limit, offset)

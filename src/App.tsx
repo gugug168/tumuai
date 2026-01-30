@@ -1,5 +1,5 @@
-import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { Suspense, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AppProviders } from './contexts/AppProviders';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -20,6 +20,55 @@ const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const DiagnosticPage = React.lazy(() => import('./pages/DiagnosticPage'));
 const AdminLoginPage = React.lazy(() => import('./pages/AdminLoginPage'));
 
+/**
+ * 数据预加载组件
+ * 在用户访问首页时，使用 requestIdleCallback 在空闲时预加载工具和分类数据
+ */
+function DataPreloader() {
+  const location = useLocation();
+
+  useEffect(() => {
+    // 只在首页时预加载工具数据
+    if (location.pathname === '/') {
+      const preloadData = () => {
+        console.log('🔄 DataPreloader: 开始预加载工具数据...');
+
+        // 预加载工具列表
+        fetch('/api/tools-cache?limit=12&includeCount=true')
+          .then(res => {
+            if (res.ok) {
+              console.log('✅ DataPreloader: 工具数据预加载成功');
+            }
+          })
+          .catch(err => {
+            console.warn('⚠️ DataPreloader: 工具数据预加载失败:', err);
+          });
+
+        // 预加载分类数据
+        fetch('/api/categories-cache')
+          .then(res => {
+            if (res.ok) {
+              console.log('✅ DataPreloader: 分类数据预加载成功');
+            }
+          })
+          .catch(err => {
+            console.warn('⚠️ DataPreloader: 分类数据预加载失败:', err);
+          });
+      };
+
+      // 使用 requestIdleCallback 在浏览器空闲时预加载
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(preloadData, { timeout: 2000 });
+      } else {
+        // 回退方案：使用 setTimeout 延迟执行
+        setTimeout(preloadData, 1000);
+      }
+    }
+  }, [location.pathname]);
+
+  return null; // 不渲染任何内容
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -31,6 +80,7 @@ function App() {
             <main className="flex-1">
               <ErrorBoundary>
                 <Suspense fallback={<PageLoader message="页面加载中..." />}>
+                  <DataPreloader />
                   <Routes>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/tools" element={<ToolsPage />} />
