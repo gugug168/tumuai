@@ -210,7 +210,7 @@ export function useToolData(performanceHooks?: {
     toolIds: string[],
     userId: string
   ) => {
-    if (!userId || toolIds.length === 0) return;
+    if (toolIds.length === 0) return;
 
     try {
       // 使用批量查询替代循环单独查询
@@ -218,8 +218,10 @@ export function useToolData(performanceHooks?: {
       const states = await batchCheckFavorites(toolIds);
       setFavoriteStates(states);
     } catch (error) {
-      console.error('批量检查收藏状态失败:', error);
-      setFavoriteStates({});
+      // 静默处理错误，设置所有工具为未收藏状态
+      const result: Record<string, boolean> = {};
+      toolIds.forEach(id => result[id] = false);
+      setFavoriteStates(result);
     }
   }, []);
 

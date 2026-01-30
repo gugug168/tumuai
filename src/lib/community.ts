@@ -173,8 +173,17 @@ export async function isFavorited(toolId: string) {
 
 // 批量检查多个工具的收藏状态（性能优化）
 export async function batchCheckFavorites(toolIds: string[]): Promise<{[key: string]: boolean}> {
+  // 如果没有工具ID，返回空对象
+  if (toolIds.length === 0) return {}
+
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user || toolIds.length === 0) return {}
+
+  // 如果用户未登录，返回所有工具为未收藏状态
+  if (!user) {
+    const result: {[key: string]: boolean} = {}
+    toolIds.forEach(id => result[id] = false)
+    return result
+  }
 
   try {
     const { data, error } = await supabase
@@ -184,8 +193,10 @@ export async function batchCheckFavorites(toolIds: string[]): Promise<{[key: str
       .in('tool_id', toolIds)
 
     if (error) {
-      console.warn('批量检查收藏状态时出错:', error)
-      return {}
+      // 静默处理错误，返回所有工具为未收藏状态
+      const result: {[key: string]: boolean} = {}
+      toolIds.forEach(id => result[id] = false)
+      return result
     }
 
     // 构建收藏状态映射表
@@ -199,8 +210,10 @@ export async function batchCheckFavorites(toolIds: string[]): Promise<{[key: str
 
     return result
   } catch (error) {
-    console.warn('批量检查收藏状态失败:', error)
-    return {}
+    // 静默处理错误，返回所有工具为未收藏状态
+    const result: {[key: string]: boolean} = {}
+    toolIds.forEach(id => result[id] = false)
+    return result
   }
 }
 
