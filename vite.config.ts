@@ -5,13 +5,16 @@ import { resolve } from 'path';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  
+
+  // 基础路径配置 - 确保资源正确加载
+  base: '/',
+
   // 优化依赖处理
   optimizeDeps: {
     exclude: ['lucide-react'],
     include: [
       'react',
-      'react-dom', 
+      'react-dom',
       'react-router-dom',
       '@supabase/supabase-js'
     ]
