@@ -58,9 +58,10 @@
       ]
     }
   ],
-  "buildCommand": "npm run build && echo build-complete-$(date +%s)",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "github": {
     "silent": true
-  }
+  },
+  "installCommand": "npm install"
 }
