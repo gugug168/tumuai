@@ -16,21 +16,14 @@
     "db:indexes": "node database/scripts/execute-indexes.js"
   },
   "dependencies": {
-    "@supabase/mcp-server-supabase": "^0.4.5",
     "@supabase/supabase-js": "^2.54.0",
-    "@types/bcryptjs": "^2.4.6",
-    "@vercel/node": "^5.3.16",
-    "bcryptjs": "^3.0.2",
-    "dotenv": "^17.2.1",
     "lucide-react": "^0.344.0",
-    "node-fetch": "^2.7.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.8.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
-    "@netlify/functions": "^4.2.2",
     "@playwright/test": "^1.47.1",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
@@ -40,7 +33,6 @@
     "eslint": "^9.9.1",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",
-    "express": "^5.1.0",
     "globals": "^15.9.0",
     "pg": "^8.17.2",
     "postcss": "^8.4.35",

@@ -1,6 +1,6 @@
 ---
 active: true
-iteration: 7
+iteration: 9
 max_iterations: 10
 completion_promise: "画面好看，加载速度快，网站没有任何错误，所有功能都成功测试可用。"
 started_at: "2026-01-30T17:22:15Z"
