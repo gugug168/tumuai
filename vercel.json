@@ -58,7 +58,7 @@
       ]
     }
   ],
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run build && echo build-complete-$(date +%s)",
   "outputDirectory": "dist",
   "github": {
     "silent": true
