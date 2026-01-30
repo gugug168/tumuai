@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Save, Trash2, AlertTriangle } from 'lucide-react';
-import { createTool, updateTool, deleteTool } from '../lib/admin';
+import { X, Plus, Save, Trash2, AlertTriangle, RefreshCw, Image as ImageIcon } from 'lucide-react';
+import { createTool, updateTool, deleteTool, extractLogoForPreview } from '../lib/admin';
 
 interface Tool {
   id?: string;
@@ -51,6 +51,7 @@ const ToolManagementModal: React.FC<ToolManagementModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [featureInput, setFeatureInput] = useState('');
+  const [fetchingLogo, setFetchingLogo] = useState(false);
 
   useEffect(() => {
     if (tool) {
@@ -128,6 +129,31 @@ const ToolManagementModal: React.FC<ToolManagementModalProps> = ({
         ? prev.categories.filter(c => c !== categoryName)
         : [...prev.categories, categoryName]
     }));
+  };
+
+  // 自动获取图标
+  const handleAutoFetchLogo = async () => {
+    if (!formData.website_url) {
+      setError('请先填写官网地址');
+      return;
+    }
+
+    setFetchingLogo(true);
+    setError(null);
+
+    try {
+      const logoUrl = await extractLogoForPreview(formData.website_url);
+
+      if (logoUrl) {
+        setFormData(prev => ({ ...prev, logo_url: logoUrl }));
+      } else {
+        setError('无法自动获取图标，请手动输入');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '获取图标失败');
+    } finally {
+      setFetchingLogo(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -218,13 +244,45 @@ const ToolManagementModal: React.FC<ToolManagementModalProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Logo地址
               </label>
-              <input
-                type="url"
-                value={formData.logo_url}
-                onChange={(e) => setFormData(prev => ({ ...prev, logo_url: e.target.value }))}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white text-gray-900 placeholder-gray-500"
-                placeholder="https://example.com/logo.png"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={formData.logo_url}
+                  onChange={(e) => setFormData(prev => ({ ...prev, logo_url: e.target.value }))}
+                  className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white text-gray-900 placeholder-gray-500"
+                  placeholder="https://example.com/logo.png"
+                />
+                <button
+                  type="button"
+                  onClick={handleAutoFetchLogo}
+                  disabled={fetchingLogo || !formData.website_url}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  title="从官网自动获取图标"
+                >
+                  <RefreshCw className={`h-4 w-4 ${fetchingLogo ? 'animate-spin' : ''}`} />
+                  <span className="text-sm">自动获取</span>
+                </button>
+              </div>
+              {/* Logo 预览 */}
+              {formData.logo_url && (
+                <div className="mt-2 flex items-center gap-2 p-2 bg-gray-50 rounded-md">
+                  {formData.logo_url.startsWith('data:') || formData.logo_url.match(/\.(png|jpg|jpeg|svg|gif|webp)$/i) ? (
+                    <img
+                      src={formData.logo_url}
+                      alt="Logo预览"
+                      className="w-8 h-8 object-contain rounded"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
+                      <ImageIcon className="h-4 w-4 text-gray-400" />
+                    </div>
+                  )}
+                  <span className="text-xs text-gray-500 truncate flex-1">{formData.logo_url}</span>
+                </div>
+              )}
             </div>
           </div>
 

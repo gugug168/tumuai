@@ -600,6 +600,146 @@ export default async function handler(request: VercelRequest, response: VercelRe
         }
       }
 
+      case 'refresh_tool_logo': {
+        const { toolId } = body || {}
+        if (!toolId) {
+          return response.status(400).json({ error: 'Missing toolId' })
+        }
+
+        try {
+          // 获取工具信息
+          const { data: tool, error: fetchError } = await supabase
+            .from('tools')
+            .select('id, website_url, name')
+            .eq('id', toolId)
+            .maybeSingle()
+
+          if (fetchError || !tool) {
+            return response.status(404).json({ error: 'Tool not found' })
+          }
+
+          // 提取 logo 的辅助函数（内联实现，避免依赖）
+          async function extractLogo(websiteUrl: string): Promise<string | null> {
+            try {
+              const url = new URL(websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`)
+              const origin = url.origin
+
+              const controller = new AbortController()
+              const timeoutId = setTimeout(() => controller.abort(), 10000)
+
+              let html: string
+              try {
+                const resp = await fetch(origin, {
+                  signal: controller.signal,
+                  headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Accept': 'text/html,application/xhtml+xml'
+                  }
+                })
+                clearTimeout(timeoutId)
+
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+                html = await resp.text()
+              } catch {
+                clearTimeout(timeoutId)
+                // 使用备用服务
+                const domain = url.hostname
+                return `https://cdn2.iconhorse.com/icons/${domain}.png`
+              }
+
+              // 提取图标候选
+              const linkRegex = /<link\s+([^>]*?)>/gi
+              const candidates: Array<{ url: string; quality: number }> = []
+              let match
+
+              while ((match = linkRegex.exec(html)) !== null) {
+                const linkAttrs = match[1]
+                const relMatch = linkAttrs.match(/rel=["']([^"']+)["']/i)
+                const hrefMatch = linkAttrs.match(/href=["']([^"']+)["']/i)
+
+                if (!relMatch || !hrefMatch) continue
+
+                const rel = relMatch[1].toLowerCase()
+                let href = hrefMatch[1]
+
+                if (!href.startsWith('http') && !href.startsWith('//')) {
+                  href = new URL(href, origin).href
+                } else if (href.startsWith('//')) {
+                  href = 'https:' + href
+                }
+
+                const iconRels = ['icon', 'shortcut icon', 'apple-touch-icon', 'mask-icon', 'fluid-icon']
+                if (!iconRels.some(r => rel.includes(r))) continue
+
+                let quality = 50
+                if (rel.includes('apple-touch-icon')) quality = 95
+                else if (href.endsWith('.svg')) quality = 100
+
+                candidates.push({ url: href, quality })
+              }
+
+              // og:image
+              const ogMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+              if (ogMatch) {
+                let ogImg = ogMatch[1]
+                if (!ogImg.startsWith('http') && !ogImg.startsWith('//')) {
+                  ogImg = new URL(ogImg, origin).href
+                } else if (ogImg.startsWith('//')) {
+                  ogImg = 'https:' + ogImg
+                }
+                candidates.push({ url: ogImg, quality: 70 })
+              }
+
+              // 按质量排序
+              candidates.sort((a, b) => b.quality - a.quality)
+
+              // 验证并返回第一个可用的
+              for (const cand of candidates) {
+                try {
+                  const headResp = await fetch(cand.url, { method: 'HEAD', signal: AbortSignal.timeout(5000) })
+                  if (headResp.ok) return cand.url
+                } catch {
+                  continue
+                }
+              }
+
+              // 备用服务
+              return `https://cdn2.iconhorse.com/icons/${url.hostname}.png`
+            } catch {
+              return null
+            }
+          }
+
+          const logoUrl = await extractLogo(tool.website_url)
+
+          if (!logoUrl) {
+            return response.status(500).json({ error: 'Failed to extract logo' })
+          }
+
+          // 更新数据库
+          const { error: updateError } = await supabase
+            .from('tools')
+            .update({ logo_url: logoUrl, updated_at: new Date().toISOString() })
+            .eq('id', toolId)
+
+          if (updateError) {
+            console.error('Error updating tool logo:', updateError)
+            return response.status(500).json({ error: updateError.message })
+          }
+
+          await logAdminAction('refresh_tool_logo', 'tool', toolId, {
+            tool_name: tool.name,
+            logo_url: logoUrl
+          })
+
+          return response.status(200).json({ success: true, logo_url: logoUrl })
+        } catch (error: unknown) {
+          console.error('Error in refresh_tool_logo:', error)
+          const err = error as ErrorResponse
+          return response.status(500).json({ error: err.message || 'Internal server error' })
+        }
+      }
+
       default:
         return response.status(400).json({ error: 'Unknown action' })
     }

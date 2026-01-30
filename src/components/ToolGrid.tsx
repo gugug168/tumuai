@@ -60,7 +60,7 @@ const ToolGrid = React.memo<ToolGridProps>(({
   onPreloadNext
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isNearBottom, setIsNearBottom] = useState(false);
+  const preloadTriggeredRef = useRef(false); // 使用 ref 避免重复触发
 
   // 处理收藏切换
   const handleFavoriteToggle = useCallback(async (toolId: string) => {
@@ -71,14 +71,21 @@ const ToolGrid = React.memo<ToolGridProps>(({
     onFavoriteToggle(toolId);
   }, [user, onFavoriteToggle]);
 
-  // 滚动到顶部
+  // 滚动到顶部 - 使用 window.scrollTo 避免 scrollIntoView 导致的页面刷新问题
   const scrollToTop = useCallback(() => {
-    scrollContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   }, []);
 
   // 页码变化时滚动到顶部
   useEffect(() => {
-    scrollToTop();
+    if (currentPage > 1) {
+      scrollToTop();
+      // 重置预加载标记
+      preloadTriggeredRef.current = false;
+    }
   }, [currentPage, scrollToTop]);
 
   // 滚动检测用于预加载
@@ -86,14 +93,17 @@ const ToolGrid = React.memo<ToolGridProps>(({
     if (!onPreloadNext) return;
 
     const handleScroll = () => {
+      // 如果已经在最后一页或预加载已触发，不执行任何操作
+      if (currentPage >= totalPages || preloadTriggeredRef.current) {
+        return;
+      }
+
       const scrollPosition = window.innerHeight + window.scrollY;
       const threshold = document.body.scrollHeight - 500; // 距离底部500px时触发
 
-      if (scrollPosition >= threshold && !isNearBottom && currentPage < totalPages) {
-        setIsNearBottom(true);
+      if (scrollPosition >= threshold) {
+        preloadTriggeredRef.current = true;
         onPreloadNext();
-      } else if (scrollPosition < threshold) {
-        setIsNearBottom(false);
       }
     };
 
@@ -103,7 +113,7 @@ const ToolGrid = React.memo<ToolGridProps>(({
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [currentPage, totalPages, isNearBottom, onPreloadNext]);
+  }, [currentPage, totalPages, onPreloadNext]); // 移除 isNearBottom 依赖
 
   // 处理上一页
   const handlePreviousPage = useCallback(() => {

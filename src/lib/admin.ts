@@ -807,19 +807,25 @@ export async function exportUsersToCSV(): Promise<string> {
  * 刷新单个工具的 Logo
  * 从网站自动提取最新图标
  */
-export async function refreshToolLogo(toolId: string, websiteUrl: string): Promise<{ success: boolean; logoUrl?: string; error?: string }> {
+export async function refreshToolLogo(toolId: string, websiteUrl?: string): Promise<{ success: boolean; logoUrl?: string; error?: string }> {
   try {
     console.log('🔄 开始刷新工具 Logo:', toolId, websiteUrl)
 
-    const response = await fetch('/api/logo-extract', {
+    // 使用 admin-actions API（需要管理员权限）
+    const accessToken = await ensureAccessToken()
+    if (!accessToken) {
+      return { success: false, error: '用户未登录' }
+    }
+
+    const response = await fetch('/api/admin-actions', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        action: 'extract_single',
-        toolId,
-        websiteUrl
+        action: 'refresh_tool_logo',
+        toolId
       })
     })
 
@@ -829,11 +835,11 @@ export async function refreshToolLogo(toolId: string, websiteUrl: string): Promi
     }
 
     const data = await response.json()
-    console.log('✅ Logo 刷新成功:', data.logoUrl)
+    console.log('✅ Logo 刷新成功:', data.logo_url)
 
     return {
       success: true,
-      logoUrl: data.logoUrl
+      logoUrl: data.logo_url
     }
   } catch (error) {
     console.error('❌ 刷新工具 Logo 失败:', error)
@@ -852,9 +858,16 @@ export async function batchRefreshToolLogos(toolIds?: string[]): Promise<{ succe
   try {
     console.log('🔄 开始批量刷新 Logo...')
 
+    // 使用 logo-extract API
+    const accessToken = await ensureAccessToken()
+    if (!accessToken) {
+      return { success: 0, failed: 0, results: [] }
+    }
+
     const response = await fetch('/api/logo-extract', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
