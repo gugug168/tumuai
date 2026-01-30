@@ -278,8 +278,9 @@ export async function getToolsSmart(
   }
 
   // 并行策略：同时启动 API 请求和本地缓存，先返回的获胜
-  // API 超时设置为 2 秒，如果 2 秒内没响应则使用本地缓存
-  const API_TIMEOUT = 2000
+  // API 超时设置为 4 秒（考虑 Vercel 冷启动）
+  // 首次访问通常需要 2-3 秒，CDN 缓存命中后只需 50-100ms
+  const API_TIMEOUT = 4000
 
   try {
     // 创建带超时的 API 请求

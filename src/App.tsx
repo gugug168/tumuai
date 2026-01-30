@@ -28,32 +28,43 @@ function DataPreloader() {
   const location = useLocation();
 
   useEffect(() => {
-    // 只在首页时预加载工具数据
-    if (location.pathname === '/') {
+    // 在首页和工具页面时预加载数据
+    const shouldPreload = location.pathname === '/' || location.pathname === '/tools';
+
+    if (shouldPreload) {
       const preloadData = () => {
-        console.log('🔄 DataPreloader: 开始预加载工具数据...');
+        console.log('🔄 DataPreloader: 开始预加载数据...', `当前路径: ${location.pathname}`);
 
-        // 预加载工具列表
-        fetch('/api/tools-cache?limit=12&includeCount=true')
-          .then(res => {
-            if (res.ok) {
-              console.log('✅ DataPreloader: 工具数据预加载成功');
-            }
-          })
-          .catch(err => {
-            console.warn('⚠️ DataPreloader: 工具数据预加载失败:', err);
-          });
+        // 并行预加载工具列表和分类数据
+        Promise.allSettled([
+          // 预加载工具列表
+          fetch('/api/tools-cache?limit=12&includeCount=true')
+            .then(res => {
+              if (res.ok) {
+                console.log('✅ DataPreloader: 工具数据预加载成功');
+                return res.json();
+              }
+              throw new Error(`工具数据预加载失败: ${res.status}`);
+            })
+            .catch(err => {
+              console.warn('⚠️ DataPreloader: 工具数据预加载失败:', err);
+            }),
 
-        // 预加载分类数据
-        fetch('/api/categories-cache')
-          .then(res => {
-            if (res.ok) {
-              console.log('✅ DataPreloader: 分类数据预加载成功');
-            }
-          })
-          .catch(err => {
-            console.warn('⚠️ DataPreloader: 分类数据预加载失败:', err);
-          });
+          // 预加载分类数据
+          fetch('/api/categories-cache')
+            .then(res => {
+              if (res.ok) {
+                console.log('✅ DataPreloader: 分类数据预加载成功');
+                return res.json();
+              }
+              throw new Error(`分类数据预加载失败: ${res.status}`);
+            })
+            .catch(err => {
+              console.warn('⚠️ DataPreloader: 分类数据预加载失败:', err);
+            })
+        ]).then(() => {
+          console.log('🎉 DataPreloader: 预加载完成');
+        });
       };
 
       // 使用 requestIdleCallback 在浏览器空闲时预加载
@@ -61,7 +72,7 @@ function DataPreloader() {
         (window as any).requestIdleCallback(preloadData, { timeout: 2000 });
       } else {
         // 回退方案：使用 setTimeout 延迟执行
-        setTimeout(preloadData, 1000);
+        setTimeout(preloadData, 500);
       }
     }
   }, [location.pathname]);

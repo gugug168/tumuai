@@ -113,36 +113,54 @@ export class CategoryManager {
   }
 
   /**
-   * 从数据库获取分类数据 - 直接查询 Supabase
+   * 从数据库获取分类数据 - 优先使用服务端 API
    * @returns Promise<Category[]>
    */
   private static async fetchFromDatabase(): Promise<Category[]> {
-    // 首先尝试包含 is_active 条件的查询
-    let { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true })
-      .order('name', { ascending: true });
+    try {
+      // 优先尝试服务端 API（带 CDN 缓存）
+      console.log('🌐 CategoryManager: 尝试从服务端 API 获取分类...');
+      const response = await fetch('/api/categories-cache');
 
-    // 如果因为字段不存在而失败，则使用没有 is_active 条件的查询
-    if (error && error.message.includes('is_active')) {
-      console.log('⚠️ CategoryManager: is_active字段不存在，使用简化查询...');
-      const result = await supabase
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ CategoryManager: 服务端 API 获取成功', result.categories.length, '个分类');
+        return result.categories || [];
+      }
+
+      throw new Error(`API 返回错误: ${response.status}`);
+    } catch (apiError) {
+      console.warn('⚠️ CategoryManager: 服务端 API 获取失败，回退到直连数据库:', apiError);
+
+      // 回退方案：直连 Supabase
+      // 首先尝试包含 is_active 条件的查询
+      let { data, error } = await supabase
         .from('categories')
         .select('*')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
         .order('name', { ascending: true });
 
-      data = result.data;
-      error = result.error;
-    }
+      // 如果因为字段不存在而失败，则使用没有 is_active 条件的查询
+      if (error && error.message.includes('is_active')) {
+        console.log('⚠️ CategoryManager: is_active字段不存在，使用简化查询...');
+        const result = await supabase
+          .from('categories')
+          .select('*')
+          .order('name', { ascending: true });
 
-    if (error) {
-      console.error('❌ CategoryManager: 数据库查询失败:', error);
-      throw error;
-    }
+        data = result.data;
+        error = result.error;
+      }
 
-    return data || [];
+      if (error) {
+        console.error('❌ CategoryManager: 数据库查询失败:', error);
+        throw error;
+      }
+
+      console.log('✅ CategoryManager: 直连数据库获取成功', data?.length || 0, '个分类');
+      return data || [];
+    }
   }
 
   /**
