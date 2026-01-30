@@ -113,35 +113,10 @@ export class CategoryManager {
   }
 
   /**
-   * 从数据库获取分类数据 - 优先使用服务端 API
+   * 从数据库获取分类数据 - 直接查询 Supabase
    * @returns Promise<Category[]>
    */
   private static async fetchFromDatabase(): Promise<Category[]> {
-    // 优先使用服务端 API (有 CDN 缓存，速度更快)
-    try {
-      console.log('🌐 CategoryManager: 尝试通过服务端 API 获取分类...');
-      const response = await fetch('/api/categories-cache');
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log(`✅ CategoryManager: 服务端 API 获取成功`, result.categories?.length, '个分类');
-        return result.categories || [];
-      }
-
-      console.warn('⚠️ CategoryManager: 服务端 API 返回非成功状态，回退到直连数据库');
-    } catch (apiError) {
-      console.warn('⚠️ CategoryManager: 服务端 API 请求失败，回退到直连数据库:', apiError);
-    }
-
-    // 回退到直连数据库
-    return await this.fetchDirectFromDatabase();
-  }
-
-  /**
-   * 直接从 Supabase 数据库获取分类数据
-   * @returns Promise<Category[]>
-   */
-  private static async fetchDirectFromDatabase(): Promise<Category[]> {
     // 首先尝试包含 is_active 条件的查询
     let { data, error } = await supabase
       .from('categories')
