@@ -64,13 +64,11 @@ module.exports = {
         ],
         // 英文标题字体
         'heading': [
-          'Montserrat',
           'Source Han Sans SC',
           'sans-serif'
         ],
         // 正文字体
         'body': [
-          'Lato',
           'Source Han Sans SC',
           'sans-serif'
         ]
