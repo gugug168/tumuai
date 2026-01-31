@@ -10,17 +10,24 @@
  * - 自动更新管理
  */
 
-const CACHE_NAME = 'tumuai-v1';
-const STATIC_CACHE = 'tumuai-static-v1';
-const API_CACHE = 'tumuai-api-v1';
+// Bump this when changing caching logic to ensure clients get fresh assets.
+const SW_VERSION = 'v2';
+const STATIC_CACHE = `tumuai-static-${SW_VERSION}`;
+const API_CACHE = `tumuai-api-${SW_VERSION}`;
+
+// App shell used as a fallback for SPA routes (e.g. /tools) if the server responds 404.
+const APP_SHELL_URL = '/';
 
 // 需要缓存的静态资源
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
+  // App shell (cached during install; fetch handler still uses Network First for navigation).
+  APP_SHELL_URL,
   '/favicon.svg',
   '/manifest.json',
-  '/icon.svg'
+  '/icon.svg',
+  '/logo.png',
+  '/og-image.png',
+  '/twitter-image.png'
 ];
 
 // API 路由前缀
@@ -85,6 +92,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Only handle GET requests. Let the browser handle non-GET (POST/PUT/etc) normally.
+  if (request.method !== 'GET') {
+    return;
+  }
+
   // 跳过 Supabase 实时订阅
   if (url.hostname.includes('supabase') && url.pathname.includes('/realtime')) {
     return;
@@ -93,6 +105,13 @@ self.addEventListener('fetch', (event) => {
   // API 请求 - Network First 策略
   if (API_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) {
     event.respondWith(handleApiRequest(request));
+    return;
+  }
+
+  // SPA 文档导航请求 - Network First + 404 fallback to app shell
+  // This prevents hard-refresh on routes like /tools from showing Vercel 404.
+  if (request.mode === 'navigate' || request.destination === 'document') {
+    event.respondWith(handleDocumentRequest(request));
     return;
   }
 
@@ -111,6 +130,105 @@ self.addEventListener('fetch', (event) => {
   // 其他请求 - Network First
   event.respondWith(handleNavigationRequest(request));
 });
+
+/**
+ * 处理文档导航请求（SPA）
+ * - Network First
+ * - 如果服务端返回 404（通常是 SPA 路由未命中），回退到缓存的 App Shell (/)
+ * - 网络异常时，也回退到缓存
+ */
+async function handleDocumentRequest(request) {
+  const cache = await caches.open(STATIC_CACHE);
+
+  try {
+    const response = await fetch(request);
+
+    // Cache successful HTML navigations for offline support.
+    if (response.ok && response.headers.get('Content-Type')?.includes('text/html')) {
+      await cache.put(request, response.clone());
+      return response;
+    }
+
+    // If the server responds 404 for an SPA route, serve the app shell instead.
+    if (response.status === 404) {
+      const cachedShell = await cache.match(APP_SHELL_URL) || await cache.match('/index.html');
+      if (cachedShell) {
+        return cachedShell;
+      }
+    }
+
+    return response;
+  } catch (error) {
+    // Network failure: return cached route if present, otherwise app shell.
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse) {
+      console.log('[SW] Document served from cache:', request.url);
+      return cachedResponse;
+    }
+
+    const cachedShell = await cache.match(APP_SHELL_URL) || await cache.match('/index.html');
+    if (cachedShell) {
+      console.log('[SW] App shell served from cache for:', request.url);
+      return cachedShell;
+    }
+
+    // Fallback offline HTML
+    return new Response(
+      `<!DOCTYPE html>
+      <html>
+      <head>
+        <title>离线 - TumuAI</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: #f3f4f6;
+            color: #1f2937;
+          }
+          .offline-card {
+            text-align: center;
+            padding: 2rem;
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            max-width: 400px;
+            margin: 1rem;
+          }
+          h1 { margin: 0 0 0.5rem 0; color: #2563eb; }
+          p { margin: 0 0 1rem 0; color: #6b7280; }
+          button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+          }
+          button:hover { background: #1d4ed8; }
+        </style>
+      </head>
+      <body>
+        <div class="offline-card">
+          <h1>离线模式</h1>
+          <p>您当前处于离线状态，请检查网络连接后刷新页面。</p>
+          <button onclick="window.location.reload()">重新连接</button>
+        </div>
+      </body>
+      </html>`,
+      {
+        status: 200,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      }
+    );
+  }
+}
 
 /**
  * 处理 API 请求 - Network First

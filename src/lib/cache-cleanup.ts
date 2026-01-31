@@ -30,6 +30,25 @@ export function cleanupOldCache() {
     // 标记清理已完成
     localStorage.setItem('cache-cleanup-v2', 'completed')
     console.log('✅ 缓存清理完成')
+
+    // Best-effort: clear Service Worker Cache Storage for this app.
+    // This helps users who are stuck on an old cached index.html after a deployment.
+    if (typeof caches !== 'undefined') {
+      caches.keys()
+        .then((keys) => Promise.all(
+          keys
+            .filter((key) => key.startsWith('tumuai-'))
+            .map((key) => caches.delete(key))
+        ))
+        .catch(() => {})
+    }
+
+    // Best-effort: ask the SW to update.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration()
+        ?.then((reg) => reg?.update())
+        .catch(() => {})
+    }
     
     return true
   } catch (error) {
@@ -45,7 +64,7 @@ export function shouldCleanupCache(): boolean {
 
 // 应用版本检查和强制刷新机制
 export function checkVersionAndRefresh() {
-  const currentVersion = '2.0.0' // 当前应用版本
+  const currentVersion = '2.0.1' // 当前应用版本（变更时会触发一次清理/刷新）
   const storedVersion = localStorage.getItem('tumuai-app-version')
   
   if (!storedVersion || storedVersion !== currentVersion) {
