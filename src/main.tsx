@@ -19,8 +19,37 @@ try {
 
 // 注册 Service Worker - 非 Hook 方式
 if ('serviceWorker' in navigator && typeof window !== 'undefined') {
+  let refreshing = false;
+
+  // When a new service worker takes control, reload once to ensure the new hashed assets are used.
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((error) => {
+    navigator.serviceWorker.register('/sw.js').then((registration) => {
+      // If a SW is already waiting (e.g. user kept the tab open), activate it now.
+      if (registration.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+
+      // When a new SW is found, activate it as soon as it's installed.
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (!newWorker) return;
+
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            newWorker.postMessage({ type: 'SKIP_WAITING' });
+          }
+        });
+      });
+
+      // Best-effort: ask for an update on page load.
+      registration.update().catch(() => {});
+    }).catch((error) => {
       console.error('[SW] Registration failed:', error);
     });
   });

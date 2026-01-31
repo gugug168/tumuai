@@ -11,7 +11,7 @@
  */
 
 // Bump this when changing caching logic to ensure clients get fresh assets.
-const SW_VERSION = 'v2';
+const SW_VERSION = 'v3';
 const STATIC_CACHE = `tumuai-static-${SW_VERSION}`;
 const API_CACHE = `tumuai-api-${SW_VERSION}`;
 
@@ -86,6 +86,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
+  const accept = request.headers.get('accept') || '';
 
   // 跳过非 HTTP 请求
   if (!url.protocol.startsWith('http')) {
@@ -110,7 +111,8 @@ self.addEventListener('fetch', (event) => {
 
   // SPA 文档导航请求 - Network First + 404 fallback to app shell
   // This prevents hard-refresh on routes like /tools from showing Vercel 404.
-  if (request.mode === 'navigate' || request.destination === 'document') {
+  // Some browsers / fetch() calls may not set mode=navigate, so we also detect HTML by Accept header.
+  if (request.mode === 'navigate' || request.destination === 'document' || accept.includes('text/html')) {
     event.respondWith(handleDocumentRequest(request));
     return;
   }

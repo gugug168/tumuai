@@ -64,7 +64,7 @@ export function shouldCleanupCache(): boolean {
 
 // 应用版本检查和强制刷新机制
 export function checkVersionAndRefresh() {
-  const currentVersion = '2.0.1' // 当前应用版本（变更时会触发一次清理/刷新）
+  const currentVersion = '2.0.2' // 当前应用版本（变更时会触发一次清理/刷新）
   const storedVersion = localStorage.getItem('tumuai-app-version')
   
   if (!storedVersion || storedVersion !== currentVersion) {
