@@ -221,10 +221,12 @@ const ToolsPage = React.memo(() => {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* 页面标题骨架 */}
+          {/* 页面标题（先渲染结构，避免用户看到“空白骨架”） */}
           <div className="mb-8">
-            <div className="h-8 bg-gray-200 rounded w-32 animate-pulse mb-4"></div>
-            <div className="h-5 bg-gray-200 rounded w-64 animate-pulse"></div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">工具中心</h1>
+            <p className="text-lg text-gray-600">
+              发现最适合土木工程师的AI工具和效率工具
+            </p>
           </div>
 
           {/* 搜索栏骨架 */}
