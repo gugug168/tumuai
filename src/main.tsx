@@ -43,7 +43,7 @@ if ('serviceWorker' in navigator && typeof window !== 'undefined') {
   });
 
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then((registration) => {
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((registration) => {
       // If a SW is already waiting (e.g. user kept the tab open), activate it now.
       if (registration.waiting) {
         registration.waiting.postMessage({ type: 'SKIP_WAITING' });

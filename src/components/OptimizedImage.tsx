@@ -1,5 +1,92 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+type BrokenImgMap = Record<string, number>; // url -> expiresAt (ms)
+
+const BROKEN_IMG_STORAGE_KEY = 'tumuai_broken_img_v1';
+const BROKEN_IMG_TTL_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+const BROKEN_IMG_MAX_ENTRIES = 200;
+
+let brokenImgMapCache: BrokenImgMap | null = null;
+
+function loadBrokenImgMap(): BrokenImgMap {
+  if (brokenImgMapCache) return brokenImgMapCache;
+
+  if (typeof window === 'undefined') {
+    brokenImgMapCache = {};
+    return brokenImgMapCache;
+  }
+
+  try {
+    const raw = localStorage.getItem(BROKEN_IMG_STORAGE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as BrokenImgMap) : {};
+    const map: BrokenImgMap = parsed && typeof parsed === 'object' ? parsed : {};
+
+    // Prune expired entries on load.
+    const now = Date.now();
+    for (const [url, expiresAt] of Object.entries(map)) {
+      if (typeof expiresAt !== 'number' || expiresAt <= now) {
+        delete map[url];
+      }
+    }
+
+    brokenImgMapCache = map;
+    return map;
+  } catch {
+    brokenImgMapCache = {};
+    return brokenImgMapCache;
+  }
+}
+
+function saveBrokenImgMap(map: BrokenImgMap) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(BROKEN_IMG_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // Ignore storage errors (quota, private mode, etc.)
+  }
+}
+
+function isHttpUrl(url: string): boolean {
+  return /^https?:\/\//i.test(url);
+}
+
+function isKnownBrokenUrl(url: string): boolean {
+  if (!isHttpUrl(url)) return false;
+  const map = loadBrokenImgMap();
+  const expiresAt = map[url];
+  if (typeof expiresAt !== 'number') return false;
+
+  if (expiresAt <= Date.now()) {
+    delete map[url];
+    saveBrokenImgMap(map);
+    return false;
+  }
+
+  return true;
+}
+
+function markBrokenUrl(url: string) {
+  if (!isHttpUrl(url)) return;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+
+  const map = loadBrokenImgMap();
+  map[url] = Date.now() + BROKEN_IMG_TTL_MS;
+
+  // Keep the map bounded to avoid unbounded localStorage growth.
+  const keys = Object.keys(map);
+  if (keys.length > BROKEN_IMG_MAX_ENTRIES) {
+    // Remove the oldest (smallest expiresAt) entries.
+    keys
+      .sort((a, b) => (map[a] || 0) - (map[b] || 0))
+      .slice(0, keys.length - BROKEN_IMG_MAX_ENTRIES)
+      .forEach((k) => {
+        delete map[k];
+      });
+  }
+
+  saveBrokenImgMap(map);
+}
+
 interface OptimizedImageProps {
   src: string;
   alt: string;
@@ -27,11 +114,18 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   width,
   height
 }) => {
+  const initialBroken = typeof window !== 'undefined' ? isKnownBrokenUrl(src) : false;
   const [isLoaded, setIsLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const [hasError, setHasError] = useState(initialBroken);
   const [isInView, setIsInView] = useState(!lazyLoad || priority);
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // If the src changes, reset local loading state (but respect the broken-url cache).
+  useEffect(() => {
+    setIsLoaded(false);
+    setHasError(typeof window !== 'undefined' ? isKnownBrokenUrl(src) : false);
+  }, [src]);
 
   // Intersection Observer for lazy loading
   useEffect(() => {
@@ -65,6 +159,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
   const handleError = () => {
     setHasError(true);
+    markBrokenUrl(src);
   };
 
   // 将 width/height 转换为 CSS 值
@@ -86,7 +181,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
       }}
     >
       {/* 实际图片 */}
-      {isInView && (
+      {isInView && !hasError && (
         <img
           ref={imgRef}
           src={src}

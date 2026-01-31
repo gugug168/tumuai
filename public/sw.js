@@ -16,7 +16,7 @@ const swLog = (...args) => { if (SW_DEBUG) console.log(...args); };
 const swWarn = (...args) => { if (SW_DEBUG) console.warn(...args); };
 
 // Bump this when changing caching logic to ensure clients get fresh assets.
-const SW_VERSION = 'v3';
+const SW_VERSION = 'v4';
 const STATIC_CACHE = `tumuai-static-${SW_VERSION}`;
 const API_CACHE = `tumuai-api-${SW_VERSION}`;
 
@@ -299,7 +299,7 @@ async function handleStaticRequest(request) {
     }
     return response;
   } catch (error) {
-    console.error('[SW] Failed to fetch static asset:', request.url);
+    swWarn('[SW] Failed to fetch static asset:', request.url);
     throw error;
   }
 }
