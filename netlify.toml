@@ -1,0 +1,13 @@
+[build]
+  publish = "dist"
+  command = "npm run build"
+
+# Legacy Netlify deployment redirect:
+# This project is now hosted on Vercel (tumuai.net). Keep the Netlify URL working by redirecting
+# all traffic to the canonical domain, so users don't hit missing `/api/*` routes on Netlify.
+[[redirects]]
+  from = "/*"
+  to = "https://www.tumuai.net/:splat"
+  status = 301
+  force = true
+
