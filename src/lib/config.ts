@@ -63,17 +63,13 @@ export const APP_CONFIG = {
   supportedImageTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const
 } as const
 
-// API端点配置  
+// API端点配置
 export const API_ENDPOINTS = {
   vercelFunctions: {
-    adminAuthCheck: '/api/admin-auth-check', // 服务端权限验证
     adminCheck: '/api/admin-check',
-    adminDatasets: '/api/admin-datasets', 
+    adminDatasets: '/api/admin-datasets',
     adminCategories: '/api/admin-categories',
     adminToolsCrud: '/api/admin-tools-crud',
-    adminStats: '/api/admin-stats',
-    tools: '/api/tools',
-    userFavorites: '/api/user-favorites',
-    setupAdmin: '/api/setup-admin' // 管理员初始化
+    tools: '/api/tools'
   }
 } as const
