@@ -17,7 +17,11 @@ interface ToolsCacheResponse {
   count?: number
   cached: boolean
   timestamp: string
+  version?: string  // 数据版本号
 }
+
+// 数据版本号 - 当工具数据更新时需要修改此版本号
+const DATA_VERSION = 'v1.0.6'  // 当前有106个工具
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   try {
@@ -25,6 +29,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
     const limit = parseInt(request.query.limit as string) || 12
     const offset = parseInt(request.query.offset as string) || 0
     const includeCount = request.query.includeCount === 'true'
+    const bypassCache = request.query.bypass === 'true'  // 强制绕过缓存
 
     // 参数验证
     if (limit > 100) {
@@ -90,17 +95,28 @@ export default async function handler(request: VercelRequest, response: VercelRe
       tools: toolsResult.data || [],
       count: countResult.count || undefined,
       cached: false,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      version: DATA_VERSION
     }
 
     // 7. 设置缓存头（Vercel Edge + CDN 缓存）
-    // - s-maxage: CDN 缓存 5 分钟
-    // - stale-while-revalidate: 后台刷新期间可使用过期缓存 10 分钟
-    response.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
+    // 如果 bypassCache=true，则不缓存
+    if (bypassCache) {
+      response.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+      response.setHeader('Pragma', 'no-cache')
+      response.setHeader('Expires', '0')
+    } else {
+      // 使用 Cache-Tag 进行精确缓存控制
+      response.setHeader('Cache-Tag', `tools, tools-v${DATA_VERSION}`)
 
-    // 8. 添加额外的缓存优化头
-    response.setHeader('CDN-Cache-Control', 'public, s-maxage=300')
-    response.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=300')
+      // s-maxage: CDN 缓存 2 分钟（从5分钟减少到2分钟）
+      // stale-while-revalidate: 后台刷新期间可使用过期缓存 5 分钟
+      response.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300')
+
+      // 添加额外的缓存优化头
+      response.setHeader('CDN-Cache-Control', 'public, s-maxage=120')
+      response.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=120')
+    }
 
     return response.status(200).json(result)
 
@@ -119,13 +135,17 @@ export default async function handler(request: VercelRequest, response: VercelRe
  * ============================================================
  *
  * 1. 在 Vercel 部署后，此 API 自动启用 Edge Runtime
- * 2. 响应会被 Vercel Edge Network 缓存 5 分钟
+ * 2. 响应会被 Vercel Edge Network 缓存 2 分钟
  * 3. 所有用户共享同一份缓存，大幅降低数据库负载
+ * 4. 数据版本控制：当工具数据更新时，修改 DATA_VERSION 常量
  *
  * 调用示例：
  * GET /api/tools-cache?limit=12&offset=0&includeCount=true
  *
- * 4. 要强制刷新缓存，可以添加时间戳参数：
- * GET /api/tools-cache?limit=12&_t=1234567890
+ * 强制绕过缓存（用于调试）：
+ * GET /api/tools-cache?limit=12&bypass=true
+ *
+ * 清除缓存：
+ * GET /api/clear-cache?token=cache-clear-2025&pattern=tools
  * ============================================================
  */
