@@ -207,13 +207,17 @@ export function useCache() {
 // 兼容的全局清理函数
 export const clearGlobalCache = () => {
   unifiedCache.invalidate();
-  console.log('🗑️ Legacy global cache cleared (via unified cache)');
+  if (import.meta.env.DEV) {
+    console.log('🗑️ Legacy global cache cleared (via unified cache)');
+  }
 };
 
 // 迁移提醒日志
-console.warn(`
+if (import.meta.env.DEV) {
+  console.warn(`
 ⚠️  缓存兼容层已激活
 建议逐步迁移到新的统一缓存管理器:
 - 使用 import { unifiedCache, useUnifiedCache } from './unified-cache-manager'
 - 查看 CACHE_MIGRATION.md 了解迁移指南
 `);
+}
