@@ -18,7 +18,7 @@ const Hero = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // 获取工具总数 - 优先使用 Vercel API，开发环境回退到 Supabase
+        // 获取工具总数 - 生产环境优先使用 Vercel API（可命中 CDN 缓存）
         let toolsCount = 0;
 
         // 检测是否在开发环境
@@ -29,9 +29,8 @@ const Hero = () => {
           const { getToolsCount } = await import('../lib/supabase');
           toolsCount = await getToolsCount();
         } else {
-          // 生产环境：使用 Vercel API，添加时间戳绕过缓存
-          const cacheBuster = Date.now();
-          const toolsResponse = await fetch(`/api/tools-cache?limit=1&includeCount=true&_t=${cacheBuster}`);
+          // 生产环境：使用 Vercel API（不要加时间戳，否则每次都会绕过 CDN 缓存，反而更慢）
+          const toolsResponse = await fetch('/api/tools-cache?limit=1&includeCount=true');
           if (toolsResponse.ok) {
             const toolsData = await toolsResponse.json();
             toolsCount = toolsData.count || 0;
@@ -42,15 +41,23 @@ const Hero = () => {
           }
         }
 
-        // 获取分类数量
-        const categoriesResponse = await fetch('https://bixljqdwkjuzftlpmgtb.supabase.co/rest/v1/categories?select=*&is_active=eq.true', {
-          headers: {
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || ''}`
+        // 获取分类数量 - 同样使用 Vercel API（CDN 缓存 + 同源请求更快）
+        let categoriesCount = 0;
+        if (isDev) {
+          const { getCategories } = await import('../lib/supabase');
+          const categories = await getCategories();
+          categoriesCount = categories.length || 0;
+        } else {
+          const categoriesResponse = await fetch('/api/categories-cache');
+          if (categoriesResponse.ok) {
+            const categoriesData = await categoriesResponse.json();
+            categoriesCount = categoriesData?.categories?.length || 0;
+          } else {
+            const { getCategories } = await import('../lib/supabase');
+            const categories = await getCategories();
+            categoriesCount = categories.length || 0;
           }
-        });
-        const categoriesData = await categoriesResponse.json();
-        const categoriesCount = categoriesData.length || 0;
+        }
 
         setStats({ toolsCount, categoriesCount });
       } catch (error) {
