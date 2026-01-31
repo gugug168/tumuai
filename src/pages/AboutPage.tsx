@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import CountUpAnimation from '../components/CountUpAnimation';
 import { useMetaTags } from '../hooks/useMetaTags';
+import { getCategories, getToolsCount } from '../lib/supabase';
 
 interface SiteStats {
   toolsCount: number;
@@ -160,7 +161,6 @@ const AboutPage = React.memo(() => {
         // Tools count
         let toolsCount = 0;
         if (isDev) {
-          const { getToolsCount } = await import('../lib/supabase');
           toolsCount = await getToolsCount();
         } else {
           const toolsResponse = await fetch('/api/tools-cache?limit=1&includeCount=true');
@@ -168,7 +168,6 @@ const AboutPage = React.memo(() => {
             const toolsData = await toolsResponse.json();
             toolsCount = toolsData.count || 0;
           } else {
-            const { getToolsCount } = await import('../lib/supabase');
             toolsCount = await getToolsCount();
           }
         }
@@ -176,7 +175,6 @@ const AboutPage = React.memo(() => {
         // Categories count
         let categoriesCount = 0;
         if (isDev) {
-          const { getCategories } = await import('../lib/supabase');
           const categories = await getCategories();
           categoriesCount = categories.length || 0;
         } else {
@@ -185,7 +183,6 @@ const AboutPage = React.memo(() => {
             const categoriesData = await categoriesResponse.json();
             categoriesCount = categoriesData?.categories?.length || 0;
           } else {
-            const { getCategories } = await import('../lib/supabase');
             const categories = await getCategories();
             categoriesCount = categories.length || 0;
           }
@@ -571,4 +568,3 @@ const AboutPage = React.memo(() => {
 AboutPage.displayName = 'AboutPage';
 
 export default AboutPage;
-

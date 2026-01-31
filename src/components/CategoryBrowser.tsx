@@ -23,7 +23,7 @@ import {
   ExternalLink,
   LoaderIcon
 } from 'lucide-react';
-import { getCategoriesWithCache } from '../lib/supabase';
+import { getCategories } from '../lib/supabase';
 
 // 图标映射
 const iconMap: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
@@ -106,8 +106,8 @@ const CategoryBrowser = React.memo(() => {
       setError(null);
       console.log('🔍 CategoryBrowser: 开始获取分类数据（带缓存）...');
 
-      // 使用带缓存的分类获取
-      const categoriesData = await getCategoriesWithCache();
+      // 分类获取已内置缓存（unifiedCache）
+      const categoriesData = await getCategories();
 
       setCategories(categoriesData);
 

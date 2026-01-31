@@ -5,7 +5,7 @@ import OptimizedImage from './OptimizedImage';
 import { getFeaturedTools } from '../lib/supabase';
 import { generateInitialLogo } from '../lib/logoUtils';
 import { apiRequestWithRetry } from '../lib/api';
-import { useCache } from '../hooks/useCache';
+import { useUnifiedCache } from '../lib/unified-cache-manager';
 import { usePerformance } from '../hooks/usePerformance';
 import { SkeletonCard, SkeletonWrapper } from './SkeletonLoader';
 import type { Tool } from '../types/index';
@@ -19,7 +19,7 @@ const FeaturedTools = React.memo(() => {
   const [error, setError] = useState<string | null>(null);
 
   // 性能监控和缓存hooks
-  const { fetchWithCache } = useCache();
+  const { fetchWithCache } = useUnifiedCache();
   const { recordApiCall, recordInteraction } = usePerformance('FeaturedTools');
 
   // 判断 logo_url 是否有效
@@ -109,7 +109,7 @@ const FeaturedTools = React.memo(() => {
       const fetchedTools = await recordApiCall('fetch_featured_tools', async () => {
         return await fetchWithCache('featured_tools',
           () => apiRequestWithRetry(() => getFeaturedTools()),
-          { ttl: 3 * 60 * 1000, staleWhileRevalidate: 30 * 1000 }
+          { ttl: 3 * 60 * 1000, staleWhileRevalidate: true, staleTime: 30 * 1000 }
         );
       });
       

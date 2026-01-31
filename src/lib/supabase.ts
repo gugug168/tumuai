@@ -1,37 +1,8 @@
-import { createClient } from '@supabase/supabase-js'
-import type { Tool, ToolSearchFilters } from '../types'
+import type { Category, Tool, ToolSearchFilters } from '../types'
+import { supabase } from './supabase-client'
 import { CategoryManager } from './category-manager'
 import { unifiedCache } from './unified-cache-manager'
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-// 检查环境变量是否已设置
-if (!supabaseUrl) {
-  console.error('Missing VITE_SUPABASE_URL environment variable')
-  throw new Error('Missing VITE_SUPABASE_URL environment variable. Please check your .env file or Vercel environment variables.')
-}
-
-if (!supabaseAnonKey) {
-  console.error('Missing VITE_SUPABASE_ANON_KEY environment variable')
-  throw new Error('Missing VITE_SUPABASE_ANON_KEY environment variable. Please check your .env file or Vercel environment variables.')
-}
-
-// 🚀 单一的Supabase客户端实例（防止Multiple GoTrueClient警告）
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    detectSessionInUrl: true,
-    // 防止多实例警告的关键配置 - 使用时间戳确保唯一性
-    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    autoRefreshToken: true,
-    // 使用固定但唯一的存储键，避免与旧版本冲突
-    storageKey: 'tumuai-auth-v2-stable',
-    // 增强隔离性配置
-    debug: false,
-    flowType: 'pkce'
-  }
-})
+export { supabase } from './supabase-client'
 
 // 临时禁用RLS的客户端配置
 // 注意：前端不再创建额外的 admin 客户端，以避免多 GoTrueClient 警告和不必要的权限暴露。
@@ -726,23 +697,26 @@ export async function searchTools(
   }
 }
 
-// 获取分类列表 - 使用统一的CategoryManager
-export async function getCategories() {
-  return await CategoryManager.getCategories();
-}
-
 // 获取分类列表（带缓存）
-export async function getCategoriesWithCache() {
+// CategoryManager 负责“API 优先 + 数据库兜底 + emergency fallback”的获取逻辑；
+// unifiedCache 负责缓存 + 请求去重，避免多个组件同时触发重复请求。
+export async function getCategories(): Promise<Category[]> {
   const cacheKey = 'categories_list_full';
 
   return unifiedCache.fetchWithCache(
     cacheKey,
-    () => getCategories(),
+    () => CategoryManager.getCategories(),
     {
       ttl: 15 * 60 * 1000, // 15分钟缓存 - 分类变化不频繁
-      staleWhileRevalidate: true
+      staleWhileRevalidate: true,
+      staleTime: 5 * 60 * 1000
     }
   );
+}
+
+// Backwards-compatible alias. Prefer `getCategories()`.
+export async function getCategoriesWithCache(): Promise<Category[]> {
+  return getCategories();
 }
 
 /**

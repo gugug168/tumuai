@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Sparkles, Building2, Calculator, PenTool } from 'lucide-react';
 import CountUpAnimation from './CountUpAnimation';
+import { getCategories, getToolsCount } from '../lib/supabase';
 
 interface SiteStats {
   toolsCount: number;
@@ -26,7 +27,6 @@ const Hero = () => {
 
         if (isDev) {
           // 开发环境：直接使用 Supabase
-          const { getToolsCount } = await import('../lib/supabase');
           toolsCount = await getToolsCount();
         } else {
           // 生产环境：使用 Vercel API（不要加时间戳，否则每次都会绕过 CDN 缓存，反而更慢）
@@ -36,7 +36,6 @@ const Hero = () => {
             toolsCount = toolsData.count || 0;
           } else {
             // API 失败，回退到 Supabase
-            const { getToolsCount } = await import('../lib/supabase');
             toolsCount = await getToolsCount();
           }
         }
@@ -44,7 +43,6 @@ const Hero = () => {
         // 获取分类数量 - 同样使用 Vercel API（CDN 缓存 + 同源请求更快）
         let categoriesCount = 0;
         if (isDev) {
-          const { getCategories } = await import('../lib/supabase');
           const categories = await getCategories();
           categoriesCount = categories.length || 0;
         } else {
@@ -53,7 +51,6 @@ const Hero = () => {
             const categoriesData = await categoriesResponse.json();
             categoriesCount = categoriesData?.categories?.length || 0;
           } else {
-            const { getCategories } = await import('../lib/supabase');
             const categories = await getCategories();
             categoriesCount = categories.length || 0;
           }
