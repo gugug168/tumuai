@@ -23,7 +23,9 @@ const AdminLoginPage = React.lazy(() => import('./pages/AdminLoginPage'));
 
 /**
  * 数据预加载组件
- * 在用户访问首页时，使用 requestIdleCallback 在空闲时预加载工具和分类数据
+ * 在用户访问首页时，使用 requestIdleCallback 在空闲时预加载关键路由 chunk（提升导航体验）。
+ *
+ * 注意：不再在这里预拉取 tools 列表数据，否则会增加首页网络请求数，导致“加载更慢”的体感。
  */
 function DataPreloader() {
   const location = useLocation();
@@ -36,24 +38,8 @@ function DataPreloader() {
       const preloadData = () => {
         console.log('🔄 DataPreloader: 开始预加载数据...', `当前路径: ${location.pathname}`);
 
-        // 并行预加载工具列表（命中 CDN 缓存）+ 关键路由 chunk（提升导航体验）
+        // 仅预加载关键页面 chunk，避免点击后才开始下载导致“慢”的体感
         Promise.allSettled([
-          // 预加载工具列表
-          // 预热 CDN 缓存，并顺带拿到 count（与 /tools 首次进入使用同一条缓存）
-          // 这里带上 includeCount，使 /tools 首次进入可以直接命中同一条缓存。
-          fetch('/api/tools-cache?limit=12&offset=0&includeCount=true')
-            .then(res => {
-              if (res.ok) {
-                console.log('✅ DataPreloader: 工具数据预加载成功');
-                return res.json();
-              }
-              throw new Error(`工具数据预加载失败: ${res.status}`);
-            })
-            .catch(err => {
-              console.warn('⚠️ DataPreloader: 工具数据预加载失败:', err);
-            }),
-
-          // 预加载关键页面 chunk，避免点击后才开始下载导致“慢”的体感
           import('./pages/ToolsPage').catch(() => undefined),
           import('./pages/SubmitToolPage').catch(() => undefined)
         ]).then(() => {

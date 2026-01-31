@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Sparkles, Building2, Calculator, PenTool } from 'lucide-react';
 import CountUpAnimation from './CountUpAnimation';
 import { getCategories, getToolsCount } from '../lib/supabase';
+import { useHomeData } from '../contexts/HomeDataContext';
 
 interface SiteStats {
   toolsCount: number;
@@ -11,12 +12,16 @@ interface SiteStats {
 
 const Hero = () => {
   const navigate = useNavigate();
+  const homeData = useHomeData();
   const [searchQuery, setSearchQuery] = useState('');
   const [stats, setStats] = useState<SiteStats>({ toolsCount: 0, categoriesCount: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   // 获取真实的统计数据
   useEffect(() => {
+    // If wrapped by HomeDataProvider, reuse the shared request and avoid duplicate fetches.
+    if (homeData) return;
+
     const fetchStats = async () => {
       try {
         // 获取工具总数 - 生产环境优先使用 Vercel API（可命中 CDN 缓存）
@@ -67,7 +72,7 @@ const Hero = () => {
     };
 
     fetchStats();
-  }, []);
+  }, [homeData]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,10 +182,10 @@ const Hero = () => {
           <div className="flex items-center justify-center space-x-6 md:space-x-8 text-gray-300">
             <div className="text-center group cursor-default">
               <div className="text-2xl md:text-3xl font-bold text-blue-400 group-hover:text-blue-300 transition-colors">
-                {isLoading ? (
+                {(homeData ? homeData.toolsCountLoading : isLoading) ? (
                   <span className="inline-block animate-pulse">...</span>
                 ) : (
-                  <CountUpAnimation end={stats.toolsCount} suffix="+" duration={1500} className="inline-block" />
+                  <CountUpAnimation end={homeData ? homeData.toolsCount : stats.toolsCount} suffix="+" duration={1500} className="inline-block" />
                 )}
               </div>
               <div className="text-xs mt-1">专业工具</div>
@@ -188,10 +193,10 @@ const Hero = () => {
             <div className="w-px h-8 bg-gray-600"></div>
             <div className="text-center group cursor-default">
               <div className="text-2xl md:text-3xl font-bold text-purple-400 group-hover:text-purple-300 transition-colors">
-                {isLoading ? (
+                {(homeData ? homeData.categoriesLoading : isLoading) ? (
                   <span className="inline-block animate-pulse">...</span>
                 ) : (
-                  <CountUpAnimation end={stats.categoriesCount} suffix="+" duration={1500} delay={200} className="inline-block" />
+                  <CountUpAnimation end={homeData ? homeData.categories.length : stats.categoriesCount} suffix="+" duration={1500} delay={200} className="inline-block" />
                 )}
               </div>
               <div className="text-xs mt-1">工具分类</div>

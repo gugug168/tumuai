@@ -23,7 +23,9 @@ import {
   ExternalLink,
   LoaderIcon
 } from 'lucide-react';
+import type { Category } from '../types';
 import { getCategories } from '../lib/supabase';
+import { useHomeData } from '../contexts/HomeDataContext';
 
 // 图标映射
 const iconMap: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
@@ -87,9 +89,14 @@ const getGradientClass = (hexColor: string) => {
 // };
 
 const CategoryBrowser = React.memo(() => {
-  const [categories, setCategories] = useState([]);
+  const homeData = useHomeData();
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const categoriesToRender = homeData ? homeData.categories : categories;
+  const loadingToRender = homeData ? homeData.categoriesLoading : loading;
+  const errorToRender = homeData ? homeData.categoriesError : error;
 
   // 使用 ref 防止重复请求
   const isLoadingRef = useRef(false);
@@ -124,10 +131,12 @@ const CategoryBrowser = React.memo(() => {
   }, []);
 
   useEffect(() => {
+    // If wrapped by HomeDataProvider, reuse the shared request and avoid duplicate fetches.
+    if (homeData) return;
     fetchCategories();
-  }, [fetchCategories]);
+  }, [fetchCategories, homeData]);
 
-  if (loading) {
+  if (loadingToRender) {
     return (
       <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -140,14 +149,20 @@ const CategoryBrowser = React.memo(() => {
     );
   }
 
-  if (error) {
+  if (errorToRender) {
     return (
       <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <p className="text-red-600 mb-4">{error}</p>
+            <p className="text-red-600 mb-4">{errorToRender}</p>
             <button 
-              onClick={() => window.location.reload()} 
+              onClick={() => {
+                if (homeData) {
+                  void homeData.refresh();
+                  return;
+                }
+                window.location.reload();
+              }}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
               重新加载
@@ -170,7 +185,7 @@ const CategoryBrowser = React.memo(() => {
 
         {/* 分类展示 - 显示真实的分类数据 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {categories.map((category) => {
+          {categoriesToRender.map((category) => {
             const IconComponent = iconMap[category.icon] || FileText;
             const gradientClass = getGradientClass(category.color);
             
@@ -216,12 +231,18 @@ const CategoryBrowser = React.memo(() => {
         </div>
 
         {/* 如果分类数据为空的提示 */}
-        {categories.length === 0 && !loading && (
+        {categoriesToRender.length === 0 && !loadingToRender && (
           <div className="text-center py-12">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500 mb-4">暂无分类数据</p>
             <button 
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                if (homeData) {
+                  void homeData.refresh();
+                  return;
+                }
+                window.location.reload();
+              }}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
               重新加载
