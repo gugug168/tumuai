@@ -64,8 +64,47 @@ export function useToolData(performanceHooks?: {
   // 引用
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const userIdRef = useRef<string | null>(null);
+  const preloadingPagesRef = useRef<Set<string>>(new Set());
 
   const { recordApiCall, recordInteraction } = performanceHooks || {};
+
+  /**
+   * 预加载某一页的数据（不更新 UI 状态）
+   *
+   * 目的：只做网络/缓存预热，避免触发 ToolsPage 的全屏 loading skeleton，
+   * 否则在页面底部会出现“闪动/抖动”的体验问题。
+   */
+  const preloadToolsPage = useCallback(async (page: number, filters?: ToolSearchFilters) => {
+    if (page < 1) return;
+
+    const hasFilters = !!filters &&
+      ((filters.categories && filters.categories.length > 0) ||
+       filters.pricing ||
+       (filters.features && filters.features.length > 0));
+
+    // 只对“普通分页”做预加载；服务端筛选会一次性拉取大量数据，预加载意义不大且更耗资源。
+    if (hasFilters) return;
+
+    const limit = TOOLS_PER_PAGE;
+    const offset = (page - 1) * TOOLS_PER_PAGE;
+    const key = `tools_page_${page}`;
+
+    if (preloadingPagesRef.current.has(key)) return;
+    preloadingPagesRef.current.add(key);
+
+    try {
+      const apiCall = () => getToolsSmart(limit, offset, false);
+      if (recordApiCall) {
+        await recordApiCall('preload_tools_page', apiCall, { page, limit, offset });
+      } else {
+        await apiCall();
+      }
+    } catch {
+      // 预加载失败不影响主流程，静默忽略
+    } finally {
+      preloadingPagesRef.current.delete(key);
+    }
+  }, [recordApiCall]);
 
   /**
    * 更新状态的辅助函数
@@ -320,6 +359,7 @@ export function useToolData(performanceHooks?: {
     loadFavoriteStates,
     toggleFavorite,
     retryLoad,
+    preloadToolsPage,
     setCurrentPage,
     setUserId: (id: string) => { userIdRef.current = id; },
 

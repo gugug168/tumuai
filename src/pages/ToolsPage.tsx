@@ -65,6 +65,7 @@ const ToolsPage = React.memo(() => {
     loadFavoriteStates,
     toggleFavorite,
     retryLoad,
+    preloadToolsPage,
     setCurrentPage,
     setUserId,
     TOOLS_PER_PAGE
@@ -205,19 +206,20 @@ const ToolsPage = React.memo(() => {
   // 处理预加载下一页
   const handlePreloadNext = useCallback(() => {
     if (currentPage < totalPages) {
-      // 预加载下一页数据
-      if (!needsServerFiltering) {
-        loadTools(false, currentPage + 1);
+      // 预加载下一页数据（仅预热，不改变 UI）
+      if (!needsServerFiltering && !hasActiveFilters) {
+        preloadToolsPage(currentPage + 1);
       }
     }
-  }, [currentPage, totalPages, needsServerFiltering, loadTools]);
+  }, [currentPage, totalPages, needsServerFiltering, hasActiveFilters, preloadToolsPage]);
 
   // ========================================
   // 渲染
   // ========================================
 
   // 加载骨架屏
-  if (loading) {
+  // 仅在“首次无数据”时显示全屏骨架屏，避免底部预加载/翻页时出现闪动。
+  if (loading && tools.length === 0 && allFilteredTools.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
