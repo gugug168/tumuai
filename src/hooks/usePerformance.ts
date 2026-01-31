@@ -18,6 +18,8 @@ interface PerformanceMetrics {
   slowRenders: number; // >16ms
 }
 
+const IS_DEV = import.meta.env.DEV;
+
 // 全局性能数据存储
 const performanceData: {
   entries: PerformanceEntry[];
@@ -28,6 +30,35 @@ const performanceData: {
 };
 
 export function usePerformance(componentName?: string) {
+  // Production: return lightweight no-op helpers to avoid runtime overhead.
+  if (!IS_DEV) {
+    const emptyMetrics: PerformanceMetrics = {
+      renders: [],
+      apis: [],
+      interactions: [],
+      averageRenderTime: 0,
+      averageApiTime: 0,
+      totalRenders: 0,
+      slowRenders: 0
+    };
+
+    return {
+      startTiming: () => '',
+      endTiming: () => {},
+      recordRender: () => {},
+      recordApiCall: async <T>(
+        _name: string,
+        apiCall: () => Promise<T>,
+        _metadata?: Record<string, any>
+      ): Promise<T> => apiCall(),
+      recordInteraction: () => {},
+      getMetrics: () => emptyMetrics,
+      printReport: () => emptyMetrics,
+      clearMetrics: () => {},
+      renderCount: 0
+    };
+  }
+
   const componentRef = useRef<string>(componentName || 'Unknown');
   const renderCountRef = useRef(0);
   const lastRenderTime = useRef<number>(0);
@@ -148,8 +179,6 @@ export function usePerformance(componentName?: string) {
 
   // 记录用户交互（仅开发环境）
   const recordInteraction = useCallback((interactionName: string, metadata?: Record<string, any>) => {
-    if (process.env.NODE_ENV !== 'development') return;
-
     const entry: PerformanceEntry = {
       name: `${componentRef.current}_${interactionName}`,
       startTime: performance.now(),
@@ -278,9 +307,7 @@ export function usePerformance(componentName?: string) {
 
   // 在组件每次渲染时记录（仅开发环境）
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      recordRender();
-    }
+    recordRender();
   });
 
   return {

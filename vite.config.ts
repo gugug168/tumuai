@@ -3,7 +3,10 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const isProd = mode === 'production';
+
+  return {
   plugins: [react()],
 
   // 基础路径配置 - 确保资源正确加载
@@ -70,6 +73,12 @@ export default defineConfig({
     // 清理输出目录
     emptyOutDir: true
   },
+
+  // esbuild 优化：生产环境移除低价值日志，减轻主线程压力并缩小 bundle
+  esbuild: isProd ? {
+    drop: ['debugger'],
+    pure: ['console.log', 'console.debug', 'console.info']
+  } : undefined,
 
   // 开发服务器优化
   server: {
@@ -139,4 +148,5 @@ export default defineConfig({
       '@types': resolve(__dirname, 'src/types')
     }
   }
+  };
 });
