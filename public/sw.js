@@ -10,6 +10,11 @@
  * - 自动更新管理
  */
 
+// Reduce noisy logs in production. Flip to true only when debugging SW behavior.
+const SW_DEBUG = false;
+const swLog = (...args) => { if (SW_DEBUG) console.log(...args); };
+const swWarn = (...args) => { if (SW_DEBUG) console.warn(...args); };
+
 // Bump this when changing caching logic to ensure clients get fresh assets.
 const SW_VERSION = 'v3';
 const STATIC_CACHE = `tumuai-static-${SW_VERSION}`;
@@ -37,14 +42,14 @@ const API_PREFIXES = ['/api/', '/functions/'];
  * 安装事件 - 缓存静态资源
  */
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing service worker...');
+  swLog('[SW] Installing service worker...');
 
   event.waitUntil(
     (async () => {
       const cache = await caches.open(STATIC_CACHE);
-      console.log('[SW] Caching static assets...');
+      swLog('[SW] Caching static assets...');
       await cache.addAll(STATIC_ASSETS);
-      console.log('[SW] Static assets cached');
+      swLog('[SW] Static assets cached');
     })()
   );
 
@@ -56,7 +61,7 @@ self.addEventListener('install', (event) => {
  * 激活事件 - 清理旧缓存
  */
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating service worker...');
+  swLog('[SW] Activating service worker...');
 
   event.waitUntil(
     (async () => {
@@ -68,14 +73,14 @@ self.addEventListener('activate', (event) => {
 
       await Promise.all(
         cachesToDelete.map((name) => {
-          console.log('[SW] Deleting old cache:', name);
+          swLog('[SW] Deleting old cache:', name);
           return caches.delete(name);
         })
       );
 
       // 立即控制所有客户端
       await self.clients.claim();
-      console.log('[SW] Service worker activated');
+      swLog('[SW] Service worker activated');
     })()
   );
 });
@@ -164,13 +169,13 @@ async function handleDocumentRequest(request) {
     // Network failure: return cached route if present, otherwise app shell.
     const cachedResponse = await cache.match(request);
     if (cachedResponse) {
-      console.log('[SW] Document served from cache:', request.url);
+      swLog('[SW] Document served from cache:', request.url);
       return cachedResponse;
     }
 
     const cachedShell = await cache.match(APP_SHELL_URL) || await cache.match('/index.html');
     if (cachedShell) {
-      console.log('[SW] App shell served from cache for:', request.url);
+      swLog('[SW] App shell served from cache for:', request.url);
       return cachedShell;
     }
 
@@ -254,7 +259,7 @@ async function handleApiRequest(request) {
     // 网络失败，尝试从缓存获取
     const cachedResponse = await cache.match(request);
     if (cachedResponse) {
-      console.log('[SW] API request served from cache:', request.url);
+      swLog('[SW] API request served from cache:', request.url);
       return cachedResponse;
     }
 
@@ -281,7 +286,7 @@ async function handleStaticRequest(request) {
   // 先尝试从缓存获取
   const cachedResponse = await cache.match(request);
   if (cachedResponse) {
-    console.log('[SW] Static asset served from cache:', request.url);
+    swLog('[SW] Static asset served from cache:', request.url);
     return cachedResponse;
   }
 
@@ -341,7 +346,7 @@ async function handleNavigationRequest(request) {
     // 网络失败，尝试从缓存获取
     const cachedResponse = await cache.match(request);
     if (cachedResponse) {
-      console.log('[SW] Navigation served from cache:', request.url);
+      swLog('[SW] Navigation served from cache:', request.url);
       return cachedResponse;
     }
 
@@ -446,7 +451,7 @@ self.addEventListener('message', (event) => {
       break;
 
     default:
-      console.warn('[SW] Unknown message type:', type);
+      swWarn('[SW] Unknown message type:', type);
   }
 });
 
@@ -454,7 +459,7 @@ self.addEventListener('message', (event) => {
  * 后台同步（可选功能）
  */
 self.addEventListener('sync', (event) => {
-  console.log('[SW] Background sync:', event.tag);
+  swLog('[SW] Background sync:', event.tag);
 
   if (event.tag === 'sync-favorites') {
     event.waitUntil(syncFavorites());
@@ -466,7 +471,7 @@ self.addEventListener('sync', (event) => {
  */
 async function syncFavorites() {
   // 这里可以实现收藏数据的后台同步逻辑
-  console.log('[SW] Syncing favorites...');
+  swLog('[SW] Syncing favorites...');
 }
 
 /**
