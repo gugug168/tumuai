@@ -163,6 +163,12 @@ interface ToolsCacheResult {
   timestamp: string
 }
 
+export type ToolsCacheSortBy = 'upvotes' | 'date_added' | 'rating' | 'views'
+export interface ToolsCacheParams {
+  sortBy?: ToolsCacheSortBy
+  featured?: boolean
+}
+
 /**
  * 通过 Vercel API 代理获取工具列表
  * 优势：
@@ -174,7 +180,8 @@ export async function getToolsViaAPI(
   limit = 12,
   offset = 0,
   includeCount = true,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  params?: ToolsCacheParams
 ): Promise<{ tools: Tool[]; count?: number }> {
   try {
     const url = new URL('/api/tools-cache', window.location.origin)
@@ -182,6 +189,12 @@ export async function getToolsViaAPI(
     url.searchParams.set('offset', offset.toString())
     if (includeCount) {
       url.searchParams.set('includeCount', 'true')
+    }
+    if (params?.featured) {
+      url.searchParams.set('featured', 'true')
+    }
+    if (params?.sortBy) {
+      url.searchParams.set('sortBy', params.sortBy)
     }
 
     const response = await fetch(url.toString(), { signal })
@@ -310,20 +323,27 @@ export async function getToolsSmart(
 // 获取精选工具
 export async function getFeaturedTools() {
   try {
-    const { data, error } = await supabase
-      .from('tools')
-      .select('*')
-      .eq('featured', true)
-      .eq('status', 'published')  // 只获取已发布的精选工具
-      .order('upvotes', { ascending: false })
-      .limit(8)
+    // 开发环境：直连 Supabase（本地通常没有 /api 代理服务）
+    if (import.meta.env.DEV) {
+      const { data, error } = await supabase
+        .from('tools')
+        .select('*')
+        .eq('featured', true)
+        .eq('status', 'published')  // 只获取已发布的精选工具
+        .order('upvotes', { ascending: false })
+        .limit(8)
 
-    if (error) {
-      console.error('Error fetching featured tools:', error)
-      return []
+      if (error) {
+        console.error('Error fetching featured tools:', error)
+        return []
+      }
+
+      return data as Tool[]
     }
 
-    return data as Tool[]
+    // 生产环境：优先走 Vercel API（CDN 缓存）
+    const result = await getToolsViaAPI(8, 0, false, undefined, { featured: true, sortBy: 'upvotes' })
+    return Array.isArray(result.tools) ? result.tools : []
   } catch (error) {
     console.error('Unexpected error fetching featured tools:', error)
     return []
@@ -333,19 +353,24 @@ export async function getFeaturedTools() {
 // 获取最新工具
 export async function getLatestTools() {
   try {
-    const { data, error } = await supabase
-      .from('tools')
-      .select('*')
-      .eq('status', 'published')  // 只获取已发布的最新工具
-      .order('date_added', { ascending: false })
-      .limit(12)
+    if (import.meta.env.DEV) {
+      const { data, error } = await supabase
+        .from('tools')
+        .select('*')
+        .eq('status', 'published')  // 只获取已发布的最新工具
+        .order('date_added', { ascending: false })
+        .limit(12)
 
-    if (error) {
-      console.error('Error fetching latest tools:', error)
-      return []
+      if (error) {
+        console.error('Error fetching latest tools:', error)
+        return []
+      }
+
+      return data as Tool[]
     }
 
-    return data as Tool[]
+    const result = await getToolsViaAPI(12, 0, false, undefined, { sortBy: 'date_added' })
+    return Array.isArray(result.tools) ? result.tools : []
   } catch (error) {
     console.error('Unexpected error fetching latest tools:', error)
     return []

@@ -20,6 +20,8 @@ interface ToolsCacheResponse {
   version?: string  // 数据版本号
 }
 
+type SortField = 'upvotes' | 'date_added' | 'rating' | 'views'
+
 // 数据版本号 - 当工具数据更新时需要修改此版本号
 const DATA_VERSION = 'v1.0.6'  // 当前有106个工具
 
@@ -30,6 +32,11 @@ export default async function handler(request: VercelRequest, response: VercelRe
     const offset = parseInt(request.query.offset as string) || 0
     const includeCount = request.query.includeCount === 'true'
     const bypassCache = request.query.bypass === 'true'  // 强制绕过缓存
+    const featuredOnly = request.query.featured === 'true'
+    const sortByRaw = (request.query.sortBy as string) || 'upvotes'
+    const sortBy: SortField = (['upvotes', 'date_added', 'rating', 'views'] as const).includes(sortByRaw as SortField)
+      ? (sortByRaw as SortField)
+      : 'upvotes'
 
     // 参数验证
     if (limit > 100) {
@@ -62,19 +69,39 @@ export default async function handler(request: VercelRequest, response: VercelRe
       }
     })
 
+    // 4. 构建查询（可选 featured + 排序）
+    let toolsQuery = supabase
+      .from('tools')
+      .select('id,name,tagline,logo_url,categories,features,pricing,rating,views,upvotes,date_added,featured,review_count')
+      .eq('status', 'published')
+
+    if (featuredOnly) {
+      toolsQuery = toolsQuery.eq('featured', true)
+    }
+
+    // 排序字段白名单，避免任意字段注入
+    toolsQuery = toolsQuery.order(sortBy, {
+      ascending: false,
+      ...(sortBy === 'rating' ? { nullsFirst: false } : {})
+    })
+
+    // 应用分页
+    toolsQuery = toolsQuery.range(offset, offset + limit - 1)
+
+    let countQuery = supabase
+      .from('tools')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'published')
+
+    if (featuredOnly) {
+      countQuery = countQuery.eq('featured', true)
+    }
+
     // 4. 并行获取数据和总数
     const [toolsResult, countResult] = await Promise.all([
-      supabase
-        .from('tools')
-        .select('id,name,tagline,logo_url,categories,features,pricing,rating,views,upvotes,date_added')
-        .eq('status', 'published')
-        .order('upvotes', { ascending: false })
-        .range(offset, offset + limit - 1),
+      toolsQuery,
       includeCount
-        ? supabase
-            .from('tools')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'published')
+        ? countQuery
         : Promise.resolve({ count: null, error: null })
     ])
 
@@ -107,15 +134,21 @@ export default async function handler(request: VercelRequest, response: VercelRe
       response.setHeader('Expires', '0')
     } else {
       // 使用 Cache-Tag 进行精确缓存控制
-      response.setHeader('Cache-Tag', `tools, tools-v${DATA_VERSION}`)
+      const tags = [
+        'tools',
+        `tools-v${DATA_VERSION}`,
+        featuredOnly ? 'tools-featured' : undefined,
+        sortBy !== 'upvotes' ? `tools-sort-${sortBy}` : undefined
+      ].filter(Boolean)
+      response.setHeader('Cache-Tag', tags.join(', '))
 
-      // s-maxage: CDN 缓存 2 分钟（从5分钟减少到2分钟）
-      // stale-while-revalidate: 后台刷新期间可使用过期缓存 5 分钟
-      response.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300')
+      // s-maxage: CDN 缓存 10 分钟（更容易命中缓存，首屏更快）
+      // stale-while-revalidate: 后台刷新期间可使用过期缓存 30 分钟
+      response.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=1800')
 
       // 添加额外的缓存优化头
-      response.setHeader('CDN-Cache-Control', 'public, s-maxage=120')
-      response.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=120')
+      response.setHeader('CDN-Cache-Control', 'public, s-maxage=600')
+      response.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=600')
     }
 
     return response.status(200).json(result)
