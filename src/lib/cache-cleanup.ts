@@ -92,7 +92,12 @@ export function handleCriticalError(error: Error) {
     errorMessage.includes('unexpected token') ||
     errorMessage.includes('not valid json') ||
     errorMessage.includes('multiple gotrueclient') ||
-    errorMessage.includes('network error')
+    errorMessage.includes('network error') ||
+    // 懒加载 chunk 失败（常见于旧缓存/旧 Service Worker 仍在使用旧的 hash 文件）
+    errorMessage.includes('loading chunk') ||
+    errorMessage.includes('chunkloaderror') ||
+    errorMessage.includes('failed to fetch dynamically imported module') ||
+    errorMessage.includes('importing a module script failed')
   
   if (isCriticalError) {
     console.error('🚨 检测到关键错误，尝试自动恢复:', error)

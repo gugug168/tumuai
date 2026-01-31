@@ -338,12 +338,37 @@ export async function getFeaturedTools() {
         return []
       }
 
+      // 如果数据库没有设置 featured 字段（或没有任何精选工具），回退到热门工具，避免首页“空白”观感。
+      if (!data || data.length === 0) {
+        const fallback = await supabase
+          .from('tools')
+          .select('*')
+          .eq('status', 'published')
+          .order('upvotes', { ascending: false })
+          .limit(8)
+
+        if (fallback.error) {
+          console.error('Error fetching fallback tools:', fallback.error)
+          return []
+        }
+
+        return (fallback.data || []) as Tool[]
+      }
+
       return data as Tool[]
     }
 
     // 生产环境：优先走 Vercel API（CDN 缓存）
-    const result = await getToolsViaAPI(8, 0, false, undefined, { featured: true, sortBy: 'upvotes' })
-    return Array.isArray(result.tools) ? result.tools : []
+    const featuredResult = await getToolsViaAPI(8, 0, false, undefined, { featured: true, sortBy: 'upvotes' })
+    const featuredTools = Array.isArray(featuredResult.tools) ? featuredResult.tools : []
+
+    if (featuredTools.length > 0) {
+      return featuredTools
+    }
+
+    // 如果没有任何 featured=true 的数据，回退到热门工具，保证“编辑推荐”区域有内容。
+    const fallbackResult = await getToolsViaAPI(8, 0, false, undefined, { sortBy: 'upvotes' })
+    return Array.isArray(fallbackResult.tools) ? fallbackResult.tools : []
   } catch (error) {
     console.error('Unexpected error fetching featured tools:', error)
     return []

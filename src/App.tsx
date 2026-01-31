@@ -7,13 +7,13 @@ import PageLoader from './components/PageLoader';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
 
-// 首页和工具页面 - 保持直接导入以确保快速加载
+// 首页保持直接导入以确保快速首屏
 import HomePage from './pages/HomePage';
-import ToolsPage from './pages/ToolsPage';
-import SubmitToolPage from './pages/SubmitToolPage'; // 改为直接导入以避免动态加载问题
 import NotFoundPage from './pages/NotFoundPage';
 
-// 其他页面使用懒加载 - 显著减少初始bundle大小
+// 其他页面使用懒加载 - 显著减少初始 bundle 大小
+const ToolsPage = React.lazy(() => import('./pages/ToolsPage'));
+const SubmitToolPage = React.lazy(() => import('./pages/SubmitToolPage'));
 const ToolDetailPage = React.lazy(() => import('./pages/ToolDetailPage'));
 const AboutPage = React.lazy(() => import('./pages/AboutPage'));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
@@ -36,11 +36,12 @@ function DataPreloader() {
       const preloadData = () => {
         console.log('🔄 DataPreloader: 开始预加载数据...', `当前路径: ${location.pathname}`);
 
-        // 并行预加载工具列表和分类数据
+        // 并行预加载工具列表（命中 CDN 缓存）+ 关键路由 chunk（提升导航体验）
         Promise.allSettled([
           // 预加载工具列表
-          // 预热 CDN 缓存即可，不需要总数（避免额外的 count 查询）
-          fetch('/api/tools-cache?limit=12')
+          // 预热 CDN 缓存，并顺带拿到 count（与 /tools 首次进入使用同一条缓存）
+          // 这里带上 includeCount，使 /tools 首次进入可以直接命中同一条缓存。
+          fetch('/api/tools-cache?limit=12&offset=0&includeCount=true')
             .then(res => {
               if (res.ok) {
                 console.log('✅ DataPreloader: 工具数据预加载成功');
@@ -52,18 +53,9 @@ function DataPreloader() {
               console.warn('⚠️ DataPreloader: 工具数据预加载失败:', err);
             }),
 
-          // 预加载分类数据
-          fetch('/api/categories-cache')
-            .then(res => {
-              if (res.ok) {
-                console.log('✅ DataPreloader: 分类数据预加载成功');
-                return res.json();
-              }
-              throw new Error(`分类数据预加载失败: ${res.status}`);
-            })
-            .catch(err => {
-              console.warn('⚠️ DataPreloader: 分类数据预加载失败:', err);
-            })
+          // 预加载关键页面 chunk，避免点击后才开始下载导致“慢”的体感
+          import('./pages/ToolsPage').catch(() => undefined),
+          import('./pages/SubmitToolPage').catch(() => undefined)
         ]).then(() => {
           console.log('🎉 DataPreloader: 预加载完成');
         });
