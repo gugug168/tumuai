@@ -36,35 +36,6 @@ export default defineConfig({
           // UI库按使用频率分割
           'vendor-icons': ['lucide-react'],
           'vendor-auth': ['@supabase/supabase-js'],
-          
-          // 业务模块分割
-          'features-auth': [
-            './src/contexts/AuthContext.tsx',
-            './src/lib/auth.ts'
-          ],
-          'features-admin': ['./src/lib/admin.ts'],
-          'features-cache': [
-            './src/lib/cache.ts', 
-            './src/hooks/useCache.ts'
-          ],
-          
-          // 页面按访问频率分割  
-          'pages-core': [
-            './src/pages/HomePage.tsx',
-            './src/pages/ToolsPage.tsx'
-          ],
-          'pages-user': [
-            './src/pages/ProfilePage.tsx', 
-            './src/pages/FavoritesPage.tsx'
-          ],
-          
-          // 工具函数
-          'utils': [
-            './src/hooks/usePerformance.ts',
-            './src/hooks/useAccessibility.ts',
-            './src/utils/performanceMonitor.ts',
-            './src/utils/typeGuards.ts'
-          ]
         },
         
         // 资源文件命名

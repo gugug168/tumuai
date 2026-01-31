@@ -39,7 +39,8 @@ function DataPreloader() {
         // 并行预加载工具列表和分类数据
         Promise.allSettled([
           // 预加载工具列表
-          fetch('/api/tools-cache?limit=12&includeCount=true')
+          // 预热 CDN 缓存即可，不需要总数（避免额外的 count 查询）
+          fetch('/api/tools-cache?limit=12')
             .then(res => {
               if (res.ok) {
                 console.log('✅ DataPreloader: 工具数据预加载成功');

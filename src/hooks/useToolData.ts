@@ -117,20 +117,22 @@ export function useToolData(performanceHooks?: {
         // 普通分页加载
         const limit = TOOLS_PER_PAGE;
         const offset = (page - 1) * TOOLS_PER_PAGE;
+        // 只有在首次加载时请求总数，避免每次翻页都触发一次 count 查询（会明显拖慢响应）。
+        const shouldIncludeCount = page === 1 && state.totalToolsCount === 0;
 
         console.log(`🔄 开始加载工具数据 (limit: ${limit}, offset: ${offset}, page: ${page})...`);
 
         const result = recordApiCall
           ? await recordApiCall('load_tools_smart', async () => {
-              return await getToolsSmart(limit, offset, true);
+              return await getToolsSmart(limit, offset, shouldIncludeCount);
             }, { autoRetry, retryCount: state.retryCount })
-          : await getToolsSmart(limit, offset, true);
+          : await getToolsSmart(limit, offset, shouldIncludeCount);
 
         console.log(`✅ 工具数据加载成功: ${result.tools.length}个工具, 总数${result.count}`);
         setState(prev => ({
           ...prev,
           tools: Array.isArray(result.tools) ? result.tools : [],
-          totalToolsCount: result.count || 0,
+          totalToolsCount: typeof result.count === 'number' ? result.count : prev.totalToolsCount,
           loading: false,
           retryCount: 0
         }));

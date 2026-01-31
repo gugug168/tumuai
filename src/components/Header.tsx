@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Hammer, User, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
-import { checkAdminStatus } from '../lib/admin';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -18,6 +17,8 @@ const Header = () => {
     (async () => {
       if (user) {
         try {
+          // Lazy-load admin helpers so the admin bundle isn't part of the initial load.
+          const { checkAdminStatus } = await import('../lib/admin');
           const admin = await checkAdminStatus();
           if (!cancelled) setIsAdmin(!!admin);
         } catch {
