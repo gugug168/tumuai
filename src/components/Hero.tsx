@@ -11,17 +11,36 @@ interface SiteStats {
 const Hero = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [stats, setStats] = useState<SiteStats>({ toolsCount: 88, categoriesCount: 7 });
+  const [stats, setStats] = useState<SiteStats>({ toolsCount: 0, categoriesCount: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   // 获取真实的统计数据
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // 获取工具总数
-        const toolsResponse = await fetch('/api/tools-cache?limit=1&includeCount=true');
-        const toolsData = await toolsResponse.json();
-        const toolsCount = toolsData.count || 88;
+        // 获取工具总数 - 优先使用 Vercel API，开发环境回退到 Supabase
+        let toolsCount = 0;
+
+        // 检测是否在开发环境
+        const isDev = import.meta.env.DEV;
+
+        if (isDev) {
+          // 开发环境：直接使用 Supabase
+          const { getToolsCount } = await import('../lib/supabase');
+          toolsCount = await getToolsCount();
+        } else {
+          // 生产环境：使用 Vercel API，添加时间戳绕过缓存
+          const cacheBuster = Date.now();
+          const toolsResponse = await fetch(`/api/tools-cache?limit=1&includeCount=true&_t=${cacheBuster}`);
+          if (toolsResponse.ok) {
+            const toolsData = await toolsResponse.json();
+            toolsCount = toolsData.count || 0;
+          } else {
+            // API 失败，回退到 Supabase
+            const { getToolsCount } = await import('../lib/supabase');
+            toolsCount = await getToolsCount();
+          }
+        }
 
         // 获取分类数量
         const categoriesResponse = await fetch('https://bixljqdwkjuzftlpmgtb.supabase.co/rest/v1/categories?select=*&is_active=eq.true', {
@@ -31,13 +50,13 @@ const Hero = () => {
           }
         });
         const categoriesData = await categoriesResponse.json();
-        const categoriesCount = categoriesData.length || 7;
+        const categoriesCount = categoriesData.length || 0;
 
         setStats({ toolsCount, categoriesCount });
       } catch (error) {
         console.error('获取统计数据失败:', error);
-        // 使用默认值
-        setStats({ toolsCount: 88, categoriesCount: 7 });
+        // 失败时显示 0，而不是错误的数据
+        setStats({ toolsCount: 0, categoriesCount: 0 });
       } finally {
         setIsLoading(false);
       }

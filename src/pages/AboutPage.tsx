@@ -1,6 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Target, Users, Award, Lightbulb, Mail, Github, Linkedin } from 'lucide-react';
 import CountUpAnimation from '../components/CountUpAnimation';
+
+interface SiteStats {
+  toolsCount: number;
+  categoriesCount: number;
+}
 
 const teamMembers = [
   {
@@ -47,6 +52,57 @@ const values = [
 ];
 
 const AboutPage = () => {
+  const [stats, setStats] = useState<SiteStats>({ toolsCount: 0, categoriesCount: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 获取统计数据
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // 获取工具总数
+        let toolsCount = 0;
+        const isDev = import.meta.env.DEV;
+
+        if (isDev) {
+          // 开发环境：直接使用 Supabase
+          const { getToolsCount } = await import('../lib/supabase');
+          toolsCount = await getToolsCount();
+        } else {
+          // 生产环境：使用 Vercel API
+          const cacheBuster = Date.now();
+          const toolsResponse = await fetch(`/api/tools-cache?limit=1&includeCount=true&_t=${cacheBuster}`);
+          if (toolsResponse.ok) {
+            const toolsData = await toolsResponse.json();
+            toolsCount = toolsData.count || 0;
+          } else {
+            // API 失败，回退到 Supabase
+            const { getToolsCount } = await import('../lib/supabase');
+            toolsCount = await getToolsCount();
+          }
+        }
+
+        // 获取分类数量
+        const categoriesResponse = await fetch('https://bixljqdwkjuzftlpmgtb.supabase.co/rest/v1/categories?select=*&is_active=eq.true', {
+          headers: {
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || ''}`
+          }
+        });
+        const categoriesData = await categoriesResponse.json();
+        const categoriesCount = categoriesData.length || 0;
+
+        setStats({ toolsCount, categoriesCount });
+      } catch (error) {
+        console.error('获取统计数据失败:', error);
+        setStats({ toolsCount: 0, categoriesCount: 0 });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
@@ -157,13 +213,21 @@ const AboutPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center text-white">
             <div className="group cursor-default">
               <div className="text-4xl md:text-5xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">
-                <CountUpAnimation end={88} suffix="+" duration={2000} />
+                {isLoading ? (
+                  <span className="inline-block animate-pulse">...</span>
+                ) : (
+                  <CountUpAnimation end={stats.toolsCount || 106} suffix="+" duration={2000} />
+                )}
               </div>
               <div className="text-blue-100">收录工具</div>
             </div>
             <div className="group cursor-default">
               <div className="text-4xl md:text-5xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">
-                <CountUpAnimation end={7} suffix="+" duration={2000} delay={200} />
+                {isLoading ? (
+                  <span className="inline-block animate-pulse">...</span>
+                ) : (
+                  <CountUpAnimation end={stats.categoriesCount || 7} suffix="+" duration={2000} delay={200} />
+                )}
               </div>
               <div className="text-blue-100">工具分类</div>
             </div>
