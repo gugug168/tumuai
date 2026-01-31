@@ -68,9 +68,8 @@ const AboutPage = () => {
           const { getToolsCount } = await import('../lib/supabase');
           toolsCount = await getToolsCount();
         } else {
-          // 生产环境：使用 Vercel API
-          const cacheBuster = Date.now();
-          const toolsResponse = await fetch(`/api/tools-cache?limit=1&includeCount=true&_t=${cacheBuster}`);
+          // 生产环境：使用 Vercel API（不要加时间戳，否则会绕过 CDN 缓存）
+          const toolsResponse = await fetch('/api/tools-cache?limit=1&includeCount=true');
           if (toolsResponse.ok) {
             const toolsData = await toolsResponse.json();
             toolsCount = toolsData.count || 0;
@@ -81,15 +80,23 @@ const AboutPage = () => {
           }
         }
 
-        // 获取分类数量
-        const categoriesResponse = await fetch('https://bixljqdwkjuzftlpmgtb.supabase.co/rest/v1/categories?select=*&is_active=eq.true', {
-          headers: {
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || ''}`
+        // 获取分类数量 - 同样使用 Vercel API（CDN 缓存 + 同源请求更快）
+        let categoriesCount = 0;
+        if (isDev) {
+          const { getCategories } = await import('../lib/supabase');
+          const categories = await getCategories();
+          categoriesCount = categories.length || 0;
+        } else {
+          const categoriesResponse = await fetch('/api/categories-cache');
+          if (categoriesResponse.ok) {
+            const categoriesData = await categoriesResponse.json();
+            categoriesCount = categoriesData?.categories?.length || 0;
+          } else {
+            const { getCategories } = await import('../lib/supabase');
+            const categories = await getCategories();
+            categoriesCount = categories.length || 0;
           }
-        });
-        const categoriesData = await categoriesResponse.json();
-        const categoriesCount = categoriesData.length || 0;
+        }
 
         setStats({ toolsCount, categoriesCount });
       } catch (error) {
