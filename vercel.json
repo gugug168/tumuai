@@ -3,7 +3,11 @@
   "trailingSlash": false,
   "rewrites": [
     {
-      "source": "/((?!api|js|css|images|icons|favicon|manifest|og|twitter|icon).*)",
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],

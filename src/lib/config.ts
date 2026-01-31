@@ -68,8 +68,15 @@ export const API_ENDPOINTS = {
   vercelFunctions: {
     adminCheck: '/api/admin-check',
     adminDatasets: '/api/admin-datasets',
-    adminCategories: '/api/admin-categories',
-    adminToolsCrud: '/api/admin-tools-crud',
-    tools: '/api/tools'
+    adminUsers: '/api/admin-users',
+    adminActions: '/api/admin-actions',
+    toolsCache: '/api/tools-cache',
+    toolsFiltered: '/api/tools-filtered',
+    categoriesCache: '/api/categories-cache',
+    incrementViews: '/api/increment-views',
+    aiSmartFill: '/api/ai-smart-fill',
+    checkWebsiteDuplicate: '/api/check-website-duplicate',
+    logoExtract: '/api/logo-extract',
+    errors: '/api/errors'
   }
 } as const

@@ -145,7 +145,8 @@ export default async function handler(request: VercelRequest, response: VercelRe
  * 强制绕过缓存（用于调试）：
  * GET /api/tools-cache?limit=12&bypass=true
  *
- * 清除缓存：
- * GET /api/clear-cache?token=cache-clear-2025&pattern=tools
+ * 缓存失效方式：
+ * - 修改 DATA_VERSION（推荐，最稳定）
+ * - 或在 Vercel 控制台对缓存进行刷新/失效操作
  * ============================================================
  */

@@ -11,6 +11,7 @@ import { ToastProvider } from './components/Toast';
 import HomePage from './pages/HomePage';
 import ToolsPage from './pages/ToolsPage';
 import SubmitToolPage from './pages/SubmitToolPage'; // 改为直接导入以避免动态加载问题
+import NotFoundPage from './pages/NotFoundPage';
 
 // 其他页面使用懒加载 - 显著减少初始bundle大小
 const ToolDetailPage = React.lazy(() => import('./pages/ToolDetailPage'));
@@ -102,6 +103,7 @@ function App() {
                     <Route path="/admin/*" element={<AdminDashboard />} />
                     <Route path="/admin-login" element={<AdminLoginPage />} />
                     <Route path="/diagnostic" element={<DiagnosticPage />} />
+                    <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </Suspense>
               </ErrorBoundary>
