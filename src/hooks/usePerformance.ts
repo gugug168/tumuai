@@ -20,6 +20,37 @@ interface PerformanceMetrics {
 
 const IS_DEV = import.meta.env.DEV;
 
+// In production we intentionally keep this hook "lightweight".
+// IMPORTANT: the returned helpers must be referentially stable, otherwise any downstream
+// `useEffect(..., [recordApiCall])` will re-run on every render and can cause request loops.
+const PROD_EMPTY_METRICS: PerformanceMetrics = {
+  renders: [],
+  apis: [],
+  interactions: [],
+  averageRenderTime: 0,
+  averageApiTime: 0,
+  totalRenders: 0,
+  slowRenders: 0
+};
+
+const prodRecordApiCall = async <T>(
+  _name: string,
+  apiCall: () => Promise<T>,
+  _metadata?: Record<string, any>
+): Promise<T> => apiCall();
+
+const PROD_PERF_HELPERS = {
+  startTiming: () => '',
+  endTiming: () => {},
+  recordRender: () => {},
+  recordApiCall: prodRecordApiCall,
+  recordInteraction: () => {},
+  getMetrics: () => PROD_EMPTY_METRICS,
+  printReport: () => PROD_EMPTY_METRICS,
+  clearMetrics: () => {},
+  renderCount: 0
+} as const;
+
 // 全局性能数据存储
 const performanceData: {
   entries: PerformanceEntry[];
@@ -32,31 +63,7 @@ const performanceData: {
 export function usePerformance(componentName?: string) {
   // Production: return lightweight no-op helpers to avoid runtime overhead.
   if (!IS_DEV) {
-    const emptyMetrics: PerformanceMetrics = {
-      renders: [],
-      apis: [],
-      interactions: [],
-      averageRenderTime: 0,
-      averageApiTime: 0,
-      totalRenders: 0,
-      slowRenders: 0
-    };
-
-    return {
-      startTiming: () => '',
-      endTiming: () => {},
-      recordRender: () => {},
-      recordApiCall: async <T>(
-        _name: string,
-        apiCall: () => Promise<T>,
-        _metadata?: Record<string, any>
-      ): Promise<T> => apiCall(),
-      recordInteraction: () => {},
-      getMetrics: () => emptyMetrics,
-      printReport: () => emptyMetrics,
-      clearMetrics: () => {},
-      renderCount: 0
-    };
+    return PROD_PERF_HELPERS;
   }
 
   const componentRef = useRef<string>(componentName || 'Unknown');

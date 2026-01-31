@@ -438,7 +438,27 @@ export async function getFeaturedTools() {
     return Array.isArray(fallbackResult.tools) ? fallbackResult.tools : []
   } catch (error) {
     console.error('Unexpected error fetching featured tools:', error)
-    return []
+
+    // Last-resort fallback: fetch directly from Supabase so the homepage section isn't empty
+    // when the Vercel `/api/*` layer is temporarily unavailable.
+    try {
+      const { data, error: fallbackError } = await supabase
+        .from('tools')
+        .select('id,name,tagline,description,logo_url,categories,pricing,rating,views,upvotes,date_added,featured,review_count')
+        .eq('status', 'published')
+        .order('upvotes', { ascending: false })
+        .limit(8)
+
+      if (fallbackError) {
+        console.error('Fallback featured tools query failed:', fallbackError)
+        return []
+      }
+
+      return (data || []) as Tool[]
+    } catch (fallbackError) {
+      console.error('Fallback featured tools query failed:', fallbackError)
+      return []
+    }
   }
 }
 
@@ -465,7 +485,26 @@ export async function getLatestTools() {
     return Array.isArray(result.tools) ? result.tools : []
   } catch (error) {
     console.error('Unexpected error fetching latest tools:', error)
-    return []
+
+    // Last-resort fallback for when `/api/*` is unavailable.
+    try {
+      const { data, error: fallbackError } = await supabase
+        .from('tools')
+        .select('id,name,tagline,description,logo_url,categories,pricing,rating,views,upvotes,date_added,featured,review_count')
+        .eq('status', 'published')
+        .order('date_added', { ascending: false })
+        .limit(12)
+
+      if (fallbackError) {
+        console.error('Fallback latest tools query failed:', fallbackError)
+        return []
+      }
+
+      return (data || []) as Tool[]
+    } catch (fallbackError) {
+      console.error('Fallback latest tools query failed:', fallbackError)
+      return []
+    }
   }
 }
 
