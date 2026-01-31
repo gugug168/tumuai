@@ -29,8 +29,8 @@ function DataPreloader() {
   const location = useLocation();
 
   useEffect(() => {
-    // 在首页和工具页面时预加载数据
-    const shouldPreload = location.pathname === '/' || location.pathname === '/tools';
+    // 只在首页预加载，避免在 /tools 这类页面重复触发请求造成“更慢”的体感。
+    const shouldPreload = location.pathname === '/';
 
     if (shouldPreload) {
       const preloadData = () => {

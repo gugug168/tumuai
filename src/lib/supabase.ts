@@ -173,7 +173,8 @@ interface ToolsCacheResult {
 export async function getToolsViaAPI(
   limit = 12,
   offset = 0,
-  includeCount = true
+  includeCount = true,
+  signal?: AbortSignal
 ): Promise<{ tools: Tool[]; count?: number }> {
   try {
     const url = new URL('/api/tools-cache', window.location.origin)
@@ -183,7 +184,7 @@ export async function getToolsViaAPI(
       url.searchParams.set('includeCount', 'true')
     }
 
-    const response = await fetch(url.toString())
+    const response = await fetch(url.toString(), { signal })
 
     if (!response.ok) {
       throw new Error(`API error: ${response.status}`)
@@ -277,26 +278,19 @@ export async function getToolsSmart(
     }
   }
 
-  // 并行策略：同时启动 API 请求和本地缓存，先返回的获胜
-  // API 超时设置为 4 秒（考虑 Vercel 冷启动）
-  // 首次访问通常需要 2-3 秒，CDN 缓存命中后只需 50-100ms
-  const API_TIMEOUT = 4000
+  // API 优先策略：优先走 Vercel API（CDN 缓存命中很快），
+  // 但避免在后台“同时直连 Supabase”造成双倍请求/资源竞争。
+  // 超时后再回退到本地缓存/直连。
+  const API_TIMEOUT = 2000
 
   try {
-    // 创建带超时的 API 请求
-    const apiPromise = getToolsViaAPI(limit, offset, includeCount)
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('API timeout')), API_TIMEOUT)
-    )
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT)
 
-    // 同时启动本地缓存请求（作为备用）
-    const cachePromise = getToolsWithCache(limit, offset).then(async (tools) => ({
-      tools,
-      count: includeCount ? await getToolsCountWithCache() : undefined
-    }))
+    // 等待 API 或超时（AbortController）
+    const result = await getToolsViaAPI(limit, offset, includeCount, controller.signal)
 
-    // 等待 API 或超时，哪个先来用哪个
-    const result = await Promise.race([apiPromise, timeoutPromise])
+    clearTimeout(timeoutId)
 
     console.log('✅ getToolsSmart: API 响应成功')
     return result
@@ -304,8 +298,10 @@ export async function getToolsSmart(
     console.warn('⚠️ getToolsSmart: API 请求失败或超时，使用本地缓存:', error)
 
     // 回退到本地缓存的直连方式
-    const tools = await getToolsWithCache(limit, offset)
-    const count = includeCount ? await getToolsCountWithCache() : undefined
+    const [tools, count] = await Promise.all([
+      getToolsWithCache(limit, offset),
+      includeCount ? getToolsCountWithCache() : Promise.resolve(undefined)
+    ])
 
     return { tools, count }
   }

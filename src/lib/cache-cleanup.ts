@@ -76,14 +76,8 @@ export function checkVersionAndRefresh() {
     // 更新版本标识
     localStorage.setItem('tumuai-app-version', currentVersion)
     
-    // 如果是从旧版本升级，强制刷新页面
-    if (storedVersion && storedVersion !== currentVersion) {
-      console.log('🔄 强制刷新页面以应用最新更新')
-      setTimeout(() => {
-        window.location.reload()
-      }, 1000)
-      return true
-    }
+    // 之前这里会强制刷新页面，但会造成“加载变慢”的体感（多一次完整加载）。
+    // 现在改为不强制刷新：交给浏览器缓存 + Service Worker 更新机制生效。
   }
   
   return false
