@@ -4,6 +4,20 @@ import App from './App.tsx';
 import './index.css';
 import { checkVersionAndRefresh, shouldCleanupCache, cleanupOldCache } from './lib/cache-cleanup';
 
+// Canonical domain guard:
+// A lot of users may still open the legacy Netlify URL. That host doesn't have our Vercel `/api/*`
+// functions, which results in 503 and a broken Tools page. Redirect to the canonical domain early.
+if (typeof window !== 'undefined') {
+  const CANONICAL_HOST = 'www.tumuai.net';
+  const host = window.location.hostname;
+  const isLegacyNetlifyHost = host.endsWith('netlify.app');
+
+  if (isLegacyNetlifyHost && host !== CANONICAL_HOST) {
+    const target = `https://${CANONICAL_HOST}${window.location.pathname}${window.location.search}${window.location.hash}`;
+    window.location.replace(target);
+  }
+}
+
 // 应用启动前的缓存清理和版本检查
 try {
   // 检查版本并处理升级

@@ -169,6 +169,33 @@ export interface ToolsCacheParams {
   featured?: boolean
 }
 
+type ApiFetchError = Error & { status?: number }
+
+const IS_DEV = import.meta.env.DEV
+
+// If the `/api/*` layer is temporarily unavailable (or the site is opened from a legacy host that
+// doesn't have our Vercel functions), avoid hammering it on every render. We back off for a while
+// and fall back to Supabase direct reads.
+let apiDownUntil = 0
+
+function getApiBackoffMs(status?: number): number {
+  // 404 usually means "no functions on this host" (e.g. Netlify static) -> longer backoff.
+  if (status === 404) return 10 * 60 * 1000
+  // 503 means service unavailable -> moderate backoff.
+  if (status === 503) return 60 * 1000
+  // Network errors / timeouts -> short backoff.
+  return 30 * 1000
+}
+
+function markApiDown(status?: number) {
+  const until = Date.now() + getApiBackoffMs(status)
+  apiDownUntil = Math.max(apiDownUntil, until)
+}
+
+function isApiBackedOff(): boolean {
+  return Date.now() < apiDownUntil
+}
+
 /**
  * 通过 Vercel API 代理获取工具列表
  * 优势：
@@ -200,7 +227,9 @@ export async function getToolsViaAPI(
     const response = await fetch(url.toString(), { signal })
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`)
+      const err: ApiFetchError = new Error(`API error: ${response.status}`)
+      err.status = response.status
+      throw err
     }
 
     const result: ToolsCacheResult = await response.json()
@@ -209,7 +238,9 @@ export async function getToolsViaAPI(
       count: result.count
     }
   } catch (error) {
-    console.error('Error fetching tools via API:', error)
+    if (IS_DEV) {
+      console.error('Error fetching tools via API:', error)
+    }
     throw error
   }
 }
@@ -245,7 +276,9 @@ export async function getToolsFiltered(
     const response = await fetch(url.toString())
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`)
+      const err: ApiFetchError = new Error(`API error: ${response.status}`)
+      err.status = response.status
+      throw err
     }
 
     const result = await response.json()
@@ -254,7 +287,9 @@ export async function getToolsFiltered(
       count: result.count || 0
     }
   } catch (error) {
-    console.error('Error fetching filtered tools via API:', error)
+    if (IS_DEV) {
+      console.error('Error fetching filtered tools via API:', error)
+    }
     throw error
   }
 }
@@ -282,12 +317,27 @@ export async function getToolsSmart(
 
   // 有筛选条件时使用筛选 API
   if (hasFilters) {
+    // If API is unavailable, fall back to direct Supabase queries while keeping correct semantics.
+    if (isApiBackedOff()) {
+      const tools = await searchTools('', filters)
+      return { tools, count: tools.length }
+    }
+
     try {
       const sortBy = filters?.sortBy || 'upvotes'
       return await getToolsFiltered(filters, limit, offset, sortBy)
     } catch (apiError) {
-      console.warn('Filtered API failed, falling back to client-side filtering:', apiError)
-      // 回退到普通 API + 客户端筛选
+      const status = typeof (apiError as ApiFetchError)?.status === 'number'
+        ? (apiError as ApiFetchError).status
+        : undefined
+      markApiDown(status)
+
+      if (IS_DEV) {
+        console.warn('Filtered API failed, falling back to Supabase direct query:', apiError)
+      }
+
+      const tools = await searchTools('', filters)
+      return { tools, count: tools.length }
     }
   }
 
@@ -295,6 +345,16 @@ export async function getToolsSmart(
   // 但避免在后台“同时直连 Supabase”造成双倍请求/资源竞争。
   // 超时后再回退到本地缓存/直连。
   const API_TIMEOUT = 2000
+
+  // If API is in backoff, skip the network request entirely.
+  if (isApiBackedOff()) {
+    const [tools, count] = await Promise.all([
+      getToolsWithCache(limit, offset),
+      includeCount ? getToolsCountWithCache() : Promise.resolve(undefined)
+    ])
+
+    return { tools, count }
+  }
 
   try {
     const controller = new AbortController()
@@ -308,7 +368,14 @@ export async function getToolsSmart(
     console.log('✅ getToolsSmart: API 响应成功')
     return result
   } catch (error) {
-    console.warn('⚠️ getToolsSmart: API 请求失败或超时，使用本地缓存:', error)
+    const status = typeof (error as ApiFetchError)?.status === 'number'
+      ? (error as ApiFetchError).status
+      : undefined
+    markApiDown(status)
+
+    if (IS_DEV) {
+      console.warn('⚠️ getToolsSmart: API 请求失败或超时，使用本地缓存:', error)
+    }
 
     // 回退到本地缓存的直连方式
     const [tools, count] = await Promise.all([
