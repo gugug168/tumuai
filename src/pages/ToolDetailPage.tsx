@@ -293,6 +293,8 @@ const ToolDetailPage = () => {
                 src={adaptedTool.logo}
                 alt={adaptedTool.name}
                 className="w-full h-full"
+                priority
+                lazyLoad={false}
                 objectFit="contain"
                 background
                 fallback={
@@ -395,6 +397,7 @@ const ToolDetailPage = () => {
                     src={adaptedTool.images[selectedImage]}
                     alt={`${adaptedTool.name} 截图 ${selectedImage + 1}`}
                     className="w-full h-96 rounded-lg"
+                    priority={selectedImage === 0}
                     objectFit="contain"
                     background
                     fallback={
