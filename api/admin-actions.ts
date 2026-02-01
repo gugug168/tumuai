@@ -214,45 +214,78 @@ export default async function handler(request: VercelRequest, response: VercelRe
       const target = normalizeScreenshotTarget(websiteUrl)
       if (!target) return []
 
-      // One full-page screenshot is enough; the client can display multiple "segments" via object-position.
-      const screenshotUrl = `https://image.thum.io/get/fullpage/noanimate/width/1200/${target}`
-      const { bytes, contentType } = await fetchImageBytes(screenshotUrl, 12000)
-
       await ensureScreenshotBucket()
 
       const bucket = 'tool-screenshots'
       const objectPath = `tools/${toolId}/fullpage.png`
 
-      const upload = await supabase.storage
-        .from(bucket)
-        .upload(objectPath, bytes, {
-          upsert: true,
-          contentType: contentType.includes('image/') ? contentType : 'image/png',
-          cacheControl: '2592000' // 30 days
-        })
+      // Prefer one full-page screenshot (best UX). If it times out or is too large for our bucket,
+      // fall back to cheaper captures so we still have a usable preview.
+      const maxBytes = 9.5 * 1024 * 1024 // keep under 10MB bucket limit
+      const candidates: Array<{ url: string; timeoutMs: number }> = [
+        { url: `https://image.thum.io/get/fullpage/noanimate/width/1200/${target}`, timeoutMs: 12000 },
+        { url: `https://image.thum.io/get/noanimate/width/1200/${target}`, timeoutMs: 8000 },
+        { url: `https://image.thum.io/get/noanimate/width/1000/${target}`, timeoutMs: 8000 },
+        { url: `https://image.thum.io/get/noanimate/width/800/${target}`, timeoutMs: 8000 }
+      ]
 
-      if (upload.error) {
-        throw new Error(upload.error.message)
-      }
+      let lastError: string | null = null
 
-      const publicUrl = supabase.storage.from(bucket).getPublicUrl(objectPath)?.data?.publicUrl
-      if (!publicUrl) return []
+      for (const cand of candidates) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const { bytes, contentType } = await fetchImageBytes(cand.url, cand.timeoutMs)
 
-      // Best-effort: newer schema may include `tools.screenshots` (text[]). If not present, we still
-      // rely on the stable Storage path (`tools/<id>/fullpage.png`) and infer the URL on the client.
-      const upd = await supabase
-        .from('tools')
-        .update({ screenshots: [publicUrl], updated_at: new Date().toISOString() } as unknown as Record<string, unknown>)
-        .eq('id', toolId)
+          if (bytes.byteLength > maxBytes) {
+            lastError = `Screenshot too large (${bytes.byteLength} bytes)`
+            continue
+          }
 
-      if (upd.error) {
-        const code = (upd.error as unknown as { code?: string })?.code
-        if (code !== 'PGRST204') {
-          throw new Error(upd.error.message)
+          // eslint-disable-next-line no-await-in-loop
+          const upload = await supabase.storage
+            .from(bucket)
+            .upload(objectPath, bytes, {
+              upsert: true,
+              contentType: contentType.includes('image/') ? contentType : 'image/png',
+              cacheControl: '2592000' // 30 days
+            })
+
+          if (upload.error) {
+            const msg = String(upload.error.message || 'upload failed')
+            const lower = msg.toLowerCase()
+            // If we exceeded bucket size limits, try a smaller candidate.
+            if (lower.includes('maximum allowed size') || lower.includes('exceeded the maximum')) {
+              lastError = msg
+              continue
+            }
+            throw new Error(msg)
+          }
+
+          const publicUrl = supabase.storage.from(bucket).getPublicUrl(objectPath)?.data?.publicUrl
+          if (!publicUrl) return []
+
+          // Best-effort: newer schema may include `tools.screenshots` (text[]). If not present, we still
+          // rely on the stable Storage path (`tools/<id>/fullpage.png`) and infer the URL on the client.
+          const upd = await supabase
+            .from('tools')
+            .update({ screenshots: [publicUrl], updated_at: new Date().toISOString() } as unknown as Record<string, unknown>)
+            .eq('id', toolId)
+
+          if (upd.error) {
+            const code = (upd.error as unknown as { code?: string })?.code
+            if (code !== 'PGRST204') {
+              throw new Error(upd.error.message)
+            }
+          }
+
+          return [publicUrl]
+        } catch (e: unknown) {
+          lastError = e instanceof Error ? e.message : String(e)
+          continue
         }
       }
 
-      return [publicUrl]
+      throw new Error(lastError || 'Failed to generate screenshot')
     }
 
     switch (action) {
