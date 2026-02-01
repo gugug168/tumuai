@@ -206,13 +206,13 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
           style={{
             objectFit,
             objectPosition,
-            maxWidth: '100%',
-            maxHeight: '100%',
-            width: 'auto',
-            height: 'auto',
-            // 当容器有固定尺寸时，图片也应该填充容器
-            ...(widthCss && { maxWidth: widthCss }),
-            ...(heightCss && { maxHeight: heightCss })
+            // Ensure object-fit/object-position work as expected (cropping & "slices") by sizing the
+            // image to the container box. The replaced element is then fitted within that box.
+            width: '100%',
+            height: '100%',
+            // When container has fixed dimensions, we already set them on the wrapper; keep image aligned.
+            ...(widthCss && { width: widthCss }),
+            ...(heightCss && { height: heightCss })
           }}
           onLoad={handleLoad}
           onError={handleError}
