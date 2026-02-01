@@ -36,6 +36,9 @@ function warn(message) { log(`⚠️  ${message}`, 'yellow'); }
 
 // SQL 索引语句
 const indexes = [
+  // 0. Extensions
+  'CREATE EXTENSION IF NOT EXISTS pg_trgm',
+
   // 1. 工具表状态和热度排序索引
   'CREATE INDEX IF NOT EXISTS tools_status_upvotes_idx ON tools(status, upvotes DESC)',
 
@@ -64,7 +67,12 @@ const indexes = [
   'CREATE INDEX IF NOT EXISTS tools_features_gin_idx ON tools USING GIN (features)',
 
   // 10. 工具表定价索引
-  'CREATE INDEX IF NOT EXISTS tools_status_pricing_idx ON tools(status, pricing)'
+  'CREATE INDEX IF NOT EXISTS tools_status_pricing_idx ON tools(status, pricing)',
+
+  // 11. 搜索性能优化：ILIKE '%keyword%' trigram indexes (published only)
+  "CREATE INDEX IF NOT EXISTS idx_tools_published_name_trgm ON tools USING gin (name gin_trgm_ops) WHERE status = 'published'",
+  "CREATE INDEX IF NOT EXISTS idx_tools_published_tagline_trgm ON tools USING gin (tagline gin_trgm_ops) WHERE status = 'published'",
+  "CREATE INDEX IF NOT EXISTS idx_tools_published_description_trgm ON tools USING gin (description gin_trgm_ops) WHERE status = 'published'"
 ];
 
 // RPC 函数创建
