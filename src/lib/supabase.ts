@@ -29,7 +29,7 @@ export async function getTools(limit = 60, offset = 0): Promise<Tool[]> {
     // 直接使用 Supabase 客户端
     const { data, error } = await supabase
       .from('tools')
-      .select('id,name,tagline,logo_url,categories,features,pricing,rating,views,upvotes,date_added')
+      .select('id,name,tagline,description,website_url,logo_url,categories,features,pricing,rating,views,upvotes,date_added,featured,review_count,updated_at')
       .eq('status', 'published')  // 只获取已发布的工具
       .order('upvotes', { ascending: false })
       .range(offset, offset + limit - 1)
@@ -153,9 +153,11 @@ function getApiBackoffMs(status?: number): number {
   // 404 usually means "no functions on this host" (e.g. Netlify static) -> longer backoff.
   if (status === 404) return 10 * 60 * 1000
   // 503 means service unavailable -> moderate backoff.
-  if (status === 503) return 60 * 1000
+  if (status === 503) return 15 * 1000
+  // 5xx errors -> short/moderate backoff.
+  if (typeof status === 'number' && status >= 500) return 20 * 1000
   // Network errors / timeouts -> short backoff.
-  return 30 * 1000
+  return 6 * 1000
 }
 
 function markApiDown(status?: number) {
@@ -279,6 +281,43 @@ export async function getToolsFiltered(
  * @param includeCount 是否包含总数
  * @param filters 可选的筛选条件（有筛选时使用筛选 API）
  */
+async function getToolByIdViaAPI(
+  id: string,
+  signal?: AbortSignal
+): Promise<Tool | null> {
+  const url = new URL('/api/tools-cache', window.location.origin)
+  url.searchParams.set('id', id)
+
+  const response = await fetch(url.toString(), { signal })
+
+  // This endpoint intentionally returns 404 for "tool not found". Treat that as a data miss
+  // instead of "API layer is down". For non-JSON 404 (e.g. legacy hosts without /api),
+  // we'll throw and let the caller back off.
+  if (response.status === 404) {
+    const ct = response.headers.get('Content-Type') || ''
+    if (ct.includes('application/json')) {
+      const body = await response.json().catch(() => null)
+      if (body && typeof body === 'object' && (body as any).error === 'Tool not found') {
+        return null
+      }
+    }
+
+    const err: ApiFetchError = new Error(`API error: ${response.status}`)
+    err.status = response.status
+    throw err
+  }
+
+  if (!response.ok) {
+    const err: ApiFetchError = new Error(`API error: ${response.status}`)
+    err.status = response.status
+    throw err
+  }
+
+  const result: ToolsCacheResult = await response.json()
+  const tool = Array.isArray(result.tools) ? result.tools[0] : null
+  return tool || null
+}
+
 export async function getToolsSmart(
   limit = 12,
   offset = 0,
@@ -522,7 +561,35 @@ export async function getToolById(id: string) {
     return await unifiedCache.fetchWithCache(
       cacheKey,
       async () => {
-        // 直接使用 Supabase 客户端
+        // Production: prefer the Vercel API layer (CDN cached) to avoid slow client-direct reads.
+        if (!import.meta.env.DEV && !isApiBackedOff()) {
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 3500)
+
+          try {
+            const viaApi = await getToolByIdViaAPI(id, controller.signal)
+            if (!viaApi) throw new Error('Tool not found')
+            return viaApi as Tool
+          } catch (apiError) {
+            // If the tool truly doesn't exist, don't fall back (it will fail too).
+            if (apiError instanceof Error && apiError.message === 'Tool not found') {
+              throw apiError
+            }
+
+            const status = typeof (apiError as ApiFetchError)?.status === 'number'
+              ? (apiError as ApiFetchError).status
+              : undefined
+            markApiDown(status)
+
+            if (IS_DEV) {
+              console.warn('getToolById: API failed, falling back to Supabase direct query:', apiError)
+            }
+          } finally {
+            clearTimeout(timeoutId)
+          }
+        }
+
+        // Fallback: direct Supabase read.
         const { data, error } = await supabase
           .from('tools')
           .select('*')

@@ -68,6 +68,8 @@ const QuickFilters = () => {
                 onClick={() => handleFilterClick(filter.id)}
                 onMouseEnter={() => void prefetchToolsPage()}
                 onFocus={() => void prefetchToolsPage()}
+                onPointerDown={() => void prefetchToolsPage()}
+                onTouchStart={() => void prefetchToolsPage()}
                 className={`${filter.color} text-white px-6 py-3 rounded-full font-medium hover:opacity-90 transition-opacity flex items-center space-x-2 hover:scale-105 transform transition-transform`}
               >
                 <IconComponent className="w-4 h-4" />

@@ -4,7 +4,7 @@ import { Search, Sparkles, Building2, Calculator, PenTool } from 'lucide-react';
 import CountUpAnimation from './CountUpAnimation';
 import { getCategories, getToolsCount } from '../lib/supabase';
 import { useHomeData } from '../contexts/HomeDataContext';
-import { prefetchToolsPage } from '../lib/route-prefetch';
+import { prefetchToolsData, prefetchToolsPage } from '../lib/route-prefetch';
 
 interface SiteStats {
   toolsCount: number;
@@ -165,7 +165,10 @@ const Hero = () => {
                   name="search"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onFocus={() => void prefetchToolsPage()}
+                  onFocus={() => {
+                    void prefetchToolsPage();
+                    void prefetchToolsData();
+                  }}
                   placeholder="搜索结构设计、BIM建模、工程计算等专业工具..."
                   className="w-full pl-12 pr-32 py-4 text-lg border-0 rounded-xl focus:ring-2 focus:ring-purple-500 shadow-xl bg-white/95 backdrop-blur-sm text-gray-900 placeholder-gray-500 transition-all duration-300 hover:bg-white focus:bg-white"
                   aria-label="搜索AI工具"

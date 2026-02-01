@@ -6,6 +6,7 @@
 let toolsPagePromise: Promise<unknown> | null = null;
 let submitPagePromise: Promise<unknown> | null = null;
 let toolDetailPagePromise: Promise<unknown> | null = null;
+let toolsDataPromise: Promise<void> | null = null;
 
 export function prefetchToolsPage(): Promise<unknown> {
   if (!toolsPagePromise) {
@@ -28,3 +29,14 @@ export function prefetchToolDetailPage(): Promise<unknown> {
   return toolDetailPagePromise;
 }
 
+// Prefetch the initial data needed by /tools so the first navigation is instant.
+// This is a best-effort warmup; failures are ignored.
+export function prefetchToolsData(): Promise<void> {
+  if (!toolsDataPromise) {
+    toolsDataPromise = Promise.allSettled([
+      fetch('/api/tools-cache?limit=12&offset=0&includeCount=true'),
+      fetch('/api/categories-cache')
+    ]).then(() => undefined);
+  }
+  return toolsDataPromise;
+}

@@ -24,11 +24,12 @@ type SortField = 'upvotes' | 'date_added' | 'rating' | 'views'
 type Pricing = 'Free' | 'Freemium' | 'Paid' | 'Trial'
 
 // 数据版本号 - 当工具数据更新时需要修改此版本号
-const DATA_VERSION = 'v1.0.6'  // 当前有106个工具
+const DATA_VERSION = 'v1.0.7'  // 当前有106个工具
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   try {
     // 1. 解析查询参数
+    const toolId = typeof request.query.id === 'string' ? request.query.id : undefined
     const limit = parseInt(request.query.limit as string) || 12
     const offset = parseInt(request.query.offset as string) || 0
     const includeCount = request.query.includeCount === 'true'
@@ -79,12 +80,52 @@ export default async function handler(request: VercelRequest, response: VercelRe
       }
     })
 
+    // Fast path: fetch a single tool by id (used for tool detail pages).
+    if (toolId) {
+      const selectColumns = 'id,name,tagline,description,website_url,logo_url,categories,features,pricing,rating,views,upvotes,date_added,featured,review_count,updated_at'
+      const { data, error } = await supabase
+        .from('tools')
+        .select(selectColumns)
+        .eq('status', 'published')
+        .eq('id', toolId)
+        .maybeSingle()
+
+      if (error) {
+        console.error('Supabase error:', error)
+        return response.status(500).json({ error: 'Failed to fetch tool' })
+      }
+
+      if (!data) {
+        return response.status(404).json({ error: 'Tool not found' })
+      }
+
+      const result: ToolsCacheResponse = {
+        tools: [data],
+        cached: false,
+        timestamp: new Date().toISOString(),
+        version: DATA_VERSION
+      }
+
+      if (bypassCache) {
+        response.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+        response.setHeader('Pragma', 'no-cache')
+        response.setHeader('Expires', '0')
+      } else {
+        response.setHeader('Cache-Tag', ['tools', `tools-v${DATA_VERSION}`, `tool-${toolId}`].join(', '))
+        response.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=1800')
+        response.setHeader('CDN-Cache-Control', 'public, s-maxage=600')
+        response.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=600')
+      }
+
+      return response.status(200).json(result)
+    }
+
     const hasFilters = featuredOnly || !!category || !!pricing || features.length > 0
 
     // 4. 构建查询（可选 featured/category/pricing/features + 排序）
     let toolsQuery = supabase
       .from('tools')
-      .select('id,name,tagline,logo_url,categories,features,pricing,rating,views,upvotes,date_added,featured,review_count')
+      .select('id,name,tagline,description,website_url,logo_url,categories,features,pricing,rating,views,upvotes,date_added,featured,review_count,updated_at')
       .eq('status', 'published')
 
     if (featuredOnly) {

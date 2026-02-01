@@ -4,7 +4,7 @@ import FeaturedTools from '../components/FeaturedTools';
 import CategoryBrowser from '../components/CategoryBrowser';
 import QuickFilters from '../components/QuickFilters';
 import { HomeDataProvider } from '../contexts/HomeDataContext';
-import { prefetchToolDetailPage, prefetchToolsPage } from '../lib/route-prefetch';
+import { prefetchToolDetailPage, prefetchToolsData, prefetchToolsPage } from '../lib/route-prefetch';
 
 const HomePage = React.memo(() => {
   // Warm up the most common next navigation (Tools page + first page data) without blocking LCP.
@@ -21,8 +21,7 @@ const HomePage = React.memo(() => {
       void prefetchToolDetailPage();
 
       // Data prefetch: primes SW cache + browser cache so the first click into /tools is instant.
-      fetch('/api/tools-cache?limit=12&offset=0&includeCount=true').catch(() => {});
-      fetch('/api/categories-cache').catch(() => {});
+      void prefetchToolsData();
     };
 
     if ('requestIdleCallback' in window) {
@@ -30,7 +29,9 @@ const HomePage = React.memo(() => {
       return () => (window as any).cancelIdleCallback(id);
     }
 
-    const t = window.setTimeout(warm, 1200);
+    // iOS Safari doesn't support requestIdleCallback; use a shorter delay to still benefit
+    // users who click "工具中心" quickly after landing.
+    const t = window.setTimeout(warm, 450);
     return () => window.clearTimeout(t);
   }, []);
 

@@ -32,6 +32,7 @@ interface Review {
 const ToolDetailPage = () => {
   const { toolId } = useParams();
   const location = useLocation();
+  const toolIdAsString = toolId || '';
   const { showToast } = useToast();
   const toast = createToastHelpers(showToast);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -40,11 +41,13 @@ const ToolDetailPage = () => {
   const [loadingFavorite, setLoadingFavorite] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
-  const [tool, setTool] = useState<Tool | null>(null);
+  const [tool, setTool] = useState<Tool | null>(() => {
+    const state = location.state as null | { tool?: Partial<Tool> };
+    const preloaded = state?.tool;
+    return preloaded && preloaded.id === toolIdAsString ? (preloaded as Tool) : null;
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  const toolIdAsString = toolId || '';
 
   // If we navigated here from a list, we can reuse the already-fetched tool object
   // to avoid a blank full-screen loader while the detail query runs.
@@ -262,12 +265,27 @@ const ToolDetailPage = () => {
     addedDate: tool.date_added ? tool.date_added.split('T')[0] : '',
     lastUpdated: tool.updated_at ? tool.updated_at.split('T')[0] : ''
   } : null;
+
+  const hasDetailFields = useMemo(() => {
+    if (!tool || tool.id !== toolIdAsString) return false;
+    const t = tool as any;
+    // When navigating from a list, the tool object can be partial; only skip the detail query
+    // if we already have the key fields the page needs.
+    return 'website_url' in t && 'description' in t && 'updated_at' in t;
+  }, [tool, toolIdAsString]);
   
   useEffect(() => {
-    if (toolIdAsString) {
-      loadToolData();
+    if (!toolIdAsString) return;
+
+    if (hasDetailFields) {
+      // Ensure we don't keep showing a loading indicator when we already have enough data.
+      setLoading(false);
+      setError(null);
+      return;
     }
-  }, [toolIdAsString, loadToolData]);
+
+    loadToolData();
+  }, [toolIdAsString, hasDetailFields, loadToolData]);
 
   useEffect(() => {
     if (tool) {

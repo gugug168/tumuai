@@ -250,6 +250,8 @@ const ToolCard = React.memo(({
             state={{ tool }}
             onMouseEnter={handlePrefetchDetail}
             onFocus={handlePrefetchDetail}
+            onPointerDown={handlePrefetchDetail}
+            onTouchStart={handlePrefetchDetail}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium
                      hover:bg-blue-700 active:bg-blue-800 active:scale-95
                      transition-all duration-200 inline-block"
@@ -381,6 +383,8 @@ const ToolCard = React.memo(({
           state={{ tool }}
           onMouseEnter={handlePrefetchDetail}
           onFocus={handlePrefetchDetail}
+          onPointerDown={handlePrefetchDetail}
+          onTouchStart={handlePrefetchDetail}
           className="
             w-full bg-blue-600 text-white py-2.5 px-3 text-sm
             flex items-center justify-center
