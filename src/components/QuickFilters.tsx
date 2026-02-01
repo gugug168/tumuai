@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Sparkles, Heart, Users, Chrome, Smartphone } from 'lucide-react';
+import { prefetchToolsPage } from '../lib/route-prefetch';
 
 const quickFilters = [
   { id: 'today', label: '最新', icon: Calendar, color: 'bg-purple-600' },
@@ -65,6 +66,8 @@ const QuickFilters = () => {
               <button
                 key={filter.id}
                 onClick={() => handleFilterClick(filter.id)}
+                onMouseEnter={() => void prefetchToolsPage()}
+                onFocus={() => void prefetchToolsPage()}
                 className={`${filter.color} text-white px-6 py-3 rounded-full font-medium hover:opacity-90 transition-opacity flex items-center space-x-2 hover:scale-105 transform transition-transform`}
               >
                 <IconComponent className="w-4 h-4" />

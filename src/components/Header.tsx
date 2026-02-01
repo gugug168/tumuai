@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Hammer, User, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
+import { prefetchSubmitToolPage, prefetchToolsPage } from '../lib/route-prefetch';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -83,6 +84,14 @@ const Header = () => {
                 <Link
                   key={item.path}
                   to={item.path}
+                  onMouseEnter={() => {
+                    if (item.path === '/tools') void prefetchToolsPage();
+                    if (item.path === '/submit') void prefetchSubmitToolPage();
+                  }}
+                  onFocus={() => {
+                    if (item.path === '/tools') void prefetchToolsPage();
+                    if (item.path === '/submit') void prefetchSubmitToolPage();
+                  }}
                   className={`font-medium relative transition-colors group ${
                     isActive(item.path)
                       ? 'text-accent-600'
@@ -100,6 +109,8 @@ const Header = () => {
             {/* 提交工具按钮 */}
             <Link
               to="/submit"
+              onMouseEnter={() => void prefetchSubmitToolPage()}
+              onFocus={() => void prefetchSubmitToolPage()}
               className="bg-accent-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-accent-600 transition-colors inline-flex items-center"
             >
               提交你的工具
@@ -180,6 +191,14 @@ const Header = () => {
                   <Link
                     key={item.path}
                     to={item.path}
+                    onMouseEnter={() => {
+                      if (item.path === '/tools') void prefetchToolsPage();
+                      if (item.path === '/submit') void prefetchSubmitToolPage();
+                    }}
+                    onFocus={() => {
+                      if (item.path === '/tools') void prefetchToolsPage();
+                      if (item.path === '/submit') void prefetchSubmitToolPage();
+                    }}
                     className={`font-medium py-2 transition-colors ${
                       isActive(item.path)
                         ? 'text-accent-600'
