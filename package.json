@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/prerender-static.cjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test:e2e": "playwright test --reporter=list",
