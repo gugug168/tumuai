@@ -16,7 +16,7 @@ const swLog = (...args) => { if (SW_DEBUG) console.log(...args); };
 const swWarn = (...args) => { if (SW_DEBUG) console.warn(...args); };
 
 // Bump this when changing caching logic to ensure clients get fresh assets.
-const SW_VERSION = 'v6';
+const SW_VERSION = 'v7';
 const STATIC_CACHE = `tumuai-static-${SW_VERSION}`;
 const API_CACHE = `tumuai-api-${SW_VERSION}`;
 
@@ -244,6 +244,13 @@ async function handleDocumentRequest(request) {
 async function handleApiRequest(request, event) {
   const cache = await caches.open(API_CACHE);
   const cachedResponse = await cache.match(request);
+  const pathname = new URL(request.url).pathname;
+
+  // Only use SWR for read-heavy public endpoints. Keep admin/user endpoints as Network First
+  // to avoid showing stale data in privileged UIs.
+  const useStaleWhileRevalidate = pathname === '/api/tools-cache' ||
+    pathname === '/api/categories-cache' ||
+    pathname === '/api/tools-filtered';
 
   try {
     const fetchPromise = fetch(request)
@@ -256,9 +263,8 @@ async function handleApiRequest(request, event) {
       })
       .catch(() => null);
 
-    // If we have a cached response, return it immediately to keep UX snappy.
-    // Update the cache in the background.
-    if (cachedResponse) {
+    // SWR: return cache immediately, update in background.
+    if (useStaleWhileRevalidate && cachedResponse) {
       if (event && typeof event.waitUntil === 'function') {
         event.waitUntil(fetchPromise);
       }
