@@ -182,7 +182,10 @@ const ToolDetailPage = () => {
 
     try {
       const parsed = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`);
-      const target = parsed.origin; // avoid query/hash interfering with thum.io path parsing
+      // Avoid query/hash interfering with thum.io path parsing, but keep pathname for tools
+      // whose canonical landing page isn't at `/`.
+      const pathname = parsed.pathname && parsed.pathname !== '/' ? parsed.pathname : '';
+      const target = `${parsed.origin}${pathname}`;
       return `https://image.thum.io/get/fullpage/noanimate/width/1200/${target}`;
     } catch {
       return '';
