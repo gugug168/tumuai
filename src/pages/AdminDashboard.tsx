@@ -38,6 +38,7 @@ import {
   exportToolsToCSV,
   exportUsersToCSV,
   refreshToolLogo,
+  refreshToolScreenshots,
   batchRefreshToolLogos,
   type ToolSubmission,
   type AdminLog
@@ -116,6 +117,9 @@ const AdminDashboard = () => {
   // Logo 刷新状态
   const [refreshingLogos, setRefreshingLogos] = useState<Set<string>>(new Set());
   const [batchRefreshing, setBatchRefreshing] = useState(false);
+  // 截图生成状态
+  const [refreshingScreenshots, setRefreshingScreenshots] = useState<Set<string>>(new Set());
+  const [batchRefreshingScreenshots, setBatchRefreshingScreenshots] = useState(false);
   // 按需加载状态 - 每个 tab 独立的 loading 状态
   const [loadingStates, setLoadingStates] = useState({
     stats: true,
@@ -543,6 +547,29 @@ const AdminDashboard = () => {
     }
   };
 
+  // 生成/刷新单个工具的官网截图（存入 Supabase Storage）
+  const handleRefreshSingleScreenshots = async (toolId: string) => {
+    setRefreshingScreenshots(prev => new Set(prev).add(toolId));
+
+    try {
+      const result = await refreshToolScreenshots(toolId);
+      if (result.success) {
+        toast.success('截图已生成', `生成 ${result.screenshots?.length || 0} 张`)
+      } else {
+        toast.error('生成失败', result.error || '无法生成截图')
+      }
+    } catch (error) {
+      console.error('Refresh screenshots failed:', error);
+      toast.error('生成失败', '请稍后重试');
+    } finally {
+      setRefreshingScreenshots(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(toolId);
+        return newSet;
+      });
+    }
+  };
+
   // 批量刷新 Logo
   const handleBatchRefreshLogos = async () => {
     const toolsToRefresh = selectedTools.size > 0
@@ -572,6 +599,40 @@ const AdminDashboard = () => {
       toast.error('批量刷新失败', '请稍后重试');
     } finally {
       setBatchRefreshing(false);
+    }
+  };
+
+  // 批量生成截图（对选择的工具逐个执行，避免单次函数超时）
+  const handleBatchRefreshScreenshots = async () => {
+    const toolsToRefresh = selectedTools.size > 0 ? Array.from(selectedTools) : [];
+
+    if (toolsToRefresh.length === 0) {
+      toast.info('提示', '请先选择需要生成截图的工具');
+      return;
+    }
+
+    if (!confirm(`确定为 ${toolsToRefresh.length} 个工具生成官网截图？`)) return;
+
+    setBatchRefreshingScreenshots(true);
+
+    try {
+      let success = 0;
+      let failed = 0;
+
+      for (const toolId of toolsToRefresh) {
+        try {
+          const result = await refreshToolScreenshots(toolId);
+          if (result.success) success += 1;
+          else failed += 1;
+        } catch {
+          failed += 1;
+        }
+      }
+
+      toast.success('批量生成完成', `成功 ${success} 个，失败 ${failed} 个`);
+      setSelectedTools(new Set());
+    } finally {
+      setBatchRefreshingScreenshots(false);
     }
   };
 
@@ -1000,6 +1061,15 @@ const AdminDashboard = () => {
                           批量刷新图标 ({selectedTools.size})
                         </button>
                         <button
+                          onClick={handleBatchRefreshScreenshots}
+                          disabled={batchRefreshingScreenshots}
+                          className="inline-flex items-center px-3 py-2 rounded-md bg-slate-700 text-white text-sm hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="为选中的工具生成官网截图（存入 Supabase Storage）"
+                        >
+                          <Image className={`h-4 w-4 mr-1 ${batchRefreshingScreenshots ? 'animate-spin' : ''}`} />
+                          批量生成截图 ({selectedTools.size})
+                        </button>
+                        <button
                           onClick={handleBatchDeleteTools}
                           className="inline-flex items-center px-3 py-2 rounded-md bg-red-600 text-white text-sm hover:bg-red-700"
                         >
@@ -1133,6 +1203,14 @@ const AdminDashboard = () => {
                                 title="刷新图标"
                               >
                                 <RefreshCw className={`h-4 w-4 ${refreshingLogos.has(tool.id) ? 'animate-spin' : ''}`} />
+                              </button>
+                              <button
+                                onClick={() => handleRefreshSingleScreenshots(tool.id)}
+                                disabled={refreshingScreenshots.has(tool.id)}
+                                className="text-slate-600 hover:text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="生成官网截图（存入 Supabase Storage）"
+                              >
+                                <Image className={`h-4 w-4 ${refreshingScreenshots.has(tool.id) ? 'animate-spin' : ''}`} />
                               </button>
                               <button
                                 onClick={() => handleDeleteTool(tool.id)}

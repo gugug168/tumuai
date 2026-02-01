@@ -851,6 +851,43 @@ export async function refreshToolLogo(toolId: string, websiteUrl?: string): Prom
 }
 
 /**
+ * 生成/刷新工具官网截图（存入 Supabase Storage）
+ */
+export async function refreshToolScreenshots(toolId: string): Promise<{ success: boolean; screenshots?: string[]; error?: string }> {
+  try {
+    console.log('🖼️ 开始生成工具截图:', toolId)
+
+    const accessToken = await ensureAccessToken()
+    if (!accessToken) {
+      return { success: false, error: '用户未登录' }
+    }
+
+    const response = await fetch('/api/admin-actions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        action: 'refresh_tool_screenshots',
+        toolId
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      return { success: false, error: error.error || '生成失败' }
+    }
+
+    const data = await response.json()
+    return { success: true, screenshots: data.screenshots || [] }
+  } catch (error) {
+    console.error('❌ 生成工具截图失败:', error)
+    return { success: false, error: (error as Error).message }
+  }
+}
+
+/**
  * 批量刷新工具 Logo
  * 支持选择特定工具或刷新所有缺失 logo 的工具
  */
