@@ -8,7 +8,8 @@
 # 忽略文档和配置文件
 **/*.md
 **/*.sql
-**/scripts
+scripts/*
+!scripts/prerender-static.cjs
 **/database
 **/supabase
 
