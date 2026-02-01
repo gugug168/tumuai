@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import {
   ExternalLink,
   Heart,
@@ -31,6 +31,7 @@ interface Review {
 
 const ToolDetailPage = () => {
   const { toolId } = useParams();
+  const location = useLocation();
   const { showToast } = useToast();
   const toast = createToastHelpers(showToast);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -44,6 +45,22 @@ const ToolDetailPage = () => {
   const [error, setError] = useState<string | null>(null);
   
   const toolIdAsString = toolId || '';
+
+  // If we navigated here from a list, we can reuse the already-fetched tool object
+  // to avoid a blank full-screen loader while the detail query runs.
+  useEffect(() => {
+    const state = location.state as null | { tool?: Partial<Tool> };
+    const preloaded = state?.tool;
+
+    if (preloaded && preloaded.id === toolIdAsString) {
+      setTool(preloaded as Tool);
+      setError(null);
+      return;
+    }
+
+    // No preloaded data for this toolId; clear stale tool to avoid showing the previous tool briefly.
+    setTool(null);
+  }, [location.state, toolIdAsString]);
 
   // 相关工具推荐数据（动态从API获取）
   interface RelatedTool {
@@ -224,7 +241,7 @@ const ToolDetailPage = () => {
     name: tool.name,
     logo: safePrimaryLogoUrl || fallbackLogoDataUrl,
     category: tool.categories?.[0] || '工具',
-    website: tool.website_url,
+    website: (tool as any)?.website_url || '',
     shortDescription: tool.tagline,
     detailedDescription: tool.description || tool.tagline,
     images: galleryImages,
@@ -267,7 +284,7 @@ const ToolDetailPage = () => {
     }
   }, [adaptedTool, loadRelatedTools]);
 
-  if (loading) {
+  if (loading && !tool) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -417,15 +434,25 @@ const ToolDetailPage = () => {
               </div>
             </div>
             <div className="flex flex-col space-y-3">
-              <a
-                href={adaptedTool.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center"
-              >
-                访问官网
-                <ExternalLink className="ml-2 w-4 h-4" />
-              </a>
+              {adaptedTool.website ? (
+                <a
+                  href={adaptedTool.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center"
+                >
+                  访问官网
+                  <ExternalLink className="ml-2 w-4 h-4" />
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="bg-gray-200 text-gray-600 px-6 py-3 rounded-lg font-semibold flex items-center justify-center cursor-not-allowed"
+                >
+                  官网加载中...
+                </button>
+              )}
               <button
                 onClick={handleToggleFavorite}
                 disabled={loadingFavorite}

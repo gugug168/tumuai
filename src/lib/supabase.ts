@@ -330,7 +330,8 @@ export async function getToolsSmart(
   // API 优先策略：优先走 Vercel API（CDN 缓存命中很快），
   // 但避免在后台“同时直连 Supabase”造成双倍请求/资源竞争。
   // 超时后再回退到本地缓存/直连。
-  const API_TIMEOUT = 2000
+  // Give the Vercel function a bit more room for cold starts; SW + warmup will usually make this instant.
+  const API_TIMEOUT = 3500
 
   // If API is in backoff, skip the network request entirely.
   if (isApiBackedOff()) {
@@ -513,27 +514,36 @@ export async function getLatestTools() {
 
 // 根据ID获取工具详情
 export async function getToolById(id: string) {
+  if (!id) return null
+
+  const cacheKey = `tool_detail_${id}`
+
   try {
-    console.log(`🔍 开始获取工具详情: ${id}`)
-    console.log('✅ 通过Supabase直连获取工具详情')
-    
-    // 直接使用 Supabase 客户端
-    const { data, error } = await supabase
-      .from('tools')
-      .select('*')
-      .eq('id', id)
-      .eq('status', 'published')  // 确保只获取已发布的工具
-      .single()
+    return await unifiedCache.fetchWithCache(
+      cacheKey,
+      async () => {
+        // 直接使用 Supabase 客户端
+        const { data, error } = await supabase
+          .from('tools')
+          .select('*')
+          .eq('id', id)
+          .eq('status', 'published')  // 确保只获取已发布的工具
+          .single()
 
-    if (error) {
-      console.error(`❌ Supabase获取工具详情失败 ${id}:`, error)
-      return null
-    }
+        if (error || !data) {
+          throw error || new Error('Tool not found')
+        }
 
-    console.log('✅ 通过Supabase直连获取工具详情成功:', data.name)
-    return data as Tool
+        return data as Tool
+      },
+      {
+        ttl: 10 * 60 * 1000, // 10分钟缓存
+        staleTime: 2 * 60 * 1000,
+        staleWhileRevalidate: true
+      }
+    )
   } catch (error) {
-    console.error(`❌ 获取工具详情异常 ${id}:`, error)
+    console.error(`❌ 获取工具详情失败 ${id}:`, error)
     return null
   }
 }

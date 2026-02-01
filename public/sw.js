@@ -16,7 +16,7 @@ const swLog = (...args) => { if (SW_DEBUG) console.log(...args); };
 const swWarn = (...args) => { if (SW_DEBUG) console.warn(...args); };
 
 // Bump this when changing caching logic to ensure clients get fresh assets.
-const SW_VERSION = 'v5';
+const SW_VERSION = 'v6';
 const STATIC_CACHE = `tumuai-static-${SW_VERSION}`;
 const API_CACHE = `tumuai-api-${SW_VERSION}`;
 
@@ -110,7 +110,8 @@ self.addEventListener('fetch', (event) => {
 
   // API 请求 - Network First 策略
   if (API_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) {
-    event.respondWith(handleApiRequest(request));
+    // Use Stale-While-Revalidate to keep navigation responsive even when the API cold-starts.
+    event.respondWith(handleApiRequest(request, event));
     return;
   }
 
@@ -130,7 +131,7 @@ self.addEventListener('fetch', (event) => {
 
   // 图片资源 - Stale While Revalidate 策略
   if (request.destination === 'image') {
-    event.respondWith(handleImageRequest(request));
+    event.respondWith(handleImageRequest(request, event));
     return;
   }
 
@@ -240,24 +241,35 @@ async function handleDocumentRequest(request) {
 /**
  * 处理 API 请求 - Network First
  */
-async function handleApiRequest(request) {
+async function handleApiRequest(request, event) {
   const cache = await caches.open(API_CACHE);
+  const cachedResponse = await cache.match(request);
 
   try {
-    // 先尝试网络请求
-    const response = await fetch(request);
+    const fetchPromise = fetch(request)
+      .then(async (response) => {
+        // 只缓存成功的 GET 请求
+        if (response.ok && request.method === 'GET') {
+          await cache.put(request, response.clone());
+        }
+        return response;
+      })
+      .catch(() => null);
 
-    // 只缓存成功的 GET 请求
-    if (response.ok && request.method === 'GET') {
-      // 克隆响应以便缓存
-      const responseToCache = response.clone();
-      await cache.put(request, responseToCache);
+    // If we have a cached response, return it immediately to keep UX snappy.
+    // Update the cache in the background.
+    if (cachedResponse) {
+      if (event && typeof event.waitUntil === 'function') {
+        event.waitUntil(fetchPromise);
+      }
+      return cachedResponse;
     }
 
-    return response;
+    // No cache available: wait for network.
+    const networkResponse = await fetchPromise;
+    if (networkResponse) return networkResponse;
+    throw new Error('Network request failed');
   } catch (error) {
-    // 网络失败，尝试从缓存获取
-    const cachedResponse = await cache.match(request);
     if (cachedResponse) {
       swLog('[SW] API request served from cache:', request.url);
       return cachedResponse;
@@ -307,22 +319,35 @@ async function handleStaticRequest(request) {
 /**
  * 处理图片请求 - Stale While Revalidate
  */
-async function handleImageRequest(request) {
+async function handleImageRequest(request, event) {
   const cache = await caches.open(STATIC_CACHE);
 
   // 先从缓存获取（无论是否过期）
   const cachedResponse = await cache.match(request);
 
   // 后台更新缓存
-  const fetchPromise = fetch(request).then((response) => {
-    if (response.ok) {
-      cache.put(request, response.clone());
-    }
-    return response;
-  }).catch(() => null);
+  const fetchPromise = fetch(request)
+    .then((response) => {
+      if (response.ok) {
+        cache.put(request, response.clone());
+      }
+      return response;
+    })
+    .catch(() => null);
 
-  // 返回缓存的响应或等待网络请求
-  return cachedResponse || fetchPromise;
+  // If we have cache, return it immediately and refresh in background.
+  if (cachedResponse) {
+    if (event && typeof event.waitUntil === 'function') {
+      event.waitUntil(fetchPromise);
+    }
+    return cachedResponse;
+  }
+
+  // Otherwise wait for network.
+  const networkResponse = await fetchPromise;
+  if (networkResponse) return networkResponse;
+  // No cache + no network.
+  return new Response('', { status: 504 });
 }
 
 /**

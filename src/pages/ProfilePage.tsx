@@ -227,6 +227,7 @@ const ProfilePage = () => {
                           <div className="flex space-x-2">
                             <Link
                               to={`/tools/${tool.id}`}
+                              state={{ tool }}
                               className="flex-1 bg-blue-600 text-white text-xs py-1.5 px-3 rounded text-center hover:bg-blue-700 transition-colors"
                             >
                               查看详情

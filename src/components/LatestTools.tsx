@@ -243,6 +243,7 @@ const LatestTools = () => {
                 {/* Action Button */}
                 <Link
                   to={`/tools/${tool.id}`}
+                  state={{ tool }}
                   className="w-full btn-primary py-2 px-3 text-sm flex items-center justify-center"
                 >
                   查看详情
