@@ -155,6 +155,14 @@ const ToolDetailPage = () => {
     objectPosition?: string;
   };
 
+  const storedScreenshotUrls = useMemo(() => {
+    const raw = (tool as any)?.screenshots;
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((u: unknown): u is string => typeof u === 'string' && u.trim().length > 0)
+      .slice(0, 8);
+  }, [tool]);
+
   const websiteScreenshotUrl = useMemo(() => {
     const website = tool?.website_url || '';
     if (!website) return '';
@@ -169,12 +177,22 @@ const ToolDetailPage = () => {
   }, [tool]);
 
   const galleryImages = useMemo<GalleryImage[]>(() => {
-    if (websiteScreenshotUrl) {
+    // Prefer stored screenshots (Supabase Storage) to avoid slow third-party render on every view.
+    if (storedScreenshotUrls.length >= 2) {
+      return storedScreenshotUrls.map((src) => ({
+        src,
+        objectFit: 'cover',
+        objectPosition: '50% 50%'
+      }));
+    }
+
+    const baseScreenshotUrl = storedScreenshotUrls[0] || websiteScreenshotUrl;
+    if (baseScreenshotUrl) {
       // Use the same full-page screenshot and show different "slices" via object-position.
       // This works even when the website is very long.
       const positions = ['50% 0%', '50% 33%', '50% 66%', '50% 100%'];
       return positions.map((pos) => ({
-        src: websiteScreenshotUrl,
+        src: baseScreenshotUrl,
         objectFit: 'cover',
         objectPosition: pos
       }));
@@ -182,7 +200,7 @@ const ToolDetailPage = () => {
 
     const fallback = safePrimaryLogoUrl || fallbackLogoDataUrl;
     return fallback ? [{ src: fallback, objectFit: 'contain', objectPosition: '50% 50%' }] : [];
-  }, [websiteScreenshotUrl, safePrimaryLogoUrl, fallbackLogoDataUrl]);
+  }, [storedScreenshotUrls, websiteScreenshotUrl, safePrimaryLogoUrl, fallbackLogoDataUrl]);
 
   // 将数据库工具数据适配为组件需要的格式
   const adaptedTool = tool ? {

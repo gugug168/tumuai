@@ -153,6 +153,74 @@ export default async function handler(request: VercelRequest, response: VercelRe
       return { ids: uniqueIds, primaryId: uniqueIds[0] || null }
     }
 
+    function normalizeScreenshotTarget(websiteUrl: string): string | null {
+      try {
+        const url = new URL(websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`)
+        // Keep a stable target for the screenshot service; avoid query/hash.
+        const pathname = url.pathname && url.pathname !== '/' ? url.pathname : ''
+        return `${url.origin}${pathname}`
+      } catch {
+        return null
+      }
+    }
+
+    async function fetchImageBytes(url: string, timeoutMs: number): Promise<{ bytes: Uint8Array; contentType: string }> {
+      const resp = await fetch(url, {
+        signal: AbortSignal.timeout(timeoutMs),
+        headers: {
+          // Some screenshot providers behave better with a UA.
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8'
+        }
+      })
+
+      if (!resp.ok) {
+        throw new Error(`Screenshot fetch failed: HTTP ${resp.status}`)
+      }
+
+      const contentType = resp.headers.get('content-type') || 'application/octet-stream'
+      const buf = await resp.arrayBuffer()
+      return { bytes: new Uint8Array(buf), contentType }
+    }
+
+    async function generateAndStoreToolScreenshots(toolId: string, websiteUrl: string): Promise<string[]> {
+      const target = normalizeScreenshotTarget(websiteUrl)
+      if (!target) return []
+
+      // One full-page screenshot is enough; the client can display multiple "segments" via object-position.
+      const screenshotUrl = `https://image.thum.io/get/fullpage/noanimate/width/1200/${target}`
+      const { bytes, contentType } = await fetchImageBytes(screenshotUrl, 12000)
+
+      const bucket = 'tool-screenshots'
+      const objectPath = `tools/${toolId}/fullpage.png`
+
+      const upload = await supabase.storage
+        .from(bucket)
+        .upload(objectPath, bytes, {
+          upsert: true,
+          contentType: contentType.includes('image/') ? contentType : 'image/png',
+          cacheControl: '2592000' // 30 days
+        })
+
+      if (upload.error) {
+        throw new Error(upload.error.message)
+      }
+
+      const publicUrl = supabase.storage.from(bucket).getPublicUrl(objectPath)?.data?.publicUrl
+      if (!publicUrl) return []
+
+      const { error } = await supabase
+        .from('tools')
+        .update({ screenshots: [publicUrl], updated_at: new Date().toISOString() })
+        .eq('id', toolId)
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      return [publicUrl]
+    }
+
     switch (action) {
       case 'review_submission': {
         const { submissionId, status, adminNotes } = body || {}
@@ -248,6 +316,21 @@ export default async function handler(request: VercelRequest, response: VercelRe
               tool_id: newTool?.id,
               tool_name: submission.tool_name
             })
+
+            // Best-effort: generate and store website screenshot(s) for faster tool detail page loads.
+            if (newTool?.id && submission.website_url) {
+              try {
+                const urls = await generateAndStoreToolScreenshots(newTool.id, submission.website_url)
+                if (urls.length > 0) {
+                  await logAdminAction('generate_tool_screenshots', 'tool', newTool.id, {
+                    tool_name: submission.tool_name,
+                    screenshots: urls
+                  })
+                }
+              } catch (e) {
+                console.warn('Screenshot generation skipped/failed:', e instanceof Error ? e.message : e)
+              }
+            }
           } else {
             // 记录拒绝操作
             await logAdminAction('reject_submission', 'tool_submission', submissionId, {
@@ -310,6 +393,22 @@ export default async function handler(request: VercelRequest, response: VercelRe
           }
 
           await logAdminAction('create_tool', 'tool', data?.id, payload)
+
+          // Best-effort: generate screenshots for faster tool detail loads.
+          if (data?.id && payload.website_url) {
+            try {
+              const urls = await generateAndStoreToolScreenshots(data.id, String(payload.website_url))
+              if (urls.length > 0) {
+                await logAdminAction('generate_tool_screenshots', 'tool', data.id, {
+                  tool_name: payload.name,
+                  screenshots: urls
+                })
+              }
+            } catch (e) {
+              console.warn('Screenshot generation skipped/failed:', e instanceof Error ? e.message : e)
+            }
+          }
+
           return response.status(200).json({ success: true, id: data?.id })
         } catch (error: unknown) {
           console.error('Error in create_tool:', error)
@@ -735,6 +834,37 @@ export default async function handler(request: VercelRequest, response: VercelRe
           return response.status(200).json({ success: true, logo_url: logoUrl })
         } catch (error: unknown) {
           console.error('Error in refresh_tool_logo:', error)
+          const err = error as ErrorResponse
+          return response.status(500).json({ error: err.message || 'Internal server error' })
+        }
+      }
+
+      case 'refresh_tool_screenshots': {
+        const { toolId } = body || {}
+        if (!toolId) {
+          return response.status(400).json({ error: 'Missing toolId' })
+        }
+
+        try {
+          const { data: tool, error: fetchError } = await supabase
+            .from('tools')
+            .select('id, website_url, name')
+            .eq('id', toolId)
+            .maybeSingle()
+
+          if (fetchError || !tool) {
+            return response.status(404).json({ error: 'Tool not found' })
+          }
+
+          const urls = await generateAndStoreToolScreenshots(toolId, tool.website_url)
+          await logAdminAction('refresh_tool_screenshots', 'tool', toolId, {
+            tool_name: tool.name,
+            screenshots: urls
+          })
+
+          return response.status(200).json({ success: true, screenshots: urls })
+        } catch (error: unknown) {
+          console.error('Error in refresh_tool_screenshots:', error)
           const err = error as ErrorResponse
           return response.status(500).json({ error: err.message || 'Internal server error' })
         }

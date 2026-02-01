@@ -6,6 +6,8 @@ export interface Tool {
   description: string | null
   website_url: string
   logo_url: string | null
+  /** Screenshot URLs (usually stored in Supabase Storage bucket `tool-screenshots`). */
+  screenshots?: string[] | null
   categories: readonly string[]
   features: readonly string[]
   pricing: 'Free' | 'Freemium' | 'Paid' | 'Trial'
