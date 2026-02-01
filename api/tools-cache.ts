@@ -21,6 +21,7 @@ interface ToolsCacheResponse {
 }
 
 type SortField = 'upvotes' | 'date_added' | 'rating' | 'views'
+type Pricing = 'Free' | 'Freemium' | 'Paid' | 'Trial'
 
 // 数据版本号 - 当工具数据更新时需要修改此版本号
 const DATA_VERSION = 'v1.0.6'  // 当前有106个工具
@@ -33,15 +34,24 @@ export default async function handler(request: VercelRequest, response: VercelRe
     const includeCount = request.query.includeCount === 'true'
     const bypassCache = request.query.bypass === 'true'  // 强制绕过缓存
     const featuredOnly = request.query.featured === 'true'
+    const category = typeof request.query.category === 'string' ? request.query.category : undefined
+    const pricingRaw = typeof request.query.pricing === 'string' ? request.query.pricing : undefined
+    const pricing: Pricing | undefined = (pricingRaw && (['Free', 'Freemium', 'Paid', 'Trial'] as const).includes(pricingRaw as Pricing))
+      ? (pricingRaw as Pricing)
+      : undefined
+    const featuresRaw = typeof request.query.features === 'string' ? request.query.features : undefined
+    const features = featuresRaw
+      ? featuresRaw.split(',').map(s => s.trim()).filter(Boolean)
+      : []
     const sortByRaw = (request.query.sortBy as string) || 'upvotes'
     const sortBy: SortField = (['upvotes', 'date_added', 'rating', 'views'] as const).includes(sortByRaw as SortField)
       ? (sortByRaw as SortField)
       : 'upvotes'
 
     // 参数验证
-    if (limit > 100) {
+    if (limit > 200) {
       return response.status(400).json({
-        error: 'Limit cannot exceed 100'
+        error: 'Limit cannot exceed 200'
       })
     }
 
@@ -69,7 +79,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
       }
     })
 
-    // 4. 构建查询（可选 featured + 排序）
+    const hasFilters = featuredOnly || !!category || !!pricing || features.length > 0
+
+    // 4. 构建查询（可选 featured/category/pricing/features + 排序）
     let toolsQuery = supabase
       .from('tools')
       .select('id,name,tagline,logo_url,categories,features,pricing,rating,views,upvotes,date_added,featured,review_count')
@@ -77,6 +89,21 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
     if (featuredOnly) {
       toolsQuery = toolsQuery.eq('featured', true)
+    }
+
+    // 分类筛选（数组 overlaps）
+    if (category) {
+      toolsQuery = toolsQuery.overlaps('categories', [category])
+    }
+
+    // 定价筛选
+    if (pricing) {
+      toolsQuery = toolsQuery.eq('pricing', pricing)
+    }
+
+    // 功能特性筛选（多个 feature）
+    if (features.length > 0) {
+      toolsQuery = toolsQuery.overlaps('features', features)
     }
 
     // 排序字段白名单，避免任意字段注入
@@ -95,6 +122,18 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
     if (featuredOnly) {
       countQuery = countQuery.eq('featured', true)
+    }
+
+    if (category) {
+      countQuery = countQuery.overlaps('categories', [category])
+    }
+
+    if (pricing) {
+      countQuery = countQuery.eq('pricing', pricing)
+    }
+
+    if (features.length > 0) {
+      countQuery = countQuery.overlaps('features', features)
     }
 
     // 4. 并行获取数据和总数
@@ -137,18 +176,24 @@ export default async function handler(request: VercelRequest, response: VercelRe
       const tags = [
         'tools',
         `tools-v${DATA_VERSION}`,
+        hasFilters ? 'tools-filtered' : undefined,
         featuredOnly ? 'tools-featured' : undefined,
         sortBy !== 'upvotes' ? `tools-sort-${sortBy}` : undefined
       ].filter(Boolean)
       response.setHeader('Cache-Tag', tags.join(', '))
 
-      // s-maxage: CDN 缓存 10 分钟（更容易命中缓存，首屏更快）
-      // stale-while-revalidate: 后台刷新期间可使用过期缓存 30 分钟
-      response.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=1800')
-
-      // 添加额外的缓存优化头
-      response.setHeader('CDN-Cache-Control', 'public, s-maxage=600')
-      response.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=600')
+      if (hasFilters) {
+        // 筛选结果变化更频繁：较短缓存
+        response.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300')
+        response.setHeader('CDN-Cache-Control', 'public, s-maxage=120')
+        response.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=120')
+      } else {
+        // s-maxage: CDN 缓存 10 分钟（更容易命中缓存，首屏更快）
+        // stale-while-revalidate: 后台刷新期间可使用过期缓存 30 分钟
+        response.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=1800')
+        response.setHeader('CDN-Cache-Control', 'public, s-maxage=600')
+        response.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=600')
+      }
     }
 
     return response.status(200).json(result)

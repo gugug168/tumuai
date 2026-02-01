@@ -376,8 +376,10 @@ export async function getFeaturedTools() {
         return []
       }
 
-      // 如果数据库没有设置 featured 字段（或没有任何精选工具），回退到热门工具，避免首页“空白”观感。
-      if (!data || data.length === 0) {
+      const featured = (data || []) as Tool[]
+
+      // 如果 featured 工具不足，使用热门工具补齐，避免首页列表过短。
+      if (featured.length < 8) {
         const fallback = await supabase
           .from('tools')
           .select('*')
@@ -387,26 +389,41 @@ export async function getFeaturedTools() {
 
         if (fallback.error) {
           console.error('Error fetching fallback tools:', fallback.error)
-          return []
+          return featured
         }
 
-        return (fallback.data || []) as Tool[]
+        const merged: Tool[] = [...featured]
+        for (const tool of (fallback.data || []) as Tool[]) {
+          if (merged.length >= 8) break
+          if (!merged.some(t => t.id === tool.id)) merged.push(tool)
+        }
+
+        return merged
       }
 
-      return data as Tool[]
+      return featured
     }
 
     // 生产环境：优先走 Vercel API（CDN 缓存）
-    const featuredResult = await getToolsViaAPI(8, 0, false, undefined, { featured: true, sortBy: 'upvotes' })
+    const LIMIT = 8
+    const featuredResult = await getToolsViaAPI(LIMIT, 0, false, undefined, { featured: true, sortBy: 'upvotes' })
     const featuredTools = Array.isArray(featuredResult.tools) ? featuredResult.tools : []
 
-    if (featuredTools.length > 0) {
-      return featuredTools
+    if (featuredTools.length >= LIMIT) {
+      return featuredTools.slice(0, LIMIT)
     }
 
-    // 如果没有任何 featured=true 的数据，回退到热门工具，保证“编辑推荐”区域有内容。
-    const fallbackResult = await getToolsViaAPI(8, 0, false, undefined, { sortBy: 'upvotes' })
-    return Array.isArray(fallbackResult.tools) ? fallbackResult.tools : []
+    // 如果 featured=true 数据不足（或为 0），用热门工具补齐，保证“编辑推荐”区域有内容。
+    const fallbackResult = await getToolsViaAPI(LIMIT, 0, false, undefined, { sortBy: 'upvotes' })
+    const fallbackTools = Array.isArray(fallbackResult.tools) ? fallbackResult.tools : []
+
+    const merged: Tool[] = [...featuredTools]
+    for (const tool of fallbackTools) {
+      if (merged.length >= LIMIT) break
+      if (!merged.some(t => t.id === tool.id)) merged.push(tool)
+    }
+
+    return merged
   } catch (error) {
     console.error('Unexpected error fetching featured tools:', error)
 

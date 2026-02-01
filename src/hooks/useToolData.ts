@@ -57,6 +57,8 @@ export function useToolData(performanceHooks?: {
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
   const [categories, setCategories] = useState<string[]>([]);
+  const currentPageRef = useRef<number>(currentPage);
+  const stateRef = useRef<ToolDataState>(state);
 
   // 收藏状态
   const [favoriteStates, setFavoriteStates] = useState<Record<string, boolean>>({});
@@ -67,6 +69,15 @@ export function useToolData(performanceHooks?: {
   const preloadingPagesRef = useRef<Set<string>>(new Set());
 
   const { recordApiCall, recordInteraction } = performanceHooks || {};
+
+  // Keep refs in sync so callbacks don't need to depend on frequently-changing state.
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   /**
    * 预加载某一页的数据（不更新 UI 状态）
@@ -118,14 +129,12 @@ export function useToolData(performanceHooks?: {
    */
   const loadTools = useCallback(async (
     autoRetry = false,
-    page: number = currentPage,
+    page: number = currentPageRef.current,
     filters?: ToolSearchFilters
   ) => {
-    updateState({ loadError: null, loading: true });
-
-    if (!autoRetry) {
-      updateState({ retryCount: state.retryCount + 1 });
-    }
+    // Mark the start of a load. Avoid incrementing retryCount on normal loads; it should reflect retries only.
+    const nextRetryCount = autoRetry ? (stateRef.current.retryCount + 1) : 0;
+    updateState({ loadError: null, loading: true, retryCount: nextRetryCount });
 
     try {
       // 判断是否需要使用筛选 API
@@ -141,7 +150,7 @@ export function useToolData(performanceHooks?: {
         const result = recordApiCall
           ? await recordApiCall('load_tools_filtered', async () => {
               return await getToolsSmart(200, 0, true, filters);
-            }, { autoRetry, retryCount: state.retryCount })
+            }, { autoRetry, retryCount: nextRetryCount })
           : await getToolsSmart(200, 0, true, filters);
 
         console.log(`✅ 筛选数据加载成功: ${result.tools.length}个工具, 总数${result.count}`);
@@ -157,14 +166,14 @@ export function useToolData(performanceHooks?: {
         const limit = TOOLS_PER_PAGE;
         const offset = (page - 1) * TOOLS_PER_PAGE;
         // 只有在首次加载时请求总数，避免每次翻页都触发一次 count 查询（会明显拖慢响应）。
-        const shouldIncludeCount = page === 1 && state.totalToolsCount === 0;
+        const shouldIncludeCount = page === 1 && stateRef.current.totalToolsCount === 0;
 
         console.log(`🔄 开始加载工具数据 (limit: ${limit}, offset: ${offset}, page: ${page})...`);
 
         const result = recordApiCall
           ? await recordApiCall('load_tools_smart', async () => {
               return await getToolsSmart(limit, offset, shouldIncludeCount);
-            }, { autoRetry, retryCount: state.retryCount })
+            }, { autoRetry, retryCount: nextRetryCount })
           : await getToolsSmart(limit, offset, shouldIncludeCount);
 
         console.log(`✅ 工具数据加载成功: ${result.tools.length}个工具, 总数${result.count}`);
@@ -198,7 +207,7 @@ export function useToolData(performanceHooks?: {
 
         if (error instanceof Error) {
           if (error.message.includes('网络') || error.message.includes('fetch')) {
-            errorMessage = state.isOffline
+            errorMessage = stateRef.current.isOffline
               ? '网络连接已断开，请检查网络设置'
               : '网络连接不稳定，正在重试...';
           } else if (error.message.includes('404')) {
@@ -217,7 +226,7 @@ export function useToolData(performanceHooks?: {
         }));
       }
     }
-  }, [currentPage, state.retryCount, state.isOffline, updateState, recordApiCall]);
+  }, [updateState, recordApiCall]);
 
   /**
    * 加载分类数据
@@ -309,9 +318,9 @@ export function useToolData(performanceHooks?: {
   useEffect(() => {
     const handleOnline = () => {
       updateState({ isOffline: false });
-      // 网络恢复时刷新页面重新加载
-      if (state.tools.length === 0 && state.loadError) {
-        window.location.reload();
+      // 网络恢复时，仅在页面没有任何数据且之前加载失败时，尝试重新拉取数据。
+      if (stateRef.current.tools.length === 0 && stateRef.current.loadError) {
+        loadTools(false, 1);
       }
     };
 
@@ -326,7 +335,7 @@ export function useToolData(performanceHooks?: {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [state.tools.length, state.loadError, updateState]);
+  }, [updateState, loadTools]);
 
   /**
    * 清理定时器
