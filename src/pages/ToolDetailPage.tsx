@@ -129,6 +129,11 @@ const ToolDetailPage = () => {
     }
   }, [toolIdAsString]);
 
+  // Reset gallery state when navigating between tools within SPA.
+  useEffect(() => {
+    setSelectedImage(0);
+  }, [toolIdAsString]);
+
   const fallbackLogoDataUrl = useMemo(() => {
     if (!tool) return '';
     return generateInitialLogo(tool.name, tool.categories || []);
@@ -144,6 +149,41 @@ const ToolDetailPage = () => {
     return url;
   }, [tool]);
 
+  type GalleryImage = {
+    src: string;
+    objectFit?: 'cover' | 'contain';
+    objectPosition?: string;
+  };
+
+  const websiteScreenshotUrl = useMemo(() => {
+    const website = tool?.website_url || '';
+    if (!website) return '';
+
+    try {
+      const parsed = new URL(/^https?:\/\//i.test(website) ? website : `https://${website}`);
+      const target = parsed.origin; // avoid query/hash interfering with thum.io path parsing
+      return `https://image.thum.io/get/fullpage/noanimate/width/1200/${target}`;
+    } catch {
+      return '';
+    }
+  }, [tool]);
+
+  const galleryImages = useMemo<GalleryImage[]>(() => {
+    if (websiteScreenshotUrl) {
+      // Use the same full-page screenshot and show different "slices" via object-position.
+      // This works even when the website is very long.
+      const positions = ['50% 0%', '50% 33%', '50% 66%', '50% 100%'];
+      return positions.map((pos) => ({
+        src: websiteScreenshotUrl,
+        objectFit: 'cover',
+        objectPosition: pos
+      }));
+    }
+
+    const fallback = safePrimaryLogoUrl || fallbackLogoDataUrl;
+    return fallback ? [{ src: fallback, objectFit: 'contain', objectPosition: '50% 50%' }] : [];
+  }, [websiteScreenshotUrl, safePrimaryLogoUrl, fallbackLogoDataUrl]);
+
   // 将数据库工具数据适配为组件需要的格式
   const adaptedTool = tool ? {
     id: tool.id,
@@ -153,9 +193,7 @@ const ToolDetailPage = () => {
     website: tool.website_url,
     shortDescription: tool.tagline,
     detailedDescription: tool.description || tool.tagline,
-    images: [
-      safePrimaryLogoUrl || fallbackLogoDataUrl
-    ],
+    images: galleryImages,
     videoUrl: '',
     features: tool.features || [],
     pricing: [
@@ -394,11 +432,11 @@ const ToolDetailPage = () => {
                 {/* 主图片 */}
                 <div className="relative">
                   <OptimizedImage
-                    src={adaptedTool.images[selectedImage]}
+                    src={adaptedTool.images[selectedImage]?.src || adaptedTool.logo}
                     alt={`${adaptedTool.name} 截图 ${selectedImage + 1}`}
                     className="w-full h-96 rounded-lg"
-                    priority={selectedImage === 0}
-                    objectFit="contain"
+                    objectFit={adaptedTool.images[selectedImage]?.objectFit || 'contain'}
+                    objectPosition={adaptedTool.images[selectedImage]?.objectPosition || '50% 50%'}
                     background
                     fallback={
                       fallbackLogoDataUrl
@@ -435,10 +473,11 @@ const ToolDetailPage = () => {
                       }`}
                     >
                       <OptimizedImage
-                        src={image}
+                        src={image.src}
                         alt={`缩略图 ${index + 1}`}
                         className="w-full h-full"
-                        objectFit="contain"
+                        objectFit={image.objectFit || 'contain'}
+                        objectPosition={image.objectPosition || '50% 50%'}
                         background
                         fallback={
                           fallbackLogoDataUrl

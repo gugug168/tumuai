@@ -95,6 +95,7 @@ interface OptimizedImageProps {
   priority?: boolean;
   lazyLoad?: boolean;
   objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+  objectPosition?: string;
   background?: boolean;
   fallback?: React.ReactNode; // 自定义兜底内容
   width?: string | number; // 强制容器宽度
@@ -109,6 +110,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   priority = false,
   lazyLoad = true,
   objectFit = 'contain', // 默认使用 contain 避免图片变形
+  objectPosition = '50% 50%',
   background = false,
   fallback,
   width,
@@ -194,6 +196,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
           }`}
           style={{
             objectFit,
+            objectPosition,
             maxWidth: '100%',
             maxHeight: '100%',
             width: 'auto',
