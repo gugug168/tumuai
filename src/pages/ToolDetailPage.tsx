@@ -155,13 +155,26 @@ const ToolDetailPage = () => {
     objectPosition?: string;
   };
 
+  const inferredStorageScreenshotUrl = useMemo(() => {
+    if (!tool?.id) return '';
+    const base = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/+$/, '');
+    if (!base) return '';
+    return `${base}/storage/v1/object/public/tool-screenshots/tools/${tool.id}/fullpage.png`;
+  }, [tool?.id]);
+
   const storedScreenshotUrls = useMemo(() => {
     const raw = (tool as any)?.screenshots;
-    if (!Array.isArray(raw)) return [];
-    return raw
-      .filter((u: unknown): u is string => typeof u === 'string' && u.trim().length > 0)
-      .slice(0, 8);
-  }, [tool]);
+    const list = Array.isArray(raw)
+      ? raw.filter((u: unknown): u is string => typeof u === 'string' && u.trim().length > 0)
+      : [];
+
+    // Back-compat: if the DB doesn't have a `screenshots` column yet, infer the stable Storage path.
+    if (inferredStorageScreenshotUrl) {
+      list.unshift(inferredStorageScreenshotUrl);
+    }
+
+    return Array.from(new Set(list)).slice(0, 8);
+  }, [tool, inferredStorageScreenshotUrl]);
 
   const websiteScreenshotUrl = useMemo(() => {
     const website = tool?.website_url || '';

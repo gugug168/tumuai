@@ -3,7 +3,8 @@ import React, { useState, useRef, useEffect } from 'react';
 type BrokenImgMap = Record<string, number>; // url -> expiresAt (ms)
 
 const BROKEN_IMG_STORAGE_KEY = 'tumuai_broken_img_v1';
-const BROKEN_IMG_TTL_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+const BROKEN_IMG_TTL_DEFAULT_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+const BROKEN_IMG_TTL_FIRST_PARTY_MS = 10 * 60 * 1000; // 10 minutes
 const BROKEN_IMG_MAX_ENTRIES = 200;
 
 let brokenImgMapCache: BrokenImgMap | null = null;
@@ -50,6 +51,14 @@ function isHttpUrl(url: string): boolean {
   return /^https?:\/\//i.test(url);
 }
 
+function getBrokenImgTtlMs(url: string): number {
+  // For our own Supabase Storage assets, a missing object can become available shortly
+  // after an async backfill. Use a shorter TTL so the UI can recover quickly.
+  if (url.includes('/storage/v1/object/public/tool-screenshots/')) return BROKEN_IMG_TTL_FIRST_PARTY_MS;
+  if (url.includes('/storage/v1/object/public/tool-logos/')) return BROKEN_IMG_TTL_FIRST_PARTY_MS;
+  return BROKEN_IMG_TTL_DEFAULT_MS;
+}
+
 function isKnownBrokenUrl(url: string): boolean {
   if (!isHttpUrl(url)) return false;
   const map = loadBrokenImgMap();
@@ -70,7 +79,7 @@ function markBrokenUrl(url: string) {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
 
   const map = loadBrokenImgMap();
-  map[url] = Date.now() + BROKEN_IMG_TTL_MS;
+  map[url] = Date.now() + getBrokenImgTtlMs(url);
 
   // Keep the map bounded to avoid unbounded localStorage growth.
   const keys = Object.keys(map);

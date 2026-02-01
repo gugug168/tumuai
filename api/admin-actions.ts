@@ -183,6 +183,33 @@ export default async function handler(request: VercelRequest, response: VercelRe
       return { bytes: new Uint8Array(buf), contentType }
     }
 
+    let screenshotBucketEnsured = false
+
+    async function ensureScreenshotBucket(): Promise<void> {
+      if (screenshotBucketEnsured) return
+      const bucket = 'tool-screenshots'
+
+      const existing = await supabase.storage.getBucket(bucket)
+      if (!existing.error && existing.data) {
+        screenshotBucketEnsured = true
+        return
+      }
+
+      // Create as public so tool detail pages can display screenshots without signed URLs.
+      const created = await supabase.storage.createBucket(bucket, {
+        public: true,
+        fileSizeLimit: 10485760, // 10MB
+        allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+      })
+
+      // If it already exists (race), treat as success.
+      if (created.error && !String(created.error.message || '').toLowerCase().includes('already exists')) {
+        throw new Error(created.error.message)
+      }
+
+      screenshotBucketEnsured = true
+    }
+
     async function generateAndStoreToolScreenshots(toolId: string, websiteUrl: string): Promise<string[]> {
       const target = normalizeScreenshotTarget(websiteUrl)
       if (!target) return []
@@ -190,6 +217,8 @@ export default async function handler(request: VercelRequest, response: VercelRe
       // One full-page screenshot is enough; the client can display multiple "segments" via object-position.
       const screenshotUrl = `https://image.thum.io/get/fullpage/noanimate/width/1200/${target}`
       const { bytes, contentType } = await fetchImageBytes(screenshotUrl, 12000)
+
+      await ensureScreenshotBucket()
 
       const bucket = 'tool-screenshots'
       const objectPath = `tools/${toolId}/fullpage.png`
@@ -209,13 +238,18 @@ export default async function handler(request: VercelRequest, response: VercelRe
       const publicUrl = supabase.storage.from(bucket).getPublicUrl(objectPath)?.data?.publicUrl
       if (!publicUrl) return []
 
-      const { error } = await supabase
+      // Best-effort: newer schema may include `tools.screenshots` (text[]). If not present, we still
+      // rely on the stable Storage path (`tools/<id>/fullpage.png`) and infer the URL on the client.
+      const upd = await supabase
         .from('tools')
-        .update({ screenshots: [publicUrl], updated_at: new Date().toISOString() })
+        .update({ screenshots: [publicUrl], updated_at: new Date().toISOString() } as unknown as Record<string, unknown>)
         .eq('id', toolId)
 
-      if (error) {
-        throw new Error(error.message)
+      if (upd.error) {
+        const code = (upd.error as unknown as { code?: string })?.code
+        if (code !== 'PGRST204') {
+          throw new Error(upd.error.message)
+        }
       }
 
       return [publicUrl]
