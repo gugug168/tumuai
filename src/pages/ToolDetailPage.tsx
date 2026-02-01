@@ -16,6 +16,7 @@ import {
 import { addToFavorites, removeFromFavorites, isFavorited, addToolReview, getToolReviews } from '../lib/community';
 import { getToolById, incrementToolViews, getRelatedTools } from '../lib/supabase';
 import { generateInitialLogo } from '../lib/logoUtils';
+import OptimizedImage from '../components/OptimizedImage';
 import { useToast, createToastHelpers } from '../components/Toast';
 import type { Tool } from '../types/index';
 
@@ -128,17 +129,32 @@ const ToolDetailPage = () => {
     }
   }, [toolIdAsString]);
 
+  const fallbackLogoDataUrl = useMemo(() => {
+    if (!tool) return '';
+    return generateInitialLogo(tool.name, tool.categories || []);
+  }, [tool]);
+
+  const safePrimaryLogoUrl = useMemo(() => {
+    if (!tool?.logo_url) return '';
+    const url = tool.logo_url;
+    // Avoid known low-quality / often-blocked icon sources.
+    if (url.includes('google.com/s2/favicons')) return '';
+    if (url.includes('iconhorse')) return '';
+    if (url.includes('placeholder')) return '';
+    return url;
+  }, [tool]);
+
   // 将数据库工具数据适配为组件需要的格式
   const adaptedTool = tool ? {
     id: tool.id,
     name: tool.name,
-    logo: tool.logo_url || generateInitialLogo(tool.name, tool.categories || []),
+    logo: safePrimaryLogoUrl || fallbackLogoDataUrl,
     category: tool.categories?.[0] || '工具',
     website: tool.website_url,
     shortDescription: tool.tagline,
     detailedDescription: tool.description || tool.tagline,
     images: [
-      tool.logo_url || generateInitialLogo(tool.name, tool.categories || [])
+      safePrimaryLogoUrl || fallbackLogoDataUrl
     ],
     videoUrl: '',
     features: tool.features || [],
@@ -273,10 +289,23 @@ const ToolDetailPage = () => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-8">
           <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-6">
             <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
-              <img
+              <OptimizedImage
                 src={adaptedTool.logo}
                 alt={adaptedTool.name}
-                className="w-full h-full object-contain p-2"
+                className="w-full h-full"
+                objectFit="contain"
+                background
+                fallback={
+                  fallbackLogoDataUrl
+                    ? (
+                        <img
+                          src={fallbackLogoDataUrl}
+                          alt={adaptedTool.name}
+                          className="w-full h-full object-contain p-2"
+                        />
+                      )
+                    : undefined
+                }
               />
             </div>
             <div className="flex-1">
@@ -362,10 +391,23 @@ const ToolDetailPage = () => {
               <div className="space-y-4">
                 {/* 主图片 */}
                 <div className="relative">
-                  <img
+                  <OptimizedImage
                     src={adaptedTool.images[selectedImage]}
                     alt={`${adaptedTool.name} 截图 ${selectedImage + 1}`}
-                    className="w-full h-96 object-cover rounded-lg"
+                    className="w-full h-96 rounded-lg"
+                    objectFit="contain"
+                    background
+                    fallback={
+                      fallbackLogoDataUrl
+                        ? (
+                            <img
+                              src={fallbackLogoDataUrl}
+                              alt={adaptedTool.name}
+                              className="w-full h-full object-contain p-6"
+                            />
+                          )
+                        : undefined
+                    }
                   />
                   {adaptedTool.videoUrl && selectedImage === 0 && (
                     <button
@@ -389,10 +431,23 @@ const ToolDetailPage = () => {
                         selectedImage === index ? 'border-blue-500' : 'border-gray-200'
                       }`}
                     >
-                      <img
+                      <OptimizedImage
                         src={image}
                         alt={`缩略图 ${index + 1}`}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full"
+                        objectFit="contain"
+                        background
+                        fallback={
+                          fallbackLogoDataUrl
+                            ? (
+                                <img
+                                  src={fallbackLogoDataUrl}
+                                  alt={adaptedTool.name}
+                                  className="w-full h-full object-contain p-2"
+                                />
+                              )
+                            : undefined
+                        }
                       />
                     </button>
                   ))}
@@ -509,10 +564,17 @@ const ToolDetailPage = () => {
                   {reviews.map((review) => (
                     <div key={review.id} className="border-b border-gray-200 pb-6 last:border-b-0">
                       <div className="flex items-start space-x-4">
-                        <img
+                        <OptimizedImage
                           src={review.user_profiles?.avatar_url || 'https://images.pexels.com/photos/3785079/pexels-photo-3785079.jpeg?auto=compress&cs=tinysrgb&w=50'}
                           alt={review.user_profiles?.full_name || '用户'}
-                          className="w-10 h-10 rounded-full object-cover"
+                          className="w-10 h-10 rounded-full"
+                          objectFit="cover"
+                          background
+                          fallback={
+                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
+                              {(review.user_profiles?.full_name || review.user_profiles?.username || '用户').slice(0, 1)}
+                            </div>
+                          }
                         />
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
@@ -667,10 +729,19 @@ const ToolDetailPage = () => {
                     
                     <div className="flex items-center space-x-3 mb-3">
                       <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
-                        <img
+                        <OptimizedImage
                           src={relatedTool.logo}
                           alt={relatedTool.name}
-                          className="w-full h-full object-contain p-2"
+                          className="w-full h-full"
+                          objectFit="contain"
+                          background
+                          fallback={
+                            <img
+                              src={generateInitialLogo(relatedTool.name, [relatedTool.category])}
+                              alt={relatedTool.name}
+                              className="w-full h-full object-contain p-2"
+                            />
+                          }
                         />
                       </div>
                       <div>
