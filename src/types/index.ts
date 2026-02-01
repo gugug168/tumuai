@@ -56,6 +56,8 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
 
 // 搜索过滤器类型
 export interface ToolSearchFilters {
+  /** Full-text-ish search (server-side uses ILIKE on name/tagline/description). */
+  search?: string
   categories?: readonly string[]
   features?: readonly string[]
   pricing?: Tool['pricing']

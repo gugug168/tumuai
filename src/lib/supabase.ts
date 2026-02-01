@@ -218,24 +218,29 @@ export async function getToolsViaAPI(
 
 /**
  * 通过筛选 API 获取工具列表
- * 当有筛选条件时使用此 API，可以获取所有匹配的工具（不受分页限制）
+ * 当有筛选/搜索/非默认排序时使用此 API，支持服务端筛选 + 分页（避免只筛到第一页）
  */
 export async function getToolsFiltered(
   filters?: ToolSearchFilters,
-  limit = 100,
+  limit = 12,
   offset = 0,
-  sortBy = 'upvotes'
-): Promise<{ tools: Tool[]; count: number }> {
+  sortBy = 'upvotes',
+  includeCount = true
+): Promise<{ tools: Tool[]; count?: number }> {
   try {
     const url = new URL('/api/tools-filtered', window.location.origin)
     url.searchParams.set('limit', limit.toString())
     url.searchParams.set('offset', offset.toString())
-    url.searchParams.set('includeCount', 'true')
+    url.searchParams.set('includeCount', includeCount ? 'true' : 'false')
     url.searchParams.set('sortBy', sortBy)
 
     // 添加筛选参数
+    if (filters?.search && filters.search.trim()) {
+      url.searchParams.set('search', filters.search.trim())
+    }
     if (filters?.categories && filters.categories.length > 0) {
-      url.searchParams.set('category', filters.categories[0])
+      // 支持多分类（逗号分隔），服务端用 overlaps 匹配任意一个
+      url.searchParams.set('category', filters.categories.join(','))
     }
     if (filters?.pricing) {
       url.searchParams.set('pricing', filters.pricing)
@@ -255,7 +260,7 @@ export async function getToolsFiltered(
     const result = await response.json()
     return {
       tools: result.tools || [],
-      count: result.count || 0
+      count: typeof result.count === 'number' ? result.count : undefined
     }
   } catch (error) {
     if (IS_DEV) {
@@ -282,21 +287,27 @@ export async function getToolsSmart(
 ): Promise<{ tools: Tool[]; count?: number }> {
   // 检查是否有筛选条件
   const hasFilters = filters &&
-    ((filters.categories && filters.categories.length > 0) ||
+    ((filters.search && filters.search.trim().length > 0) ||
+     (filters.categories && filters.categories.length > 0) ||
      filters.pricing ||
-     (filters.features && filters.features.length > 0))
+     (filters.features && filters.features.length > 0) ||
+     (filters.sortBy && filters.sortBy !== 'upvotes'))
 
   // 有筛选条件时使用筛选 API
   if (hasFilters) {
     // If API is unavailable, fall back to direct Supabase queries while keeping correct semantics.
     if (isApiBackedOff()) {
-      const tools = await searchTools('', filters)
-      return { tools, count: tools.length }
+      const q = filters?.search?.trim() || ''
+      const [tools, count] = await Promise.all([
+        searchTools(q, filters, limit, offset),
+        includeCount ? searchToolsCount(q, filters) : Promise.resolve(undefined)
+      ])
+      return { tools, count }
     }
 
     try {
       const sortBy = filters?.sortBy || 'upvotes'
-      return await getToolsFiltered(filters, limit, offset, sortBy)
+      return await getToolsFiltered(filters, limit, offset, sortBy, includeCount)
     } catch (apiError) {
       const status = typeof (apiError as ApiFetchError)?.status === 'number'
         ? (apiError as ApiFetchError).status
@@ -307,8 +318,12 @@ export async function getToolsSmart(
         console.warn('Filtered API failed, falling back to Supabase direct query:', apiError)
       }
 
-      const tools = await searchTools('', filters)
-      return { tools, count: tools.length }
+      const q = filters?.search?.trim() || ''
+      const [tools, count] = await Promise.all([
+        searchTools(q, filters, limit, offset),
+        includeCount ? searchToolsCount(q, filters) : Promise.resolve(undefined)
+      ])
+      return { tools, count }
     }
   }
 
@@ -669,20 +684,72 @@ export function trackToolView(toolId: string): void {
   viewUpdateQueue.add(toolId)
 }
 
+async function searchToolsCount(query: string, filters?: ToolSearchFilters): Promise<number> {
+  try {
+    const q = query
+      .trim()
+      .slice(0, 80)
+      .replace(/[(),]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+    let queryBuilder = supabase
+      .from('tools')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'published')
+
+    if (q) {
+      queryBuilder = queryBuilder.or(`name.ilike.%${q}%,tagline.ilike.%${q}%,description.ilike.%${q}%`)
+    }
+
+    if (filters?.categories && filters.categories.length > 0) {
+      queryBuilder = queryBuilder.overlaps('categories', filters.categories)
+    }
+
+    if (filters?.features && filters.features.length > 0) {
+      queryBuilder = queryBuilder.contains('features', filters.features)
+    }
+
+    if (filters?.pricing) {
+      queryBuilder = queryBuilder.eq('pricing', filters.pricing)
+    }
+
+    const { count, error } = await queryBuilder
+    if (error) {
+      console.error('Error counting searched tools:', error)
+      return 0
+    }
+
+    return typeof count === 'number' ? count : 0
+  } catch (error) {
+    console.error('Unexpected error counting searched tools:', error)
+    return 0
+  }
+}
+
 // 搜索工具 - 使用严格类型
 export async function searchTools(
   query: string, 
-  filters?: ToolSearchFilters
+  filters?: ToolSearchFilters,
+  limit = 12,
+  offset = 0
 ): Promise<Tool[]> {
   try {
+    const q = query
+      .trim()
+      .slice(0, 80)
+      .replace(/[(),]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
     let queryBuilder = supabase
       .from('tools')
-      .select('*')
+      // Keep this light; tool detail pages fetch the full record separately.
+      .select('id,name,tagline,logo_url,categories,features,pricing,rating,views,upvotes,date_added,featured,review_count,description,website_url')
       .eq('status', 'published')  // 只搜索已发布的工具
 
     // 文本搜索
-    if (query) {
-      queryBuilder = queryBuilder.or(`name.ilike.%${query}%,tagline.ilike.%${query}%,description.ilike.%${query}%`)
+    if (q) {
+      queryBuilder = queryBuilder.or(`name.ilike.%${q}%,tagline.ilike.%${q}%,description.ilike.%${q}%`)
     }
 
     // 分类筛选
@@ -692,7 +759,8 @@ export async function searchTools(
 
     // 功能筛选
     if (filters?.features && filters.features.length > 0) {
-      queryBuilder = queryBuilder.overlaps('features', filters.features)
+      // 与前端一致：必须包含所有选中的 feature
+      queryBuilder = queryBuilder.contains('features', filters.features)
     }
 
     // 定价筛选
@@ -700,7 +768,18 @@ export async function searchTools(
       queryBuilder = queryBuilder.eq('pricing', filters.pricing)
     }
 
-    const { data, error } = await queryBuilder.order('upvotes', { ascending: false })
+    // 排序（默认 upvotes desc；name asc）
+    const sortBy = filters?.sortBy || 'upvotes'
+    const sortField = sortBy === 'date_added' ? 'date_added' :
+                      sortBy === 'rating' ? 'rating' :
+                      sortBy === 'views' ? 'views' :
+                      sortBy === 'name' ? 'name' :
+                      'upvotes'
+    const ascending = sortField === 'name'
+
+    const { data, error } = await queryBuilder
+      .order(sortField, { ascending, ...(sortField === 'rating' ? { nullsFirst: false } : {}) })
+      .range(offset, offset + limit - 1)
 
     if (error) {
       console.error('Error searching tools:', error)

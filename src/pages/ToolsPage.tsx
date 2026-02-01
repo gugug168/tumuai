@@ -50,7 +50,6 @@ const ToolsPage = React.memo(() => {
   // 数据获取
   const {
     tools,
-    allFilteredTools,
     totalToolsCount,
     filteredToolsCount,
     loading,
@@ -64,7 +63,6 @@ const ToolsPage = React.memo(() => {
     loadCategories,
     loadFavoriteStates,
     toggleFavorite,
-    retryLoad,
     preloadToolsPage,
     setCurrentPage,
     setUserId,
@@ -80,17 +78,10 @@ const ToolsPage = React.memo(() => {
   // 数据加载
   // ========================================
 
-  // 初始加载
+  // 初始加载（分类）
   useEffect(() => {
-    const loadInitialData = async () => {
-      await Promise.all([
-        loadTools(false, 1),
-        loadCategories()
-      ]);
-    };
-
-    loadInitialData();
-  }, [loadCategories]); // loadTools 通过依赖触发
+    loadCategories();
+  }, [loadCategories]);
 
   // 从 URL 参数初始化筛选
   useEffect(() => {
@@ -100,30 +91,24 @@ const ToolsPage = React.memo(() => {
     }
   }, [initializeFromUrl]);
 
-  // 筛选条件变化时重新加载数据 (服务端筛选)
-  useEffect(() => {
-    if (needsServerFiltering) {
-      const searchFilters: ToolSearchFilters = {};
-      if (filters.categories.length > 0) searchFilters.categories = filters.categories;
-      if (filters.pricing) searchFilters.pricing = filters.pricing;
-      if (filters.features.length > 0) searchFilters.features = filters.features;
-      searchFilters.sortBy = filters.sortBy as any;
+  // 组装服务端筛选参数（搜索/分类/功能/定价/排序）
+  const serverFilters = useMemo<ToolSearchFilters | undefined>(() => {
+    if (!needsServerFiltering) return undefined;
 
-      loadTools(false, 1, searchFilters);
-    }
-  }, [filters.categories, filters.pricing, filters.features, filters.sortBy, needsServerFiltering, loadTools]);
+    const f: ToolSearchFilters = {};
+    if (filters.search.trim()) f.search = filters.search.trim();
+    if (filters.categories.length > 0) f.categories = filters.categories;
+    if (filters.pricing) f.pricing = filters.pricing as any;
+    if (filters.features.length > 0) f.features = filters.features;
+    f.sortBy = filters.sortBy as any;
+    return f;
+  }, [needsServerFiltering, filters.search, filters.categories, filters.pricing, filters.features, filters.sortBy]);
 
-  // 重置到第一页当筛选条件变化
+  // 筛选条件变化时重新加载数据（回到第 1 页）
   useEffect(() => {
     setCurrentPage(1);
-  }, [deferredSearch, filters.categories, filters.features, filters.pricing, setCurrentPage]);
-
-  // 页码变化时加载数据 (仅无服务端筛选时)
-  useEffect(() => {
-    if (currentPage > 1 && !needsServerFiltering) {
-      loadTools(false, currentPage);
-    }
-  }, [currentPage, needsServerFiltering, loadTools]);
+    loadTools(false, 1, serverFilters);
+  }, [serverFilters, loadTools, setCurrentPage]);
 
   // 用户变化时加载收藏状态
   useEffect(() => {
@@ -142,8 +127,10 @@ const ToolsPage = React.memo(() => {
 
   // 客户端筛选结果
   const filteredTools = useMemo(() => {
+    // 服务端已处理：直接使用当前页数据；离线时兜底用客户端筛选（可能只覆盖当前页/缓存）
+    if (needsServerFiltering && !isOffline) return tools;
     return filterTools(tools, deferredSearch, filters);
-  }, [tools, deferredSearch, filters]);
+  }, [needsServerFiltering, isOffline, tools, deferredSearch, filters]);
 
   // 计算总页数
   const totalPages = useMemo(() => {
@@ -166,18 +153,15 @@ const ToolsPage = React.memo(() => {
 
   // 当前页的工具
   const paginatedTools = useMemo(() => {
-    if (needsServerFiltering) {
-      const startIndex = (currentPage - 1) * TOOLS_PER_PAGE;
-      const endIndex = startIndex + TOOLS_PER_PAGE;
-      return allFilteredTools.slice(startIndex, endIndex);
-    }
+    // 服务端筛选/搜索/排序：tools 已经是当前页
+    if (needsServerFiltering && !isOffline) return tools;
     if (hasActiveFilters) {
       const startIndex = (currentPage - 1) * TOOLS_PER_PAGE;
       const endIndex = startIndex + TOOLS_PER_PAGE;
       return filteredTools.slice(startIndex, endIndex);
     }
     return tools;
-  }, [needsServerFiltering, allFilteredTools, hasActiveFilters, filteredTools, currentPage, tools, TOOLS_PER_PAGE]);
+  }, [needsServerFiltering, isOffline, hasActiveFilters, filteredTools, currentPage, tools, TOOLS_PER_PAGE]);
 
   // ========================================
   // 事件处理
@@ -201,7 +185,8 @@ const ToolsPage = React.memo(() => {
   // 处理页码变化
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-  }, [setCurrentPage]);
+    loadTools(false, page, serverFilters);
+  }, [setCurrentPage, loadTools, serverFilters]);
 
   // 处理预加载下一页
   const handlePreloadNext = useCallback(() => {
@@ -213,13 +198,18 @@ const ToolsPage = React.memo(() => {
     }
   }, [currentPage, totalPages, needsServerFiltering, hasActiveFilters, preloadToolsPage]);
 
+  // 统一重试（带上当前筛选/页码）
+  const handleRetryLoad = useCallback(() => {
+    loadTools(false, currentPage, serverFilters);
+  }, [loadTools, currentPage, serverFilters]);
+
   // ========================================
   // 渲染
   // ========================================
 
   // 加载骨架屏
   // 仅在“首次无数据”时显示全屏骨架屏，避免底部预加载/翻页时出现闪动。
-  if (loading && tools.length === 0 && allFilteredTools.length === 0) {
+  if (loading && tools.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -317,7 +307,7 @@ const ToolsPage = React.memo(() => {
                     </div>
                   ) : !loading && (
                     <button
-                      onClick={retryLoad}
+                      onClick={handleRetryLoad}
                       disabled={loading}
                       className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >

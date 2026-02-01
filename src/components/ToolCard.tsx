@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Star, ExternalLink, Heart, Eye } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
 import { generateInitialLogo } from '../lib/logoUtils';
+import { prefetchToolDetailPage } from '../lib/route-prefetch';
 import type { Tool } from '../types';
 
 interface ToolCardProps {
@@ -34,6 +35,10 @@ const ToolCard = React.memo(({
   const [isPressed, setIsPressed] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const favoriteButtonRef = useRef<HTMLButtonElement>(null);
+
+  const handlePrefetchDetail = React.useCallback(() => {
+    prefetchToolDetailPage();
+  }, []);
 
   // 处理收藏点击 - 带动画效果
   const handleFavoriteClick = React.useCallback((e: React.MouseEvent) => {
@@ -242,6 +247,8 @@ const ToolCard = React.memo(({
 
           <Link
             to={`/tools/${tool.id}`}
+            onMouseEnter={handlePrefetchDetail}
+            onFocus={handlePrefetchDetail}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium
                      hover:bg-blue-700 active:bg-blue-800 active:scale-95
                      transition-all duration-200 inline-block"
@@ -370,6 +377,8 @@ const ToolCard = React.memo(({
         {/* Action Button */}
         <Link
           to={`/tools/${tool.id}`}
+          onMouseEnter={handlePrefetchDetail}
+          onFocus={handlePrefetchDetail}
           className="
             w-full bg-blue-600 text-white py-2.5 px-3 text-sm
             flex items-center justify-center

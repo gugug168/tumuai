@@ -18,7 +18,6 @@ const TOOLS_PER_PAGE = 12;
  */
 interface ToolDataState {
   tools: Tool[];
-  allFilteredTools: Tool[];
   totalToolsCount: number;
   filteredToolsCount: number;
   loading: boolean;
@@ -45,7 +44,6 @@ export function useToolData(performanceHooks?: {
   // 工具数据状态
   const [state, setState] = useState<ToolDataState>({
     tools: [],
-    allFilteredTools: [],
     totalToolsCount: 0,
     filteredToolsCount: 0,
     loading: true,
@@ -89,11 +87,13 @@ export function useToolData(performanceHooks?: {
     if (page < 1) return;
 
     const hasFilters = !!filters &&
-      ((filters.categories && filters.categories.length > 0) ||
+      ((filters.search && filters.search.trim().length > 0) ||
+       (filters.categories && filters.categories.length > 0) ||
        filters.pricing ||
-       (filters.features && filters.features.length > 0));
+       (filters.features && filters.features.length > 0) ||
+       (filters.sortBy && filters.sortBy !== 'upvotes'));
 
-    // 只对“普通分页”做预加载；服务端筛选会一次性拉取大量数据，预加载意义不大且更耗资源。
+    // 只对“默认列表（无筛选、无搜索、默认排序）”做预加载；其它情况预加载更耗资源且命中率低。
     if (hasFilters) return;
 
     const limit = TOOLS_PER_PAGE;
@@ -139,25 +139,29 @@ export function useToolData(performanceHooks?: {
     try {
       // 判断是否需要使用筛选 API
       const needsServerFiltering = filters &&
-        ((filters.categories && filters.categories.length > 0) ||
+        ((filters.search && filters.search.trim().length > 0) ||
+         (filters.categories && filters.categories.length > 0) ||
          filters.pricing ||
-         (filters.features && filters.features.length > 0));
+         (filters.features && filters.features.length > 0) ||
+         (filters.sortBy && filters.sortBy !== 'upvotes'));
 
       if (needsServerFiltering) {
-        // 使用筛选 API 获取所有匹配的工具
-        console.log(`🔄 使用筛选 API 加载数据...`);
+        // 使用筛选 API 获取匹配结果（服务端分页）
+        const limit = TOOLS_PER_PAGE;
+        const offset = (page - 1) * TOOLS_PER_PAGE;
+        const shouldIncludeCount = page === 1;
 
         const result = recordApiCall
           ? await recordApiCall('load_tools_filtered', async () => {
-              return await getToolsSmart(200, 0, true, filters);
+              return await getToolsSmart(limit, offset, shouldIncludeCount, filters);
             }, { autoRetry, retryCount: nextRetryCount })
-          : await getToolsSmart(200, 0, true, filters);
+          : await getToolsSmart(limit, offset, shouldIncludeCount, filters);
 
-        console.log(`✅ 筛选数据加载成功: ${result.tools.length}个工具, 总数${result.count}`);
+        console.log(`✅ 筛选数据加载成功: ${result.tools.length}个工具, 总数${result.count ?? 'N/A'}`);
         setState(prev => ({
           ...prev,
-          allFilteredTools: Array.isArray(result.tools) ? result.tools : [],
-          filteredToolsCount: result.count || 0,
+          tools: Array.isArray(result.tools) ? result.tools : [],
+          filteredToolsCount: typeof result.count === 'number' ? result.count : prev.filteredToolsCount,
           loading: false,
           retryCount: 0
         }));
@@ -351,7 +355,6 @@ export function useToolData(performanceHooks?: {
   return {
     // 状态
     tools: state.tools,
-    allFilteredTools: state.allFilteredTools,
     totalToolsCount: state.totalToolsCount,
     filteredToolsCount: state.filteredToolsCount,
     loading: state.loading,

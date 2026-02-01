@@ -144,12 +144,14 @@ export function useToolFilters() {
 
   /**
    * 检查是否需要服务端筛选
-   * (分类、定价、功能筛选需要服务端处理)
+   * (搜索/分类/定价/功能/排序需要服务端处理，避免“只筛第一页”的问题)
    */
   const needsServerFiltering = useMemo(() => {
     return filters.categories.length > 0 ||
       filters.pricing ||
-      filters.features.length > 0;
+      filters.features.length > 0 ||
+      filters.search.trim().length > 0 ||
+      filters.sortBy !== 'upvotes';
   }, [filters]);
 
   /**
