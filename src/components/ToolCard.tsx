@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, ExternalLink, Heart, Eye } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
-import { generateInitialLogo } from '../lib/logoUtils';
+import { generateInitialLogo, isValidHighQualityLogoUrl, getBestDisplayLogoUrl } from '../lib/logoUtils';
 import { prefetchToolDetailPage } from '../lib/route-prefetch';
 import type { Tool } from '../types';
 
@@ -69,24 +69,15 @@ const ToolCard = React.memo(({
     setIsPressed(false);
   }, []);
 
-  // 判断 logo_url 是否有效
-  const isValidLogoUrl = React.useMemo(() => {
-    if (!tool.logo_url) return false;
-    if (tool.logo_url.includes('google.com/s2/favicons')) return false;
-    if (tool.logo_url.includes('placeholder')) return false;
-    if (tool.logo_url.includes('iconhorse')) return false;
-    return true;
-  }, [tool.logo_url]);
-
-  // 生成兜底Logo的函数
-  const getFallbackLogo = React.useCallback(() => {
-    return generateInitialLogo(tool.name, tool.categories || []);
-  }, [tool.name, tool.categories]);
-
-  // 获取要显示的 logo URL
+  // 获取要显示的 logo URL（使用共享工具函数）
   const displayLogoUrl = React.useMemo(() => {
-    return isValidLogoUrl ? tool.logo_url : getFallbackLogo();
-  }, [isValidLogoUrl, tool.logo_url, getFallbackLogo]);
+    return getBestDisplayLogoUrl(tool.logo_url, tool.name, tool.categories || []);
+  }, [tool.logo_url, tool.name, tool.categories]);
+
+  // 判断是否使用兜底 logo
+  const useFallbackLogo = React.useMemo(() => {
+    return !isValidHighQualityLogoUrl(tool.logo_url);
+  }, [tool.logo_url]);
 
   // 生成兜底 SVG 元素
   const fallbackIcon = React.useMemo(() => {

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
@@ -24,7 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       // 先清除本地状态（立即响应UI）
       setUser(null)
@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('❌ 登出过程中发生错误:', error)
       throw error
     }
-  }
+  }, [])
 
   useEffect(() => {
     // 获取初始会话
@@ -85,12 +85,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     session,
     loading,
     signOut
-  }
+  }), [user, session, loading, signOut])
 
   return (
     <AuthContext.Provider value={value}>

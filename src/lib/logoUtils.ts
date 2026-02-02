@@ -432,11 +432,39 @@ export async function autoGenerateLogo(toolName: string, websiteUrl: string, cat
  */
 export async function validateLogoUrl(logoUrl: string): Promise<boolean> {
   try {
-    const response = await fetchWithTimeout(logoUrl, { 
+    const response = await fetchWithTimeout(logoUrl, {
       method: 'HEAD'
     }, 5000);
     return response.ok;
   } catch {
     return false;
   }
+}
+
+/**
+ * 判断 logo_url 是否是高质量的有效 URL
+ * 过滤掉低质量的 favicon 服务和占位符
+ */
+export function isValidHighQualityLogoUrl(logoUrl?: string): boolean {
+  if (!logoUrl) return false;
+
+  // 过滤低质量的 favicon 服务
+  const lowQualityPatterns = [
+    'google.com/s2/favicons',
+    'placeholder',
+    'iconhorse'
+  ];
+
+  return !lowQualityPatterns.some(pattern => logoUrl.includes(pattern));
+}
+
+/**
+ * 获取最佳显示的 logo URL
+ * 优先使用高质量 URL，否则生成首字母 logo
+ */
+export function getBestDisplayLogoUrl(logoUrl: string | undefined, toolName: string, categories: string[] = []): string {
+  if (isValidHighQualityLogoUrl(logoUrl)) {
+    return logoUrl!;
+  }
+  return generateInitialLogo(toolName, categories);
 }

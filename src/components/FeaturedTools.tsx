@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Star, Heart } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
 import { getFeaturedTools } from '../lib/supabase';
-import { generateInitialLogo } from '../lib/logoUtils';
+import { generateInitialLogo, isValidHighQualityLogoUrl, getBestDisplayLogoUrl } from '../lib/logoUtils';
 import { apiRequestWithRetry } from '../lib/api';
 import { useUnifiedCache } from '../lib/unified-cache-manager';
 import { usePerformance } from '../hooks/usePerformance';
@@ -22,21 +22,9 @@ const FeaturedTools = React.memo(() => {
   const { fetchWithCache } = useUnifiedCache();
   const { recordApiCall, recordInteraction } = usePerformance('FeaturedTools');
 
-  // 判断 logo_url 是否有效
-  const isValidLogoUrl = (logoUrl?: string): boolean => {
-    if (!logoUrl) return false;
-    if (logoUrl.includes('google.com/s2/favicons')) return false;
-    if (logoUrl.includes('placeholder')) return false;
-    if (logoUrl.includes('iconhorse')) return false;
-    return true;
-  };
-
-  // 获取要显示的 logo URL
+  // 获取要显示的 logo URL（使用共享工具函数）
   const getDisplayLogo = (tool: Tool): string => {
-    if (isValidLogoUrl(tool.logo_url)) {
-      return tool.logo_url!;
-    }
-    return generateInitialLogo(tool.name, tool.categories || []);
+    return getBestDisplayLogoUrl(tool.logo_url, tool.name, tool.categories || []);
   };
 
   // 生成兜底 SVG 图标

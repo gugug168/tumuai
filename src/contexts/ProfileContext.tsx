@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { getUserProfileWithCache, updateUserProfile, clearUserProfileCache, type UserProfile } from '../lib/auth'
 import { useAuth } from './AuthContext'
 
@@ -105,14 +105,14 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, refreshProfile, clearProfile])
 
-  const value = {
+  const value = useMemo(() => ({
     profile,
     loading,
     error,
     refreshProfile,
     updateProfile,
     clearProfile
-  }
+  }), [profile, loading, error, refreshProfile, updateProfile, clearProfile])
 
   return (
     <ProfileContext.Provider value={value}>

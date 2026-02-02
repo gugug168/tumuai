@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { addToFavorites, removeFromFavorites, isFavorited, addToolReview, getToolReviews } from '../lib/community';
 import { getToolById, incrementToolViews, getRelatedTools } from '../lib/supabase';
-import { generateInitialLogo } from '../lib/logoUtils';
+import { generateInitialLogo, isValidHighQualityLogoUrl } from '../lib/logoUtils';
 import OptimizedImage from '../components/OptimizedImage';
 import { useToast, createToastHelpers } from '../components/Toast';
 import type { Tool } from '../types/index';
@@ -161,12 +161,8 @@ const ToolDetailPage = () => {
 
   const safePrimaryLogoUrl = useMemo(() => {
     if (!tool?.logo_url) return '';
-    const url = tool.logo_url;
-    // Avoid known low-quality / often-blocked icon sources.
-    if (url.includes('google.com/s2/favicons')) return '';
-    if (url.includes('iconhorse')) return '';
-    if (url.includes('placeholder')) return '';
-    return url;
+    // 使用共享工具函数过滤低质量 logo URL
+    return isValidHighQualityLogoUrl(tool.logo_url) ? tool.logo_url : '';
   }, [tool]);
 
   type GalleryImage = {
