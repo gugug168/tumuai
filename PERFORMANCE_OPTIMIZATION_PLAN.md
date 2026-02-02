@@ -6,13 +6,12 @@
 ## 测试标准
 
 ### Core Web Vitals 目标
-| 指标 | 当前值 | 目标值 | 状态 |
-|------|--------|--------|------|
-| LCP (Largest Contentful Paint) | 963 ms | < 2500 ms | ✅ 良好 |
-| CLS (Cumulative Layout Shift) | 0.08 | < 0.1 | ✅ 良好 |
-| TTFB (Time to First Byte) | 855 ms | < 600 ms | ⚠️ 需优化 |
-| FID (First Input Delay) | - | < 100 ms | 待测 |
-| Lighthouse 性能分数 | - | > 90 | 待测 |
+| 指标 | 测试 #1 (旧) | 测试 #2 (2026-02-02) | 目标值 | 状态 |
+|------|-------------|---------------------|--------|------|
+| LCP (Largest Contentful Paint) | 963 ms | 1,407 ms | < 2500 ms | ✅ 良好 |
+| CLS (Cumulative Layout Shift) | 0.08 | 0.06 | < 0.1 | ✅ 良好 |
+| TTFB (Time to First Byte) | 855 ms | **1,294 ms** | < 600 ms | ❌ 未达标 |
+| Lighthouse 性能分数 | - | 待测 | > 90 | 待测 |
 
 ### 测试工具
 - Chrome DevTools Lighthouse
@@ -76,29 +75,61 @@
 3. ⏳ 手动使用 Chrome DevTools Lighthouse 测试（需要手动执行）
 
 ### 测试结果
-<!-- 需要手动 Lighthouse 测试填写 -->
-**Lighthouse 桌面版:**
-- 性能分数: ___ (待测试)
-- LCP: ___ ms (待测试)
-- TTFB: ___ ms (待测试)
-- CLS: ___ (待测试)
-- FID: ___ ms (待测试)
+**Chrome DevTools Performance Trace (2026-02-02):**
 
-**Lighthouse 移动版:**
-- 性能分数: ___ (待测试)
-- LCP: ___ ms (待测试)
-- TTFB: ___ ms (待测试)
-- CLS: ___ (待测试)
-- FID: ___ ms (待测试)
+**测试 #2 - Chrome DevTools 自动化测试**
+- **测试页面**: https://www.tumuai.net/tools
+- **测试方法**: Chrome DevTools MCP Performance Trace
+- **测试次数**: 2 次页面加载
+
+**NAVIGATION_0 结果:**
+- TTFB: **1,294 ms** (超出目标 116%)
+- LCP: **1,407 ms** ✅ 达标
+- CLS: **0.06** ✅ 优秀
+- LCP 分解: TTFB 92% + 渲染延迟 8%
+
+**NAVIGATION_1 结果:**
+- TTFB: **1,602 ms** (超出目标 167%)
+- LCP: **1,646 ms** ✅ 达标
+- CLS: **0.06** ✅ 优秀
+- LCP 分解: TTFB 97% + 渲染延迟 3%
+
+**关键发现:**
+1. **TTFB 是主要瓶颈**: 占 LCP 时间的 92-97%
+2. **CDN 命中但无缓存**: `x-vercel-cache: HIT` 但 `cache-control: max-age=0`
+3. **渲染阻塞请求非问题**: CSS 加载仅 4 ms
+4. **预计优化收益**: 降低 TTFB 可节省 ~1,193 ms FCP/LCP
 
 ---
 
-## 阶段三：TTFB 优化（待测试后确定）
+## 阶段三：TTFB 优化 🔥 优先级最高
 
-### 计划优化项
-- [ ] Vercel Functions 冷启动优化
-- [ ] Supabase 查询优化（索引、RLS）
-- [ ] CDN 缓存策略验证
+### 问题分析
+- **当前 TTFB**: 1,294 ms (目标 < 600 ms)
+- **根因**: HTML 请求的 `cache-control: max-age=0, must-revalidate` 导致每次都重新生成
+- **Vercel Cache 显示 HIT**: 说明 Edge Function 冷启动仍需优化
+
+### 优化方案 (按优先级)
+
+#### 1. 增加 HTML 页面缓存时间 🔥
+**当前配置**: `cache-control: public, max-age=0, must-revalidate`
+**建议配置**: `cache-control: public, max-age=300, stale-while-revalidate=600`
+
+**预期收益**: TTFB 从 1,294 ms → < 100 ms (CDN 缓存命中时)
+
+#### 2. 实现增量静态再生成 (ISR)
+- 在 Vercel 上预渲染 tools 页面
+- 设置 60-300 秒的 revalidate 时间
+- 减少动态生成的压力
+
+#### 3. Supabase 查询优化
+- 检查 `api/tools-cache` 的查询性能
+- 考虑添加复合索引: `(status, upvotes)`, `(status, date_added)`
+
+### 优化任务清单
+- [ ] 配置 Vercel 缓存头 (vercel.json 或 next.config.js)
+- [ ] 实现 ISR 预渲染
+- [ ] 检查并优化 Supabase 索引
 
 ---
 
@@ -120,11 +151,14 @@
 - CLS: 0.08
 - TTFB: 855 ms
 
-### 测试 #2 - 虚拟滚动后
-**日期:** ___
+### 测试 #2 - Chrome DevTools 自动化测试
+**日期:** 2026-02-02
 **版本:** 5408fac (虚拟滚动)
 **结果:**
-- 待测试
+- TTFB: 1,294 ms ❌ (目标 < 600 ms)
+- LCP: 1,407 ms ✅ (目标 < 2500 ms)
+- CLS: 0.06 ✅ (目标 < 0.1)
+- **瓶颈**: TTFB 占 LCP 的 92%
 
 ---
 
@@ -138,8 +172,13 @@
 ---
 
 ## 状态
-**当前阶段:** 阶段二 - 性能基线测试
-**下一步:** 手动使用 Chrome DevTools Lighthouse 测试 https://www.tumuai.net
+**当前阶段:** 阶段三 - TTFB 优化
+**下一步:** 配置 Vercel 缓存头，增加 HTML 页面缓存时间
+
+### 测试结论
+- ✅ LCP 和 CLS 已达标
+- ❌ TTFB 是主要瓶颈，需要优化服务器响应时间
+- 🎯 优化目标: TTFB < 600 ms
 
 ### 测试指导
 请按以下步骤手动测试：
