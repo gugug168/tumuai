@@ -351,3 +351,20 @@
   border: 2px solid currentColor;
   animation: pulse-ring 1.5s ease-out infinite;
 }
+
+/* ============================================
+ * 虚拟滚动样式 (react-virtuoso)
+ * ============================================ */
+.virtuoso-grid-item {
+  contain: layout style paint;
+}
+
+/* 虚拟滚动容器优化 */
+[data-virtuoso-scroller] {
+  scroll-behavior: smooth;
+}
+
+/* 平滑的滚动加载 */
+.virtuoso-grid-load-more {
+  transition: opacity 0.3s ease;
+}

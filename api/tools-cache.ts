@@ -24,7 +24,7 @@ type SortField = 'upvotes' | 'date_added' | 'rating' | 'views'
 type Pricing = 'Free' | 'Freemium' | 'Paid' | 'Trial'
 
 // 数据版本号 - 当工具数据更新时需要修改此版本号
-const DATA_VERSION = 'v1.0.7'  // 当前有106个工具
+const DATA_VERSION = 'v1.0.8'  // 2026-02-02 TTFB 优化 - 增加缓存时间
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   try {
@@ -112,9 +112,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
         response.setHeader('Expires', '0')
       } else {
         response.setHeader('Cache-Tag', ['tools', `tools-v${DATA_VERSION}`, `tool-${toolId}`].join(', '))
-        response.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=1800')
-        response.setHeader('CDN-Cache-Control', 'public, s-maxage=600')
-        response.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=600')
+        // 工具详情缓存 15 分钟，SWR 60 分钟
+        response.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=3600')
+        response.setHeader('CDN-Cache-Control', 'public, s-maxage=900')
+        response.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=900')
       }
 
       return response.status(200).json(result)
@@ -225,15 +226,15 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
       if (hasFilters) {
         // 筛选结果变化更频繁：较短缓存
-        response.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300')
-        response.setHeader('CDN-Cache-Control', 'public, s-maxage=120')
-        response.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=120')
+        response.setHeader('Cache-Control', 'public, s-maxage=180, stale-while-revalidate=600')
+        response.setHeader('CDN-Cache-Control', 'public, s-maxage=180')
+        response.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=180')
       } else {
-        // s-maxage: CDN 缓存 10 分钟（更容易命中缓存，首屏更快）
-        // stale-while-revalidate: 后台刷新期间可使用过期缓存 30 分钟
-        response.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=1800')
-        response.setHeader('CDN-Cache-Control', 'public, s-maxage=600')
-        response.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=600')
+        // s-maxage: CDN 缓存 15 分钟（更容易命中缓存，首屏更快）
+        // stale-while-revalidate: 后台刷新期间可使用过期缓存 60 分钟
+        response.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=3600')
+        response.setHeader('CDN-Cache-Control', 'public, s-maxage=900')
+        response.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=900')
       }
     }
 
