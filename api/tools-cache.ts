@@ -6,14 +6,8 @@
  * - 服务端获取工具列表，避免客户端直连 Supabase
  * - 使用 Cache-Control 头实现 CDN 层缓存
  * - 支持分页参数
- * Runtime: Edge (更快的冷启动和全球部署)
  * ============================================================
  */
-
-// 指定使用 Edge Runtime 以获得更快的冷启动
-export const config = {
-  runtime: 'edge',
-}
 
 import { createClient } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'

@@ -6,14 +6,8 @@
  * - 服务端根据筛选条件获取工具列表
  * - 支持按分类、定价、功能特性筛选
  * - 解决客户端筛选只能看到第一页数据的问题
- * Runtime: Edge (更快的冷启动和全球部署)
  * ============================================================
  */
-
-// 指定使用 Edge Runtime 以获得更快的冷启动
-export const config = {
-  runtime: 'edge',
-}
 
 import { createClient } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
