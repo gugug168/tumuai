@@ -1,4 +1,5 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
   "trailingSlash": false,
   "redirects": [
@@ -32,11 +33,47 @@
   ],
   "headers": [
     {
+      "source": "/tools(?:\\.html)?",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, s-maxage=300, stale-while-revalidate=600"
+        }
+      ]
+    },
+    {
+      "source": "/about(?:\\.html)?",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, s-maxage=300, stale-while-revalidate=600"
+        }
+      ]
+    },
+    {
+      "source": "/submit(?:\\.html)?",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, s-maxage=300, stale-while-revalidate=600"
+        }
+      ]
+    },
+    {
+      "source": "/(.*\\.html)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, s-maxage=300, stale-while-revalidate=600"
+        }
+      ]
+    },
+    {
       "source": "/",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=300, s-maxage=300, stale-while-revalidate=600, must-revalidate"
+          "value": "public, max-age=300, s-maxage=300, stale-while-revalidate=600"
         }
       ]
     },
@@ -45,43 +82,7 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=300, s-maxage=300, stale-while-revalidate=600, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/(.*).html",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=300, s-maxage=300, stale-while-revalidate=600, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/tools",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=300, s-maxage=300, stale-while-revalidate=600, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/about",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=300, s-maxage=300, stale-while-revalidate=600, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/submit",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=300, s-maxage=300, stale-while-revalidate=600, must-revalidate"
+          "value": "public, max-age=300, s-maxage=300, stale-while-revalidate=600"
         }
       ]
     },
