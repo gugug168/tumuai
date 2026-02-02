@@ -59,11 +59,15 @@ const ToolsPage = React.memo(() => {
     currentPage,
     categories,
     favoriteStates,
+    allTools,
+    isLoadingMore,
+    hasMore,
     loadTools,
     loadCategories,
     loadFavoriteStates,
     toggleFavorite,
     preloadToolsPage,
+    loadMore,
     setCurrentPage,
     setUserId,
     TOOLS_PER_PAGE
@@ -197,6 +201,16 @@ const ToolsPage = React.memo(() => {
       }
     }
   }, [currentPage, totalPages, needsServerFiltering, hasActiveFilters, preloadToolsPage]);
+
+  // 处理无限滚动加载更多
+  const handleLoadMore = useCallback(() => {
+    if (!needsServerFiltering && !hasActiveFilters) {
+      loadMore(serverFilters);
+    }
+  }, [needsServerFiltering, hasActiveFilters, loadMore, serverFilters]);
+
+  // 判断是否启用虚拟滚动：无筛选条件时启用
+  const enableVirtualScroll = !needsServerFiltering && !hasActiveFilters && !isOffline;
 
   // 统一重试（带上当前筛选/页码）
   const handleRetryLoad = useCallback(() => {
@@ -353,6 +367,7 @@ const ToolsPage = React.memo(() => {
         <ToolGrid
           tools={tools}
           totalCount={displayCount}
+          allTools={allTools}
           viewMode={viewMode}
           paginatedTools={paginatedTools}
           currentPage={currentPage}
@@ -366,6 +381,10 @@ const ToolsPage = React.memo(() => {
           onFavoriteToggle={handleFavoriteToggle}
           user={user}
           onPreloadNext={handlePreloadNext}
+          onLoadMore={handleLoadMore}
+          isLoadingMore={isLoadingMore}
+          hasMore={hasMore}
+          enableVirtualScroll={enableVirtualScroll}
         />
 
         {/* 开发模式性能报告按钮 */}

@@ -27,6 +27,16 @@ interface ToolDataState {
 }
 
 /**
+ * 虚拟滚动状态
+ */
+interface VirtualScrollState {
+  allTools: Tool[];          // 所有已加载的工具（用于虚拟滚动）
+  isLoadingMore: boolean;    // 是否正在加载更多
+  hasMore: boolean;          // 是否还有更多数据
+  currentPage: number;       // 当前已加载到的页码
+}
+
+/**
  * useToolData Hook - 管理工具数据获取和状态
  *
  * 功能:
@@ -54,6 +64,14 @@ export function useToolData(performanceHooks?: {
 
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
+
+  // 虚拟滚动状态（无限滚动）
+  const [virtualScrollState, setVirtualScrollState] = useState<VirtualScrollState>({
+    allTools: [],
+    isLoadingMore: false,
+    hasMore: true,
+    currentPage: 0
+  });
   const [categories, setCategories] = useState<string[]>([]);
   const currentPageRef = useRef<number>(currentPage);
   const stateRef = useRef<ToolDataState>(state);
@@ -180,14 +198,28 @@ export function useToolData(performanceHooks?: {
             }, { autoRetry, retryCount: nextRetryCount })
           : await getToolsSmart(limit, offset, shouldIncludeCount);
 
-        console.log(`✅ 工具数据加载成功: ${result.tools.length}个工具, 总数${result.count}`);
+        const newTools = Array.isArray(result.tools) ? result.tools : [];
+        const totalCount = typeof result.count === 'number' ? result.count : stateRef.current.totalToolsCount;
+
+        console.log(`✅ 工具数据加载成功: ${newTools.length}个工具, 总数${result.count}`);
+
         setState(prev => ({
           ...prev,
-          tools: Array.isArray(result.tools) ? result.tools : [],
-          totalToolsCount: typeof result.count === 'number' ? result.count : prev.totalToolsCount,
+          tools: newTools,
+          totalToolsCount: totalCount,
           loading: false,
           retryCount: 0
         }));
+
+        // 同步更新虚拟滚动状态（首次加载时）
+        if (page === 1) {
+          setVirtualScrollState({
+            allTools: newTools,
+            isLoadingMore: false,
+            hasMore: newTools.length < totalCount,
+            currentPage: 1
+          });
+        }
       }
     } catch (error) {
       console.error('❌ 加载工具失败:', error);
@@ -231,6 +263,55 @@ export function useToolData(performanceHooks?: {
       }
     }
   }, [updateState, recordApiCall]);
+
+  /**
+   * 加载更多工具（用于虚拟滚动无限加载）
+   */
+  const loadMore = useCallback(async (filters?: ToolSearchFilters) => {
+    // 如果有筛选条件，禁用无限滚动
+    if (filters &&
+        ((filters.search && filters.search.trim().length > 0) ||
+         (filters.categories && filters.categories.length > 0) ||
+         filters.pricing ||
+         (filters.features && filters.features.length > 0) ||
+         (filters.sortBy && filters.sortBy !== 'upvotes'))) {
+      return;
+    }
+
+    // 防止重复加载或没有更多数据
+    if (virtualScrollState.isLoadingMore || !virtualScrollState.hasMore) {
+      return;
+    }
+
+    const nextPage = virtualScrollState.currentPage + 1;
+    const limit = TOOLS_PER_PAGE;
+    const offset = (nextPage - 1) * TOOLS_PER_PAGE;
+
+    setVirtualScrollState(prev => ({ ...prev, isLoadingMore: true }));
+
+    try {
+      const result = recordApiCall
+        ? await recordApiCall('load_more_tools', async () => {
+            return await getToolsSmart(limit, offset, false);
+          }, { page: nextPage })
+        : await getToolsSmart(limit, offset, false);
+
+      const newTools = Array.isArray(result.tools) ? result.tools : [];
+      const totalCount = stateRef.current.totalToolsCount;
+
+      setVirtualScrollState(prev => ({
+        allTools: [...prev.allTools, ...newTools],
+        isLoadingMore: false,
+        hasMore: prev.allTools.length + newTools.length < totalCount,
+        currentPage: nextPage
+      }));
+
+      console.log(`✅ 加载更多成功: ${newTools.length}个工具, 已加载${virtualScrollState.currentPage + 1}页`);
+    } catch (error) {
+      console.error('❌ 加载更多失败:', error);
+      setVirtualScrollState(prev => ({ ...prev, isLoadingMore: false }));
+    }
+  }, [virtualScrollState, recordApiCall, stateRef]);
 
   /**
    * 加载分类数据
@@ -365,6 +446,11 @@ export function useToolData(performanceHooks?: {
     categories,
     favoriteStates,
 
+    // 虚拟滚动状态
+    allTools: virtualScrollState.allTools,
+    isLoadingMore: virtualScrollState.isLoadingMore,
+    hasMore: virtualScrollState.hasMore,
+
     // 方法
     loadTools,
     loadCategories,
@@ -372,6 +458,7 @@ export function useToolData(performanceHooks?: {
     toggleFavorite,
     retryLoad,
     preloadToolsPage,
+    loadMore,
     setCurrentPage,
     setUserId: (id: string) => { userIdRef.current = id; },
 
