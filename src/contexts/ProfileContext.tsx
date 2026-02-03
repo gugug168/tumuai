@@ -103,7 +103,8 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     } else {
       clearProfile()
     }
-  }, [user, refreshProfile, clearProfile])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
 
   const value = useMemo(() => ({
     profile,

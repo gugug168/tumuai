@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback, useRef, useEffect, useState } from 'react';
 import { Search, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
-import { VirtuosoGrid } from 'react-virtuoso';
+import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
 import ToolCard from './ToolCard';
 import type { Tool } from '../types';
 
@@ -269,6 +269,69 @@ const ToolGrid = React.memo<ToolGridProps>(({
 
         {/* 返回顶部按钮 */}
         {allTools.length > 24 && (
+          <button
+            onClick={scrollToTop}
+            className="fixed bottom-8 right-8 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
+            aria-label="返回顶部"
+          >
+            <ChevronLeft className="w-5 h-5 transform rotate-90" />
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // 虚拟滚动模式渲染（列表视图）
+  if (enableVirtualScroll && viewMode === 'list' && allTools && allTools.length > 0) {
+    return (
+      <div ref={scrollContainerRef}>
+        {/* Results Summary */}
+        <div className="mb-6 flex items-center justify-between">
+          <p className="text-gray-600">
+            {resultsSummary}
+            {totalCount > displayTools.length && (
+              <span className="ml-2 text-gray-500">
+                (已加载 {displayTools.length} / {totalCount} 个)
+              </span>
+            )}
+          </p>
+        </div>
+
+        {/* Virtual List */}
+        <Virtuoso
+          style={{ height: 'calc(100vh - 240px)' }}
+          data={allTools}
+          endReached={hasMore ? handleLoadMore : undefined}
+          overscan={200}
+          itemContent={(index, tool) => {
+            if (!tool) return null;
+            return (
+              <ToolCard
+                key={tool.id}
+                tool={tool}
+                isFavorited={favoriteStates[tool.id] || false}
+                onFavoriteToggle={handleFavoriteToggle}
+                viewMode={viewMode}
+              />
+            );
+          }}
+          components={{
+            Footer: () => (
+              isLoadingMore ? (
+                <div className="py-8 flex justify-center">
+                  <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+                </div>
+              ) : hasMore ? (
+                <div className="py-4 text-center text-gray-500 text-sm">
+                  下拉加载更多
+                </div>
+              ) : null
+            )
+          }}
+        />
+
+        {/* 返回顶部按钮 */}
+        {allTools.length > 50 && (
           <button
             onClick={scrollToTop}
             className="fixed bottom-8 right-8 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors"

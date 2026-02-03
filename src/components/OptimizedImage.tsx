@@ -3,9 +3,27 @@ import React, { useState, useRef, useEffect } from 'react';
 type BrokenImgMap = Record<string, number>; // url -> expiresAt (ms)
 
 const BROKEN_IMG_STORAGE_KEY = 'tumuai_broken_img_v1';
-const BROKEN_IMG_TTL_DEFAULT_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
-const BROKEN_IMG_TTL_FIRST_PARTY_MS = 10 * 60 * 1000; // 10 minutes
 const BROKEN_IMG_MAX_ENTRIES = 200;
+
+// 错误类型及其 TTL（缓存时间）
+const ERROR_TTL_MS = {
+  '404': 7 * 24 * 60 * 60 * 1000,      // 7天 - 资源不存在，长期缓存
+  '403': 30 * 60 * 1000,                // 30分钟 - 临时禁止，允许稍后重试
+  'network': 60 * 60 * 1000,            // 1小时 - 网络错误，中等缓存
+  'timeout': 10 * 60 * 1000,            // 10分钟 - 超时，短缓存
+  'first_party': 10 * 60 * 1000,        // 10分钟 - 自己的资源，可能正在上传
+  'default': 3 * 24 * 60 * 60 * 1000    // 3天 - 默认
+} as const;
+
+type ErrorType = keyof typeof ERROR_TTL_MS;
+
+// 错误信息缓存结构
+interface BrokenImgEntry {
+  expiresAt: number;
+  errorType?: ErrorType;
+}
+
+type BrokenImgMap = Record<string, BrokenImgEntry>;
 
 let brokenImgMapCache: BrokenImgMap | null = null;
 
@@ -22,10 +40,10 @@ function loadBrokenImgMap(): BrokenImgMap {
     const parsed = raw ? (JSON.parse(raw) as BrokenImgMap) : {};
     const map: BrokenImgMap = parsed && typeof parsed === 'object' ? parsed : {};
 
-    // Prune expired entries on load.
+    // 清理过期条目
     const now = Date.now();
-    for (const [url, expiresAt] of Object.entries(map)) {
-      if (typeof expiresAt !== 'number' || expiresAt <= now) {
+    for (const [url, entry] of Object.entries(map)) {
+      if (!entry || typeof entry.expiresAt !== 'number' || entry.expiresAt <= now) {
         delete map[url];
       }
     }
@@ -51,21 +69,48 @@ function isHttpUrl(url: string): boolean {
   return /^https?:\/\//i.test(url);
 }
 
-function getBrokenImgTtlMs(url: string): number {
-  // For our own Supabase Storage assets, a missing object can become available shortly
-  // after an async backfill. Use a shorter TTL so the UI can recover quickly.
-  if (url.includes('/storage/v1/object/public/tool-screenshots/')) return BROKEN_IMG_TTL_FIRST_PARTY_MS;
-  if (url.includes('/storage/v1/object/public/tool-logos/')) return BROKEN_IMG_TTL_FIRST_PARTY_MS;
-  return BROKEN_IMG_TTL_DEFAULT_MS;
+/**
+ * 根据错误类型和 URL 获取 TTL
+ */
+function getBrokenImgTtlMs(url: string, errorType: ErrorType = 'default'): number {
+  // 对于自己的 Supabase Storage 资源，使用较短的 TTL，以便在上传后快速恢复
+  if (url.includes('/storage/v1/object/public/tool-screenshots/') ||
+      url.includes('/storage/v1/object/public/tool-logos/')) {
+    return ERROR_TTL_MS.first_party;
+  }
+
+  // 根据错误类型返回对应的 TTL
+  return ERROR_TTL_MS[errorType] || ERROR_TTL_MS.default;
+}
+
+/**
+ * 从错误事件中识别错误类型
+ */
+function getErrorTypeFromEvent(event: React.SyntheticEvent<HTMLImageElement, Event>): ErrorType {
+  const img = event.currentTarget;
+  const naturalWidth = img.naturalWidth;
+  const naturalHeight = img.naturalHeight;
+
+  // 检查是否加载了错误图片（某些 CDN 返回小尺寸的错误占位图）
+  if (naturalWidth === 0 || naturalHeight === 0) {
+    return '404'; // 最可能是资源不存在
+  }
+
+  // 检查 networkState（仅部分浏览器支持，HTMLMediaElement 才有）
+  // 对于 HTMLImageElement，我们主要通过其他方式判断
+  // 如果需要更精确的网络状态检测，可以考虑使用 fetch 预检查
+
+  // 默认假设为 404
+  return '404';
 }
 
 function isKnownBrokenUrl(url: string): boolean {
   if (!isHttpUrl(url)) return false;
   const map = loadBrokenImgMap();
-  const expiresAt = map[url];
-  if (typeof expiresAt !== 'number') return false;
+  const entry = map[url];
+  if (!entry) return false;
 
-  if (expiresAt <= Date.now()) {
+  if (entry.expiresAt <= Date.now()) {
     delete map[url];
     saveBrokenImgMap(map);
     return false;
@@ -74,19 +119,22 @@ function isKnownBrokenUrl(url: string): boolean {
   return true;
 }
 
-function markBrokenUrl(url: string) {
+function markBrokenUrl(url: string, errorType: ErrorType = '404') {
   if (!isHttpUrl(url)) return;
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
 
   const map = loadBrokenImgMap();
-  map[url] = Date.now() + getBrokenImgTtlMs(url);
+  map[url] = {
+    expiresAt: Date.now() + getBrokenImgTtlMs(url, errorType),
+    errorType
+  };
 
-  // Keep the map bounded to avoid unbounded localStorage growth.
+  // 保持 map 有界，避免 localStorage 无限增长
   const keys = Object.keys(map);
   if (keys.length > BROKEN_IMG_MAX_ENTRIES) {
-    // Remove the oldest (smallest expiresAt) entries.
+    // 删除最旧的条目
     keys
-      .sort((a, b) => (map[a] || 0) - (map[b] || 0))
+      .sort((a, b) => (map[a]?.expiresAt || 0) - (map[b]?.expiresAt || 0))
       .slice(0, keys.length - BROKEN_IMG_MAX_ENTRIES)
       .forEach((k) => {
         delete map[k];
@@ -168,9 +216,10 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     setIsLoaded(true);
   };
 
-  const handleError = () => {
+  const handleError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const errorType = getErrorTypeFromEvent(event);
     setHasError(true);
-    markBrokenUrl(src);
+    markBrokenUrl(src, errorType);
   };
 
   // 将 width/height 转换为 CSS 值
