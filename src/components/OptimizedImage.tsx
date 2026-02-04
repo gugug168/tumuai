@@ -349,22 +349,36 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
       {/* 实际图片 */}
       {isInView && !hasError && imageElement}
 
-      {/* 加载动画 - 只在加载中显示 */}
+      {/* 优化的加载动画 - 只在加载中显示 */}
       {isInView && !isLoaded && !hasError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 animate-shimmer">
+          {/* 骨架屏波纹效果 */}
+          <div className="absolute inset-0 overflow-hidden opacity-50">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-300 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
+          </div>
+          {/* 加载旋转器 */}
+          <div className="relative w-10 h-10">
+            <div className="absolute inset-0 border-3 border-gray-200 rounded-full"></div>
+            <div className="absolute inset-0 border-3 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
+            <div className="absolute inset-2 border-3 border-transparent border-t-blue-400 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }}></div>
+          </div>
+          {/* 加载文字提示 */}
+          <span className="mt-3 text-xs text-gray-400 font-medium skeleton-pulse">加载中...</span>
         </div>
       )}
 
       {/* 错误状态 / 兜底内容 */}
       {hasError && (
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50">
           {fallback || (
-            <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="2"/>
-              <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
-              <path d="M21 15l-5-5L5 21" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <>
+              <svg className="w-12 h-12 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
+                <path d="M21 15l-5-5L5 21" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span className="text-xs text-gray-400">图片加载失败</span>
+            </>
           )}
         </div>
       )}

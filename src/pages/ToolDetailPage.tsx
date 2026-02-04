@@ -79,6 +79,42 @@ function getScreenshotIcon(url: string): string {
   return region ? REGION_ICONS[region] : '';
 }
 
+/**
+ * 区域排序顺序
+ */
+const REGION_ORDER: ScreenshotRegion[] = ['hero', 'features', 'pricing', 'fullpage'];
+
+/**
+ * 获取区域的排序值，用于排序截图
+ */
+function getRegionOrder(region: ScreenshotRegion | null): number {
+  if (!region) return 999;
+  return REGION_ORDER.indexOf(region);
+}
+
+/**
+ * 将截图按区域分组
+ */
+function groupScreenshotsByRegion(images: GalleryImage[]): Map<ScreenshotRegion | 'other', GalleryImage[]> {
+  const groups = new Map<ScreenshotRegion | 'other', GalleryImage[]>();
+
+  // 初始化所有区域组
+  REGION_ORDER.forEach(region => {
+    groups.set(region, []);
+  });
+  groups.set('other', []);
+
+  images.forEach(image => {
+    const region = parseScreenshotRegion(image.src);
+    const key = region || 'other';
+    const current = groups.get(key) || [];
+    current.push(image);
+    groups.set(key, current);
+  });
+
+  return groups;
+}
+
 const ToolDetailPage = () => {
   const { toolId } = useParams();
   const location = useLocation();
@@ -263,7 +299,7 @@ const ToolDetailPage = () => {
   const galleryImages = useMemo<GalleryImage[]>(() => {
     // Prefer stored screenshots (Supabase Storage) to avoid slow third-party render on every view.
     if (storedScreenshotUrls.length >= 2) {
-      return storedScreenshotUrls.map((src) => {
+      const images = storedScreenshotUrls.map((src) => {
         const region = parseScreenshotRegion(src);
         return {
           src,
@@ -271,6 +307,13 @@ const ToolDetailPage = () => {
           objectPosition: '50% 50%',
           region: region || undefined
         };
+      });
+
+      // 按区域排序
+      return images.sort((a, b) => {
+        const orderA = getRegionOrder(a.region || null);
+        const orderB = getRegionOrder(b.region || null);
+        return orderA - orderB;
       });
     }
 
@@ -569,97 +612,203 @@ const ToolDetailPage = () => {
                 )}
               </div>
               <div className="space-y-4">
-                {/* 主图片 */}
-                <div className="relative">
-                  <OptimizedImage
-                    src={adaptedTool.images[selectedImage]?.src || adaptedTool.logo}
-                    alt={`${adaptedTool.name} 截图 ${selectedImage + 1}`}
-                    className="w-full h-96 rounded-lg"
-                    objectFit={adaptedTool.images[selectedImage]?.objectFit || 'contain'}
-                    objectPosition={adaptedTool.images[selectedImage]?.objectPosition || '50% 50%'}
-                    background
-                    fallback={
-                      fallbackLogoDataUrl
-                        ? (
-                            <img
-                              src={fallbackLogoDataUrl}
-                              alt={adaptedTool.name}
-                              className="w-full h-full object-contain p-6"
-                            />
-                          )
-                        : undefined
-                    }
-                  />
+                {/* 主图片容器 */}
+                <div className="relative bg-gray-100 rounded-lg overflow-hidden" style={{ height: '400px' }}>
+                  {/* 背景骨架屏动画 */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100">
+                    <div className="absolute inset-0 opacity-30">
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent animate-pulse" />
+                    </div>
+                  </div>
+
+                  {/* 实际图片 */}
+                  <div className="absolute inset-0">
+                    <OptimizedImage
+                      key={selectedImage}
+                      src={adaptedTool.images[selectedImage]?.src || adaptedTool.logo}
+                      alt={`${adaptedTool.name} 截图 ${selectedImage + 1}`}
+                      className="w-full h-full"
+                      objectFit={adaptedTool.images[selectedImage]?.objectFit || 'contain'}
+                      objectPosition={adaptedTool.images[selectedImage]?.objectPosition || '50% 50%'}
+                      // 主图使用高分辨率
+                      srcsetWidths={[800, 1200, 1600]}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 70vw, 60vw"
+                      priority={selectedImage === 0}
+                      lazyLoad={selectedImage !== 0}
+                      fallback={
+                        fallbackLogoDataUrl
+                          ? (
+                              <img
+                                src={fallbackLogoDataUrl}
+                                alt={adaptedTool.name}
+                                className="w-full h-full object-contain p-6"
+                              />
+                            )
+                          : undefined
+                      }
+                    />
+                  </div>
+
+                  {/* 图片加载指示器 */}
+                  <div className="absolute bottom-3 left-3 flex items-center space-x-2">
+                    <span className="px-2 py-1 bg-black/50 text-white text-xs rounded backdrop-blur-sm">
+                      {adaptedTool.images[selectedImage]?.region
+                        ? `${REGION_ICONS[adaptedTool.images[selectedImage].region as ScreenshotRegion]} ${REGION_LABELS[adaptedTool.images[selectedImage].region as ScreenshotRegion]}`
+                        : `截图 ${selectedImage + 1}/${adaptedTool.images.length}`
+                      }
+                    </span>
+                  </div>
+
+                  {/* 视频播放按钮 */}
                   {adaptedTool.videoUrl && selectedImage === 0 && (
                     <button
                       onClick={() => setShowVideoModal(true)}
-                      className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg hover:bg-opacity-40 transition-colors"
+                      className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/20 rounded-lg transition-colors group"
                     >
-                      <div className="bg-white rounded-full p-4">
+                      <div className="bg-white/90 group-hover:bg-white rounded-full p-4 shadow-lg transition-all transform group-hover:scale-110">
                         <Play className="w-8 h-8 text-blue-600" />
                       </div>
                     </button>
                   )}
                 </div>
 
-                {/* 缩略图 */}
-                <div className="flex flex-wrap gap-3">
-                  {adaptedTool.images.map((image, index) => {
-                    const regionLabel = getScreenshotLabel(image.src);
-                    const regionIcon = getScreenshotIcon(image.src);
-                    const isSelected = selectedImage === index;
+                {/* 缩略图 - 按区域分组 */}
+                <div className="space-y-4">
+                  {/* 检查是否有分组的截图 */}
+                  {adaptedTool.images.some(img => img.region) ? (
+                    // 有区域信息时，按区域分组显示
+                    Array.from(groupScreenshotsByRegion(adaptedTool.images).entries())
+                      .filter(([_, images]) => images.length > 0)
+                      .map(([region, images]) => (
+                        <div key={region} className="space-y-2">
+                          {/* 区域标题 */}
+                          <div className="flex items-center text-sm font-medium text-gray-600">
+                            <span className="mr-1.5">{region !== 'other' ? REGION_ICONS[region] : '📷'}</span>
+                            <span>{region !== 'other' ? REGION_LABELS[region] : '其他截图'}</span>
+                            <span className="ml-2 text-xs text-gray-400">({images.length})</span>
+                          </div>
+                          {/* 缩略图网格 */}
+                          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                            {images.map((image) => {
+                              const globalIndex = adaptedTool.images.indexOf(image);
+                              const regionLabel = getScreenshotLabel(image.src);
+                              const regionIcon = getScreenshotIcon(image.src);
+                              const isSelected = selectedImage === globalIndex;
 
-                    return (
-                      <button
-                        key={index}
-                        onClick={() => setSelectedImage(index)}
-                        className={`group relative flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 ${
-                          isSelected
-                            ? 'border-blue-500 shadow-md ring-2 ring-blue-200'
-                            : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                        }`}
-                        style={{ width: '120px', height: '90px' }}
-                      >
-                        {/* 截图缩略图 */}
-                        <OptimizedImage
-                          src={image.src}
-                          alt={`缩略图 ${index + 1}`}
-                          className="w-full h-full"
-                          objectFit={image.objectFit || 'cover'}
-                          objectPosition={image.objectPosition || '50% 50%'}
-                          background
-                          fallback={
-                            fallbackLogoDataUrl
-                              ? (
-                                  <img
-                                    src={fallbackLogoDataUrl}
-                                    alt={adaptedTool.name}
-                                    className="w-full h-full object-contain p-2"
+                              return (
+                                <button
+                                  key={globalIndex}
+                                  onClick={() => setSelectedImage(globalIndex)}
+                                  className={`group relative aspect-[4/3] overflow-hidden rounded-lg border-2 transition-all duration-200 ${
+                                    isSelected
+                                      ? 'border-blue-500 shadow-md ring-2 ring-blue-200 scale-105'
+                                      : 'border-gray-200 hover:border-gray-300 hover:shadow-sm hover:scale-102'
+                                  }`}
+                                >
+                                  {/* 截图缩略图 */}
+                                  <OptimizedImage
+                                    src={image.src}
+                                    alt={`缩略图 ${globalIndex + 1}`}
+                                    className="w-full h-full"
+                                    objectFit="cover"
+                                    objectPosition="50% 50%"
+                                    background
+                                    // 缩略图使用更小的响应式宽度
+                                    srcsetWidths={[120, 240]}
+                                    sizes="(max-width: 640px) 20vw, 120px"
+                                    fallback={
+                                      fallbackLogoDataUrl
+                                        ? (
+                                            <img
+                                              src={fallbackLogoDataUrl}
+                                              alt={adaptedTool.name}
+                                              className="w-full h-full object-contain p-2"
+                                            />
+                                          )
+                                        : undefined
+                                    }
                                   />
-                                )
-                              : undefined
-                          }
-                        />
-                        {/* 区域标签覆盖层 */}
-                        {regionLabel && (
-                          <div className={`absolute bottom-0 left-0 right-0 px-2 py-1 text-xs font-medium text-center ${
-                            isSelected
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-900/70 text-white group-hover:bg-gray-900/80'
-                          }`}>
-                            <span className="mr-1">{regionIcon}</span>
-                            {regionLabel}
+                                  {/* 区域标签覆盖层 */}
+                                  {regionLabel && (
+                                    <div className={`absolute bottom-0 left-0 right-0 px-1.5 py-0.5 text-[10px] font-medium text-center leading-tight ${
+                                      isSelected
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-gray-900/70 text-white group-hover:bg-gray-900/80'
+                                    }`}>
+                                      <span className="mr-0.5">{regionIcon}</span>
+                                      {regionLabel}
+                                    </div>
+                                  )}
+                                  {/* 选中指示器 */}
+                                  {isSelected && (
+                                    <div className="absolute top-1 right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                                      <Check className="w-2.5 h-2.5 text-white" />
+                                    </div>
+                                  )}
+                                  {/* 悬停时显示的边框高亮 */}
+                                  <div className="absolute inset-0 border-2 border-transparent group-hover:border-blue-300/30 rounded-lg pointer-events-none transition-colors" />
+                                </button>
+                              );
+                            })}
                           </div>
-                        )}
-                        {/* 选中指示器 */}
-                        {isSelected && (
-                          <div className="absolute top-2 right-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                            <Check className="w-3 h-3 text-white" />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
+                        </div>
+                      ))
+                  ) : (
+                    // 无区域信息时，显示为网格布局
+                    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                      {adaptedTool.images.map((image, index) => {
+                        const isSelected = selectedImage === index;
+
+                        return (
+                          <button
+                            key={index}
+                            onClick={() => setSelectedImage(index)}
+                            className={`group relative aspect-[4/3] overflow-hidden rounded-lg border-2 transition-all duration-200 ${
+                              isSelected
+                                ? 'border-blue-500 shadow-md ring-2 ring-blue-200 scale-105'
+                                : 'border-gray-200 hover:border-gray-300 hover:shadow-sm hover:scale-102'
+                            }`}
+                          >
+                            <OptimizedImage
+                              src={image.src}
+                              alt={`缩略图 ${index + 1}`}
+                              className="w-full h-full"
+                              objectFit="cover"
+                              objectPosition={image.objectPosition || '50% 50%'}
+                              background
+                              srcsetWidths={[120, 240]}
+                              sizes="(max-width: 640px) 20vw, 120px"
+                              fallback={
+                                fallbackLogoDataUrl
+                                  ? (
+                                      <img
+                                        src={fallbackLogoDataUrl}
+                                        alt={adaptedTool.name}
+                                        className="w-full h-full object-contain p-2"
+                                      />
+                                    )
+                                  : undefined
+                              }
+                            />
+                            {/* 截图编号 */}
+                            <div className={`absolute top-1 left-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                              isSelected
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-900/70 text-white'
+                            }`}>
+                              {index + 1}
+                            </div>
+                            {/* 选中指示器 */}
+                            {isSelected && (
+                              <div className="absolute top-1 right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                                <Check className="w-2.5 h-2.5 text-white" />
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
