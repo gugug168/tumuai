@@ -29,6 +29,56 @@ interface Review {
   comment: string;
 }
 
+// 截图区域类型
+type ScreenshotRegion = 'hero' | 'features' | 'pricing' | 'fullpage';
+
+// 区域标签映射
+const REGION_LABELS: Record<ScreenshotRegion, string> = {
+  hero: '首页',
+  features: '功能',
+  pricing: '价格',
+  fullpage: '全页'
+};
+
+// 区域图标映射
+const REGION_ICONS: Record<ScreenshotRegion, string> = {
+  hero: '🏠',
+  features: '⚡',
+  pricing: '💰',
+  fullpage: '📄'
+};
+
+/**
+ * 从截图 URL 解析区域类型
+ * 支持两种格式:
+ * 1. .../tools/{toolId}/hero.webp
+ * 2. .../tools/{toolId}/{region}.webp
+ */
+function parseScreenshotRegion(url: string): ScreenshotRegion | null {
+  // 匹配文件名模式
+  const match = url.match(/\/(hero|features|pricing|fullpage)\.webp$/i);
+  if (match) {
+    return match[1].toLowerCase() as ScreenshotRegion;
+  }
+  return null;
+}
+
+/**
+ * 获取截图的区域标签
+ */
+function getScreenshotLabel(url: string): string {
+  const region = parseScreenshotRegion(url);
+  return region ? REGION_LABELS[region] : '';
+}
+
+/**
+ * 获取截图的区域图标
+ */
+function getScreenshotIcon(url: string): string {
+  const region = parseScreenshotRegion(url);
+  return region ? REGION_ICONS[region] : '';
+}
+
 const ToolDetailPage = () => {
   const { toolId } = useParams();
   const location = useLocation();
@@ -169,6 +219,7 @@ const ToolDetailPage = () => {
     src: string;
     objectFit?: 'cover' | 'contain';
     objectPosition?: string;
+    region?: ScreenshotRegion;
   };
 
   // 推断的存储截图 URL（用于没有截图数据时的后备）
@@ -212,11 +263,15 @@ const ToolDetailPage = () => {
   const galleryImages = useMemo<GalleryImage[]>(() => {
     // Prefer stored screenshots (Supabase Storage) to avoid slow third-party render on every view.
     if (storedScreenshotUrls.length >= 2) {
-      return storedScreenshotUrls.map((src) => ({
-        src,
-        objectFit: 'cover',
-        objectPosition: '50% 50%'
-      }));
+      return storedScreenshotUrls.map((src) => {
+        const region = parseScreenshotRegion(src);
+        return {
+          src,
+          objectFit: 'cover',
+          objectPosition: '50% 50%',
+          region: region || undefined
+        };
+      });
     }
 
     const baseScreenshotUrl = storedScreenshotUrls[0] || websiteScreenshotUrl;
@@ -503,7 +558,16 @@ const ToolDetailPage = () => {
 
             {/* 图片/视频画廊 */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">产品截图</h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">产品截图</h2>
+                {/* 当前选中区域标签 */}
+                {adaptedTool.images[selectedImage] && (
+                  <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-sm font-medium">
+                    <span className="mr-1.5">{getScreenshotIcon(adaptedTool.images[selectedImage].src)}</span>
+                    {getScreenshotLabel(adaptedTool.images[selectedImage].src) || `截图 ${selectedImage + 1}`}
+                  </span>
+                )}
+              </div>
               <div className="space-y-4">
                 {/* 主图片 */}
                 <div className="relative">
@@ -537,38 +601,65 @@ const ToolDetailPage = () => {
                     </button>
                   )}
                 </div>
-                
+
                 {/* 缩略图 */}
-                <div className="flex space-x-4">
-                  {adaptedTool.images.map((image, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setSelectedImage(index)}
-                      className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
-                        selectedImage === index ? 'border-blue-500' : 'border-gray-200'
-                      }`}
-                    >
-                      <OptimizedImage
-                        src={image.src}
-                        alt={`缩略图 ${index + 1}`}
-                        className="w-full h-full"
-                        objectFit={image.objectFit || 'contain'}
-                        objectPosition={image.objectPosition || '50% 50%'}
-                        background
-                        fallback={
-                          fallbackLogoDataUrl
-                            ? (
-                                <img
-                                  src={fallbackLogoDataUrl}
-                                  alt={adaptedTool.name}
-                                  className="w-full h-full object-contain p-2"
-                                />
-                              )
-                            : undefined
-                        }
-                      />
-                    </button>
-                  ))}
+                <div className="flex flex-wrap gap-3">
+                  {adaptedTool.images.map((image, index) => {
+                    const regionLabel = getScreenshotLabel(image.src);
+                    const regionIcon = getScreenshotIcon(image.src);
+                    const isSelected = selectedImage === index;
+
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => setSelectedImage(index)}
+                        className={`group relative flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 ${
+                          isSelected
+                            ? 'border-blue-500 shadow-md ring-2 ring-blue-200'
+                            : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                        }`}
+                        style={{ width: '120px', height: '90px' }}
+                      >
+                        {/* 截图缩略图 */}
+                        <OptimizedImage
+                          src={image.src}
+                          alt={`缩略图 ${index + 1}`}
+                          className="w-full h-full"
+                          objectFit={image.objectFit || 'cover'}
+                          objectPosition={image.objectPosition || '50% 50%'}
+                          background
+                          fallback={
+                            fallbackLogoDataUrl
+                              ? (
+                                  <img
+                                    src={fallbackLogoDataUrl}
+                                    alt={adaptedTool.name}
+                                    className="w-full h-full object-contain p-2"
+                                  />
+                                )
+                              : undefined
+                          }
+                        />
+                        {/* 区域标签覆盖层 */}
+                        {regionLabel && (
+                          <div className={`absolute bottom-0 left-0 right-0 px-2 py-1 text-xs font-medium text-center ${
+                            isSelected
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-900/70 text-white group-hover:bg-gray-900/80'
+                          }`}>
+                            <span className="mr-1">{regionIcon}</span>
+                            {regionLabel}
+                          </div>
+                        )}
+                        {/* 选中指示器 */}
+                        {isSelected && (
+                          <div className="absolute top-2 right-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
