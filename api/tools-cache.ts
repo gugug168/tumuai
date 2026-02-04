@@ -84,7 +84,7 @@ async function fetchToolsFromDB(
 
   let toolsQuery = supabase
     .from('tools')
-    .select('id,name,tagline,description,website_url,logo_url,categories,features,pricing,rating,views,upvotes,date_added,featured,review_count,updated_at')
+    .select('id,name,tagline,description,website_url,logo_url,categories,features,pricing,rating,views,upvotes,date_added,featured,review_count,updated_at,screenshots')
     .eq('status', 'published')
 
   if (featuredOnly) {
