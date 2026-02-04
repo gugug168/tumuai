@@ -70,6 +70,34 @@ function isHttpUrl(url: string): boolean {
 }
 
 /**
+ * 检查是否是 Supabase Storage 的 URL
+ */
+function isSupabaseUrl(url: string): boolean {
+  return url.includes('supabase.co');
+}
+
+/**
+ * 为 Supabase 图片生成带格式参数的 URL
+ */
+function formatImageUrl(url: string, format?: string, width?: number): string {
+  const urlObj = new URL(url);
+  if (format) {
+    urlObj.searchParams.set('format', format);
+  }
+  if (width) {
+    urlObj.searchParams.set('width', width.toString());
+  }
+  return urlObj.toString();
+}
+
+/**
+ * 生成 srcset 属性值
+ */
+function generateSrcSet(baseUrl: string, widths: number[], format?: string): string {
+  return widths.map(w => `${formatImageUrl(baseUrl, format, w)} ${w}w`).join(', ');
+}
+
+/**
  * 根据错误类型和 URL 获取 TTL
  */
 function getBrokenImgTtlMs(url: string, errorType: ErrorType = 'default'): number {
@@ -157,6 +185,8 @@ interface OptimizedImageProps {
   fallback?: React.ReactNode; // 自定义兜底内容
   width?: string | number; // 强制容器宽度
   height?: string | number; // 强制容器高度
+  enableWebp?: boolean; // 是否启用 WebP 优化（默认 true）
+  srcsetWidths?: number[]; // srcset 响应式宽度列表
 }
 
 const OptimizedImage: React.FC<OptimizedImageProps> = ({
@@ -171,7 +201,9 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   background = false,
   fallback,
   width,
-  height
+  height,
+  enableWebp = true,
+  srcsetWidths = [320, 640, 960, 1280, 1920]
 }) => {
   const initialBroken = typeof window !== 'undefined' ? isKnownBrokenUrl(src) : false;
   const [isLoaded, setIsLoaded] = useState(false);
@@ -226,22 +258,49 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const widthCss = typeof width === 'number' ? `${width}px` : width;
   const heightCss = typeof height === 'number' ? `${height}px` : height;
 
-  return (
-    <div
-      ref={containerRef}
-      className={`relative overflow-hidden ${className}`}
-      style={{
-        backgroundColor: background ? '#f3f4f6' : 'transparent',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        // 当指定 width/height 时，强制使用固定尺寸
-        ...(widthCss && { width: widthCss }),
-        ...(heightCss && { height: heightCss })
-      }}
-    >
-      {/* 实际图片 */}
-      {isInView && !hasError && (
+  // 检查是否可以使用 WebP 优化
+  const canUseWebP = enableWebp && isHttpUrl(src) && isSupabaseUrl(src);
+
+  // 图片元素
+  const imageElement = (
+    <>
+      {canUseWebP ? (
+        // 使用 picture 元素支持 WebP 格式
+        <picture>
+          <source
+            srcSet={generateSrcSet(src, srcsetWidths, 'webp')}
+            type="image/webp"
+            sizes={sizes}
+          />
+          <img
+            ref={imgRef}
+            src={src}
+            alt={alt}
+            loading={priority ? 'eager' : 'lazy'}
+            decoding="async"
+            className={`transition-opacity duration-300 ${
+              isLoaded && !hasError ? 'opacity-100' : 'opacity-0'
+            }`}
+            style={{
+              objectFit,
+              objectPosition,
+              // Ensure object-fit/object-position work as expected (cropping & "slices") by sizing the
+              // image to the container box. The replaced element is then fitted within that box.
+              width: '100%',
+              height: '100%',
+              // When container has fixed dimensions, we already set them on the wrapper; keep image aligned.
+              ...(widthCss && { width: widthCss }),
+              ...(heightCss && { height: heightCss })
+            }}
+            onLoad={handleLoad}
+            onError={handleError}
+            {...(priority && {
+              fetchPriority: 'high' as const
+            })}
+          />
+        </picture>
+      ) : (
+        // 普通 img 元素
         <img
           ref={imgRef}
           src={src}
@@ -270,6 +329,25 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
           })}
         />
       )}
+    </>
+  );
+
+  return (
+    <div
+      ref={containerRef}
+      className={`relative overflow-hidden ${className}`}
+      style={{
+        backgroundColor: background ? '#f3f4f6' : 'transparent',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        // 当指定 width/height 时，强制使用固定尺寸
+        ...(widthCss && { width: widthCss }),
+        ...(heightCss && { height: heightCss })
+      }}
+    >
+      {/* 实际图片 */}
+      {isInView && !hasError && imageElement}
 
       {/* 加载动画 - 只在加载中显示 */}
       {isInView && !isLoaded && !hasError && (

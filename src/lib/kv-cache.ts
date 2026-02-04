@@ -105,16 +105,16 @@ export async function deleteCacheByPattern(pattern: string): Promise<boolean> {
 
   try {
     // Vercel KV 不直接支持模式匹配，需要使用 scan + del
-    let cursor = 0;
+    let cursor: number | string = 0;
     do {
-      const result = await kv.scan(cursor, { match: pattern, count: 100 });
-      cursor = result[0];
+      const result = await kv.scan(cursor as number, { match: pattern, count: 100 });
+      cursor = result[0] as number | string;
       const keys = result[1];
 
       if (keys.length > 0) {
         await kv.del(...keys);
       }
-    } while (cursor !== 0);
+    } while (cursor !== 0 && cursor !== '0');
 
     return true;
   } catch (error) {

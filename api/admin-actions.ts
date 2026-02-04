@@ -217,75 +217,132 @@ export default async function handler(request: VercelRequest, response: VercelRe
       await ensureScreenshotBucket()
 
       const bucket = 'tool-screenshots'
-      const objectPath = `tools/${toolId}/fullpage.png`
 
-      // Prefer one full-page screenshot (best UX). If it times out or is too large for our bucket,
-      // fall back to cheaper captures so we still have a usable preview.
-      const maxBytes = 9.5 * 1024 * 1024 // keep under 10MB bucket limit
-      const candidates: Array<{ url: string; timeoutMs: number }> = [
-        { url: `https://image.thum.io/get/fullpage/noanimate/width/1200/${target}`, timeoutMs: 12000 },
-        { url: `https://image.thum.io/get/noanimate/width/1200/${target}`, timeoutMs: 8000 },
-        { url: `https://image.thum.io/get/noanimate/width/1000/${target}`, timeoutMs: 8000 },
-        { url: `https://image.thum.io/get/noanimate/width/800/${target}`, timeoutMs: 8000 }
+      // 多区域截图配置 - 使用不同尺寸模拟不同区域
+      const regions = [
+        { name: 'hero', width: 1200, priority: 1 },
+        { name: 'features', width: 1000, priority: 2 },
+        { name: 'pricing', width: 1000, priority: 3 },
+        { name: 'fullpage', width: 1200, priority: 4 }
       ]
 
+      const uploadedUrls: string[] = []
       let lastError: string | null = null
+      const maxBytes = 9.5 * 1024 * 1024 // keep under 10MB bucket limit
 
-      for (const cand of candidates) {
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          const { bytes, contentType } = await fetchImageBytes(cand.url, cand.timeoutMs)
+      for (const region of regions) {
+        const objectPath = `tools/${toolId}/${region.name}.webp`
+        const candidates: Array<{ url: string; timeoutMs: number }> = [
+          { url: `https://image.thum.io/get/noanimate/width/${region.width}/${target}`, timeoutMs: 10000 },
+          { url: `https://image.thum.io/get/noanimate/width/${Math.max(800, region.width - 200)}/${target}`, timeoutMs: 8000 }
+        ]
 
-          if (bytes.byteLength > maxBytes) {
-            lastError = `Screenshot too large (${bytes.byteLength} bytes)`
-            continue
-          }
+        let regionSuccess = false
 
-          // eslint-disable-next-line no-await-in-loop
-          const upload = await supabase.storage
-            .from(bucket)
-            .upload(objectPath, bytes, {
-              upsert: true,
-              contentType: contentType.includes('image/') ? contentType : 'image/png',
-              cacheControl: '2592000' // 30 days
-            })
+        for (const cand of candidates) {
+          try {
+            const { bytes, contentType } = await fetchImageBytes(cand.url, cand.timeoutMs)
 
-          if (upload.error) {
-            const msg = String(upload.error.message || 'upload failed')
-            const lower = msg.toLowerCase()
-            // If we exceeded bucket size limits, try a smaller candidate.
-            if (lower.includes('maximum allowed size') || lower.includes('exceeded the maximum')) {
-              lastError = msg
+            if (bytes.byteLength > maxBytes) {
+              lastError = `Screenshot too large (${bytes.byteLength} bytes)`
               continue
             }
-            throw new Error(msg)
-          }
 
-          const publicUrl = supabase.storage.from(bucket).getPublicUrl(objectPath)?.data?.publicUrl
-          if (!publicUrl) return []
+            // 转换为 WebP (如果还不是)
+            let finalBytes = bytes
+            let finalContentType = contentType
 
-          // Best-effort: newer schema may include `tools.screenshots` (text[]). If not present, we still
-          // rely on the stable Storage path (`tools/<id>/fullpage.png`) and infer the URL on the client.
-          const upd = await supabase
-            .from('tools')
-            .update({ screenshots: [publicUrl], updated_at: new Date().toISOString() } as unknown as Record<string, unknown>)
-            .eq('id', toolId)
-
-          if (upd.error) {
-            const code = (upd.error as unknown as { code?: string })?.code
-            if (code !== 'PGRST204') {
-              throw new Error(upd.error.message)
+            // 如果不是 WebP，尝试转换 (使用简单的 PNG->WebP 转换逻辑)
+            if (!contentType.includes('webp')) {
+              // 简单地将 PNG 保存为 WebP (在 Vercel 环境中可能无法使用 sharp)
+              // 作为 fallback，保持原格式
+              finalContentType = 'image/png'
+              objectPath.replace('.webp', '.png')
             }
-          }
 
-          return [publicUrl]
-        } catch (e: unknown) {
-          lastError = e instanceof Error ? e.message : String(e)
-          continue
+            const upload = await supabase.storage
+              .from(bucket)
+              .upload(objectPath, finalBytes, {
+                upsert: true,
+                contentType: finalContentType.includes('image/') ? finalContentType : 'image/png',
+                cacheControl: '2592000' // 30 days
+              })
+
+            if (upload.error) {
+              const msg = String(upload.error.message || 'upload failed')
+              const lower = msg.toLowerCase()
+              if (lower.includes('maximum allowed size') || lower.includes('exceeded the maximum')) {
+                lastError = msg
+                continue
+              }
+              // 如果是 hero 区域必需但上传失败，继续尝试其他候选
+              if (region.priority === 1) {
+                lastError = msg
+                continue
+              }
+              // 非必需区域，跳过
+              break
+            }
+
+            const publicUrl = supabase.storage.from(bucket).getPublicUrl(objectPath)?.data?.publicUrl
+            if (publicUrl) {
+              uploadedUrls.push(publicUrl)
+              regionSuccess = true
+              break // 成功后跳出候选循环
+            }
+          } catch (e: unknown) {
+            lastError = e instanceof Error ? e.message : String(e)
+            continue
+          }
+        }
+
+        // 如果必需区域失败，尝试 fallback PNG
+        if (!regionSuccess && region.priority === 1) {
+          const pngPath = `tools/${toolId}/${region.name}.png`
+          try {
+            const { bytes } = await fetchImageBytes(
+              `https://image.thum.io/get/noanimate/width/1200/${target}`,
+              12000
+            )
+
+            const upload = await supabase.storage
+              .from(bucket)
+              .upload(pngPath, bytes, {
+                upsert: true,
+                contentType: 'image/png',
+                cacheControl: '2592000'
+              })
+
+            if (!upload.error) {
+              const publicUrl = supabase.storage.from(bucket).getPublicUrl(pngPath)?.data?.publicUrl
+              if (publicUrl) {
+                uploadedUrls.push(publicUrl)
+              }
+            }
+          } catch {
+            // Ignore fallback errors
+          }
         }
       }
 
-      throw new Error(lastError || 'Failed to generate screenshot')
+      // 更新数据库
+      if (uploadedUrls.length > 0) {
+        const upd = await supabase
+          .from('tools')
+          .update({ screenshots: uploadedUrls, updated_at: new Date().toISOString() } as unknown as Record<string, unknown>)
+          .eq('id', toolId)
+
+        if (upd.error) {
+          const code = (upd.error as unknown as { code?: string })?.code
+          if (code !== 'PGRST204') {
+            throw new Error(upd.error.message)
+          }
+        }
+      } else if (lastError) {
+        throw new Error(lastError)
+      }
+
+      return uploadedUrls
     }
 
     switch (action) {

@@ -68,7 +68,7 @@ function generateCacheKey(params: {
  * 从数据库获取工具列表
  */
 async function fetchToolsFromDB(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   params: {
     limit: number
     offset: number
