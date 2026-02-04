@@ -150,6 +150,9 @@ async function fetchToolsFromDB(
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   try {
+    // 支持按 ID 查询单个工具
+    const toolId = typeof request.query.id === 'string' ? request.query.id : undefined
+
     // 解析参数
     const limit = parseInt(request.query.limit as string) || 12
     const offset = parseInt(request.query.offset as string) || 0
@@ -169,15 +172,6 @@ export default async function handler(request: VercelRequest, response: VercelRe
       ? (sortByRaw as SortField)
       : 'upvotes'
 
-    // 参数验证
-    if (limit > 200) {
-      return response.status(400).json({ error: 'Limit cannot exceed 200' })
-    }
-
-    if (offset < 0) {
-      return response.status(400).json({ error: 'Offset must be non-negative' })
-    }
-
     // 获取 Supabase 配置
     const supabaseUrl = process.env.VITE_SUPABASE_URL as string
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
@@ -190,6 +184,40 @@ export default async function handler(request: VercelRequest, response: VercelRe
     const supabase = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false }
     })
+
+    // 按 ID 查询单个工具
+    if (toolId) {
+      const { data, error } = await supabase
+        .from('tools')
+        .select('id,name,tagline,description,website_url,logo_url,categories,features,pricing,rating,views,upvotes,date_added,featured,review_count,updated_at,screenshots')
+        .eq('id', toolId)
+        .eq('status', 'published')
+        .single()
+
+      if (error || !data) {
+        return response.status(404).json({ error: 'Tool not found' })
+      }
+
+      // 设置缓存头
+      response.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
+      response.setHeader('CDN-Cache-Control', 'public, s-maxage=300')
+
+      return response.status(200).json({
+        tools: [data],
+        cached: false,
+        timestamp: new Date().toISOString(),
+        version: DATA_VERSION,
+      })
+    }
+
+    // 参数验证
+    if (limit > 200) {
+      return response.status(400).json({ error: 'Limit cannot exceed 200' })
+    }
+
+    if (offset < 0) {
+      return response.status(400).json({ error: 'Offset must be non-negative' })
+    }
 
     const kv = getKVClient()
     const hasKV = kv !== null
