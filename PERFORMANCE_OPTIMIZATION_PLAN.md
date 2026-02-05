@@ -233,6 +233,16 @@
 - [ ] 执行 Supabase 索引迁移 SQL
 - [ ] 将 API 路由切换到 tools-cache-kv
 
+### 4. 代码分割与动态导入 ✅ (阶段 3 - 2026-02-05)
+- ✅ ToolFilters 和 ToolGrid 改为命名导出
+- ✅ 使用 React.lazy 重新启用动态导入
+- ✅ 添加 Suspense 包装和 loading fallback
+- ✅ react-virtuoso 独立打包到 vendor chunk
+- ✅ 构建验证:
+  - ToolFilters: 6.53 KB (gzip: 2.04 KB)
+  - ToolGrid: 15.07 KB (gzip: 4.48 KB)
+  - vendor-virtuoso: 54.44 KB (gzip: 19.18 KB)
+
 ---
 
 ## 错误记录
