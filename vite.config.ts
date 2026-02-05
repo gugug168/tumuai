@@ -35,9 +35,10 @@ export default defineConfig(({ mode }) => {
           // 核心框架
           'vendor-react': ['react', 'react-dom'],
           'vendor-router': ['react-router-dom'],
-          
+
           // UI库按使用频率分割
           'vendor-icons': ['lucide-react'],
+          'vendor-virtuoso': ['react-virtuoso'],
           'vendor-auth': ['@supabase/supabase-js'],
         },
         

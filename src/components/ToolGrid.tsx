@@ -446,4 +446,5 @@ const ToolGrid = React.memo<ToolGridProps>(({
 
 ToolGrid.displayName = 'ToolGrid';
 
+export { ToolGrid };
 export default ToolGrid;

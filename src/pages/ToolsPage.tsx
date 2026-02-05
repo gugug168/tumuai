@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useMemo, useId, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useId, useCallback, lazy, Suspense } from 'react';
 import { WifiOff, RefreshCw, AlertCircle, Wifi, Clock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast, createToastHelpers } from '../components/Toast';
 import AuthModal from '../components/AuthModal';
 import ToolCardSkeleton from '../components/ToolCardSkeleton';
-import ToolFilters from '../components/ToolFilters';
-import ToolGrid from '../components/ToolGrid';
+
+// 动态导入优化代码分割
+const ToolFilters = lazy(() => import('../components/ToolFilters').then(m => ({ default: m.ToolFilters })));
+const ToolGrid = lazy(() => import('../components/ToolGrid').then(m => ({ default: m.ToolGrid })));
 
 import { useToolFilters, filterTools } from '../hooks/useToolFilters';
 import { useToolData } from '../hooks/useToolData';
@@ -337,56 +339,73 @@ const ToolsPage = React.memo(() => {
         </div>
 
         {/* Search and Filters */}
-        <ToolFilters
-          searchValue={filters.search}
-          onSearchChange={(value) => handleFilterChange('search', value)}
-          isPending={isPending}
-          searchInputId={searchId}
-          categories={categories}
-          selectedCategories={filters.categories}
-          onCategoryToggle={handleCategoryToggle}
-          selectedFeatures={filters.features}
-          onFeatureToggle={handleFeatureToggle}
-          pricingValue={filters.pricing}
-          onPricingChange={(value) => handleFilterChange('pricing', value)}
-          sortBy={filters.sortBy}
-          onSortChange={(value) => handleFilterChange('sortBy', value)}
-          sortOptions={[
-            { value: 'upvotes', label: '最受欢迎' },
-            { value: 'date_added', label: '最新收录' },
-            { value: 'rating', label: '评分最高' },
-            { value: 'views', label: '浏览最多' }
-          ]}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          showFilters={showFilters}
-          onFiltersToggle={() => setShowFilters(!showFilters)}
-          onClearFilters={clearFilters}
-        />
+        <Suspense fallback={
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+            <div className="animate-pulse">
+              <div className="h-12 bg-gray-200 rounded-lg mb-4"></div>
+              <div className="h-10 bg-gray-200 rounded w-1/3"></div>
+            </div>
+          </div>
+        }>
+          <ToolFilters
+            searchValue={filters.search}
+            onSearchChange={(value) => handleFilterChange('search', value)}
+            isPending={isPending}
+            searchInputId={searchId}
+            categories={categories}
+            selectedCategories={filters.categories}
+            onCategoryToggle={handleCategoryToggle}
+            selectedFeatures={filters.features}
+            onFeatureToggle={handleFeatureToggle}
+            pricingValue={filters.pricing}
+            onPricingChange={(value) => handleFilterChange('pricing', value)}
+            sortBy={filters.sortBy}
+            onSortChange={(value) => handleFilterChange('sortBy', value)}
+            sortOptions={[
+              { value: 'upvotes', label: '最受欢迎' },
+              { value: 'date_added', label: '最新收录' },
+              { value: 'rating', label: '评分最高' },
+              { value: 'views', label: '浏览最多' }
+            ]}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            showFilters={showFilters}
+            onFiltersToggle={() => setShowFilters(!showFilters)}
+            onClearFilters={clearFilters}
+          />
+        </Suspense>
 
         {/* Tools Grid */}
-        <ToolGrid
-          tools={tools}
-          totalCount={displayCount}
-          allTools={allTools}
-          viewMode={viewMode}
-          paginatedTools={paginatedTools}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-          toolsPerPage={TOOLS_PER_PAGE}
-          searchQuery={filters.search}
-          hasActiveFilters={hasActiveFilters}
-          onClearFilters={clearFilters}
-          favoriteStates={favoriteStates}
-          onFavoriteToggle={handleFavoriteToggle}
-          user={user}
-          onPreloadNext={handlePreloadNext}
-          onLoadMore={handleLoadMore}
-          isLoadingMore={isLoadingMore}
-          hasMore={hasMore}
-          enableVirtualScroll={enableVirtualScroll}
-        />
+        <Suspense fallback={
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, index) => (
+              <ToolCardSkeleton key={index} viewMode="grid" />
+            ))}
+          </div>
+        }>
+          <ToolGrid
+            tools={tools}
+            totalCount={displayCount}
+            allTools={allTools}
+            viewMode={viewMode}
+            paginatedTools={paginatedTools}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            toolsPerPage={TOOLS_PER_PAGE}
+            searchQuery={filters.search}
+            hasActiveFilters={hasActiveFilters}
+            onClearFilters={clearFilters}
+            favoriteStates={favoriteStates}
+            onFavoriteToggle={handleFavoriteToggle}
+            user={user}
+            onPreloadNext={handlePreloadNext}
+            onLoadMore={handleLoadMore}
+            isLoadingMore={isLoadingMore}
+            hasMore={hasMore}
+            enableVirtualScroll={enableVirtualScroll}
+          />
+        </Suspense>
 
         {/* 开发模式性能报告按钮 */}
         {process.env.NODE_ENV === 'development' && (

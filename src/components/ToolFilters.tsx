@@ -343,4 +343,5 @@ const ToolFilters = React.memo<ToolFiltersProps>(({
 
 ToolFilters.displayName = 'ToolFilters';
 
+export { ToolFilters };
 export default ToolFilters;
