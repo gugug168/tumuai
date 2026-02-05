@@ -178,5 +178,22 @@
   "github": {
     "silent": true
   },
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "functions": {
+    "api/categories-cache.ts": {
+      "runtime": "edge",
+      "memory": 128,
+      "maxDuration": 30
+    },
+    "api/increment-views.ts": {
+      "runtime": "edge",
+      "memory": 128,
+      "maxDuration": 10
+    },
+    "api/favorites-cache.ts": {
+      "runtime": "edge",
+      "memory": 128,
+      "maxDuration": 30
+    }
+  }
 }
