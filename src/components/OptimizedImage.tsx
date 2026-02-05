@@ -1,7 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-type BrokenImgMap = Record<string, number>; // url -> expiresAt (ms)
-
 const BROKEN_IMG_STORAGE_KEY = 'tumuai_broken_img_v1';
 const BROKEN_IMG_MAX_ENTRIES = 200;
 
