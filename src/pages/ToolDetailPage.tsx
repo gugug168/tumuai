@@ -5,26 +5,21 @@ import {
   Heart,
   Star,
   Play,
-  Check,
   ArrowLeft,
   Eye,
   Calendar,
   Tag,
   Home,
-  ChevronRight,
-  Maximize2,
-  X,
-  ChevronLeft,
-  ChevronRight as ChevronRightIcon,
-  ZoomIn,
-  ZoomOut,
-  RotateCcw
+  ChevronRight
 } from 'lucide-react';
 import { addToFavorites, removeFromFavorites, isFavorited, addToolReview, getToolReviews } from '../lib/community';
 import { getToolById, incrementToolViews, getRelatedTools } from '../lib/supabase';
 import { generateInitialLogo, isValidHighQualityLogoUrl } from '../lib/logoUtils';
 import OptimizedImage from '../components/OptimizedImage';
 import { useToast, createToastHelpers } from '../components/Toast';
+import ScreenshotGallery, { type GalleryImage } from '../components/ScreenshotGallery';
+import ScreenshotViewer from '../components/ScreenshotViewer';
+import { parseScreenshotRegion, getRegionOrder } from '../components/screenshot-utils';
 import type { Tool } from '../types/index';
 
 interface Review {
@@ -34,92 +29,6 @@ interface Review {
   rating: number;
   date: string;
   comment: string;
-}
-
-// 截图区域类型
-type ScreenshotRegion = 'hero' | 'features' | 'pricing' | 'fullpage';
-
-// 区域标签映射
-const REGION_LABELS: Record<ScreenshotRegion, string> = {
-  hero: '首页',
-  features: '功能',
-  pricing: '价格',
-  fullpage: '全页'
-};
-
-// 区域图标映射
-const REGION_ICONS: Record<ScreenshotRegion, string> = {
-  hero: '🏠',
-  features: '⚡',
-  pricing: '💰',
-  fullpage: '📄'
-};
-
-/**
- * 从截图 URL 解析区域类型
- * 支持两种格式:
- * 1. .../tools/{toolId}/hero.webp
- * 2. .../tools/{toolId}/{region}.webp
- */
-function parseScreenshotRegion(url: string): ScreenshotRegion | null {
-  // 匹配文件名模式
-  const match = url.match(/\/(hero|features|pricing|fullpage)\.webp$/i);
-  if (match) {
-    return match[1].toLowerCase() as ScreenshotRegion;
-  }
-  return null;
-}
-
-/**
- * 获取截图的区域标签
- */
-function getScreenshotLabel(url: string): string {
-  const region = parseScreenshotRegion(url);
-  return region ? REGION_LABELS[region] : '';
-}
-
-/**
- * 获取截图的区域图标
- */
-function getScreenshotIcon(url: string): string {
-  const region = parseScreenshotRegion(url);
-  return region ? REGION_ICONS[region] : '';
-}
-
-/**
- * 区域排序顺序
- */
-const REGION_ORDER: ScreenshotRegion[] = ['hero', 'features', 'pricing', 'fullpage'];
-
-/**
- * 获取区域的排序值，用于排序截图
- */
-function getRegionOrder(region: ScreenshotRegion | null): number {
-  if (!region) return 999;
-  return REGION_ORDER.indexOf(region);
-}
-
-/**
- * 将截图按区域分组
- */
-function groupScreenshotsByRegion(images: GalleryImage[]): Map<ScreenshotRegion | 'other', GalleryImage[]> {
-  const groups = new Map<ScreenshotRegion | 'other', GalleryImage[]>();
-
-  // 初始化所有区域组
-  REGION_ORDER.forEach(region => {
-    groups.set(region, []);
-  });
-  groups.set('other', []);
-
-  images.forEach(image => {
-    const region = parseScreenshotRegion(image.src);
-    const key = region || 'other';
-    const current = groups.get(key) || [];
-    current.push(image);
-    groups.set(key, current);
-  });
-
-  return groups;
 }
 
 const ToolDetailPage = () => {
@@ -137,7 +46,6 @@ const ToolDetailPage = () => {
 
   // 截图查看器状态
   const [isFullscreenViewer, setIsFullscreenViewer] = useState(false);
-  const [imageScale, setImageScale] = useState(1);
   const [tool, setTool] = useState<Tool | null>(() => {
     const state = location.state as null | { tool?: Partial<Tool> };
     const preloaded = state?.tool;
@@ -261,13 +169,6 @@ const ToolDetailPage = () => {
     // 使用共享工具函数过滤低质量 logo URL
     return isValidHighQualityLogoUrl(tool.logo_url) ? tool.logo_url : '';
   }, [tool]);
-
-  type GalleryImage = {
-    src: string;
-    objectFit?: 'cover' | 'contain';
-    objectPosition?: string;
-    region?: ScreenshotRegion;
-  };
 
   // 推断的存储截图 URL（用于没有截图数据时的后备）
   const inferredStorageScreenshotUrl = useMemo(() => {
@@ -407,40 +308,11 @@ const ToolDetailPage = () => {
     }
   }, [adaptedTool, loadRelatedTools]);
 
-  // 键盘导航 - 方向键切换截图，ESC 退出全屏
+  // 键盘导航 - 普通模式下方向键切换截图，F 键进入全屏
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // 全屏查看器打开时的快捷键
-      if (isFullscreenViewer) {
-        switch (e.key) {
-          case 'Escape':
-            setIsFullscreenViewer(false);
-            setImageScale(1);
-            break;
-          case 'ArrowLeft':
-            e.preventDefault();
-            setSelectedImage(prev => Math.max(0, prev - 1));
-            break;
-          case 'ArrowRight':
-            e.preventDefault();
-            setSelectedImage(prev => Math.min(adaptedTool?.images.length ? adaptedTool.images.length - 1 : 0, prev + 1));
-            break;
-          case '+':
-          case '=':
-            e.preventDefault();
-            setImageScale(prev => Math.min(3, prev + 0.25));
-            break;
-          case '-':
-            e.preventDefault();
-            setImageScale(prev => Math.max(0.5, prev - 0.25));
-            break;
-          case '0':
-            e.preventDefault();
-            setImageScale(1);
-            break;
-        }
-        return;
-      }
+      // 全屏模式下由 ScreenshotViewer 组件处理
+      if (isFullscreenViewer) return;
 
       // 普通模式下的快捷键
       if (e.key === 'ArrowLeft') {
@@ -458,50 +330,6 @@ const ToolDetailPage = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isFullscreenViewer, adaptedTool]);
-
-  // 重置图片状态
-  const resetImageState = useCallback(() => {
-    setImageScale(1);
-  }, []);
-
-  // 打开全屏查看器
-  const openFullscreenViewer = useCallback(() => {
-    setIsFullscreenViewer(true);
-    resetImageState();
-  }, [resetImageState]);
-
-  // 关闭全屏查看器
-  const closeFullscreenViewer = useCallback(() => {
-    setIsFullscreenViewer(false);
-    resetImageState();
-  }, [resetImageState]);
-
-  // 上一张图片
-  const goToPreviousImage = useCallback(() => {
-    setSelectedImage(prev => Math.max(0, prev - 1));
-    resetImageState();
-  }, [resetImageState]);
-
-  // 下一张图片
-  const goToNextImage = useCallback(() => {
-    setSelectedImage(prev => Math.min(adaptedTool?.images.length ? adaptedTool.images.length - 1 : 0, prev + 1));
-    resetImageState();
-  }, [resetImageState, adaptedTool]);
-
-  // 放大图片
-  const zoomIn = useCallback(() => {
-    setImageScale(prev => Math.min(3, prev + 0.25));
-  }, []);
-
-  // 缩小图片
-  const zoomOut = useCallback(() => {
-    setImageScale(prev => Math.max(0.5, prev - 0.25));
-  }, []);
-
-  // 重置缩放
-  const resetZoom = useCallback(() => {
-    setImageScale(1);
-  }, []);
 
   if (loading && !tool) {
     return (
@@ -709,240 +537,15 @@ const ToolDetailPage = () => {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">产品截图</h2>
-                {/* 当前选中区域标签 */}
-                {adaptedTool.images[selectedImage] && (
-                  <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-sm font-medium">
-                    <span className="mr-1.5">{getScreenshotIcon(adaptedTool.images[selectedImage].src)}</span>
-                    {getScreenshotLabel(adaptedTool.images[selectedImage].src) || `截图 ${selectedImage + 1}`}
-                  </span>
-                )}
               </div>
-              <div className="space-y-4">
-                {/* 主图片容器 */}
-                <div
-                  className="relative bg-gray-100 rounded-lg overflow-hidden cursor-pointer group"
-                  style={{ height: '400px' }}
-                  onClick={openFullscreenViewer}
-                  title="点击全屏查看"
-                >
-                  {/* 背景骨架屏动画 */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100">
-                    <div className="absolute inset-0 opacity-30">
-                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent animate-pulse" />
-                    </div>
-                  </div>
-
-                  {/* 实际图片 */}
-                  <div className="absolute inset-0">
-                    <OptimizedImage
-                      key={selectedImage}
-                      src={adaptedTool.images[selectedImage]?.src || adaptedTool.logo}
-                      alt={`${adaptedTool.name} 截图 ${selectedImage + 1}`}
-                      className="w-full h-full"
-                      objectFit={adaptedTool.images[selectedImage]?.objectFit || 'contain'}
-                      objectPosition={adaptedTool.images[selectedImage]?.objectPosition || '50% 50%'}
-                      // 主图使用高分辨率
-                      srcsetWidths={[800, 1200, 1600]}
-                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 70vw, 60vw"
-                      priority={selectedImage === 0}
-                      lazyLoad={selectedImage !== 0}
-                      fallback={
-                        fallbackLogoDataUrl
-                          ? (
-                              <img
-                                src={fallbackLogoDataUrl}
-                                alt={adaptedTool.name}
-                                className="w-full h-full object-contain p-6"
-                              />
-                            )
-                          : undefined
-                      }
-                    />
-                  </div>
-
-                  {/* 图片加载指示器 */}
-                  <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                    {/* 区域标签 */}
-                    <span className="px-2 py-1 bg-black/50 text-white text-xs rounded backdrop-blur-sm">
-                      {adaptedTool.images[selectedImage]?.region
-                        ? `${REGION_ICONS[adaptedTool.images[selectedImage].region as ScreenshotRegion]} ${REGION_LABELS[adaptedTool.images[selectedImage].region as ScreenshotRegion]}`
-                        : `截图 ${selectedImage + 1}/${adaptedTool.images.length}`
-                      }
-                    </span>
-
-                    {/* 全屏按钮 */}
-                    <button
-                      onClick={openFullscreenViewer}
-                      className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg backdrop-blur-sm transition-all hover:scale-105"
-                      title="全屏查看 (F)"
-                    >
-                      <Maximize2 className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {/* 视频播放按钮 */}
-                  {adaptedTool.videoUrl && selectedImage === 0 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // setShowVideoModal(true);
-                      }}
-                      className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/20 rounded-lg transition-colors group"
-                    >
-                      <div className="bg-white/90 group-hover:bg-white rounded-full p-4 shadow-lg transition-all transform group-hover:scale-110">
-                        <Play className="w-8 h-8 text-blue-600" />
-                      </div>
-                    </button>
-                  )}
-
-                  {/* 悬停时的全屏提示 */}
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none">
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 text-white px-4 py-2 rounded-lg backdrop-blur-sm flex items-center space-x-2">
-                      <Maximize2 className="w-4 h-4" />
-                      <span className="text-sm">点击全屏查看</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 缩略图 - 按区域分组 */}
-                <div className="space-y-4">
-                  {/* 检查是否有分组的截图 */}
-                  {adaptedTool.images.some(img => img.region) ? (
-                    // 有区域信息时，按区域分组显示
-                    Array.from(groupScreenshotsByRegion(adaptedTool.images).entries())
-                      .filter(([, images]) => images.length > 0)
-                      .map(([region, images]) => (
-                        <div key={region} className="space-y-2">
-                          {/* 区域标题 */}
-                          <div className="flex items-center text-sm font-medium text-gray-600">
-                            <span className="mr-1.5">{region !== 'other' ? REGION_ICONS[region] : '📷'}</span>
-                            <span>{region !== 'other' ? REGION_LABELS[region] : '其他截图'}</span>
-                            <span className="ml-2 text-xs text-gray-400">({images.length})</span>
-                          </div>
-                          {/* 缩略图网格 */}
-                          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-                            {images.map((image) => {
-                              const globalIndex = adaptedTool.images.indexOf(image);
-                              const regionLabel = getScreenshotLabel(image.src);
-                              const regionIcon = getScreenshotIcon(image.src);
-                              const isSelected = selectedImage === globalIndex;
-
-                              return (
-                                <button
-                                  key={globalIndex}
-                                  onClick={() => setSelectedImage(globalIndex)}
-                                  className={`group relative aspect-[4/3] overflow-hidden rounded-lg border-2 transition-all duration-200 ${
-                                    isSelected
-                                      ? 'border-blue-500 shadow-md ring-2 ring-blue-200 scale-105'
-                                      : 'border-gray-200 hover:border-gray-300 hover:shadow-sm hover:scale-102'
-                                  }`}
-                                >
-                                  {/* 截图缩略图 */}
-                                  <OptimizedImage
-                                    src={image.src}
-                                    alt={`缩略图 ${globalIndex + 1}`}
-                                    className="w-full h-full"
-                                    objectFit="cover"
-                                    objectPosition="50% 50%"
-                                    background
-                                    // 缩略图使用更小的响应式宽度
-                                    srcsetWidths={[120, 240]}
-                                    sizes="(max-width: 640px) 20vw, 120px"
-                                    fallback={
-                                      fallbackLogoDataUrl
-                                        ? (
-                                            <img
-                                              src={fallbackLogoDataUrl}
-                                              alt={adaptedTool.name}
-                                              className="w-full h-full object-contain p-2"
-                                            />
-                                          )
-                                        : undefined
-                                    }
-                                  />
-                                  {/* 区域标签覆盖层 */}
-                                  {regionLabel && (
-                                    <div className={`absolute bottom-0 left-0 right-0 px-1.5 py-0.5 text-[10px] font-medium text-center leading-tight ${
-                                      isSelected
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-900/70 text-white group-hover:bg-gray-900/80'
-                                    }`}>
-                                      <span className="mr-0.5">{regionIcon}</span>
-                                      {regionLabel}
-                                    </div>
-                                  )}
-                                  {/* 选中指示器 */}
-                                  {isSelected && (
-                                    <div className="absolute top-1 right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                                      <Check className="w-2.5 h-2.5 text-white" />
-                                    </div>
-                                  )}
-                                  {/* 悬停时显示的边框高亮 */}
-                                  <div className="absolute inset-0 border-2 border-transparent group-hover:border-blue-300/30 rounded-lg pointer-events-none transition-colors" />
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))
-                  ) : (
-                    // 无区域信息时，显示为网格布局
-                    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-                      {adaptedTool.images.map((image, index) => {
-                        const isSelected = selectedImage === index;
-
-                        return (
-                          <button
-                            key={index}
-                            onClick={() => setSelectedImage(index)}
-                            className={`group relative aspect-[4/3] overflow-hidden rounded-lg border-2 transition-all duration-200 ${
-                              isSelected
-                                ? 'border-blue-500 shadow-md ring-2 ring-blue-200 scale-105'
-                                : 'border-gray-200 hover:border-gray-300 hover:shadow-sm hover:scale-102'
-                            }`}
-                          >
-                            <OptimizedImage
-                              src={image.src}
-                              alt={`缩略图 ${index + 1}`}
-                              className="w-full h-full"
-                              objectFit="cover"
-                              objectPosition={image.objectPosition || '50% 50%'}
-                              background
-                              srcsetWidths={[120, 240]}
-                              sizes="(max-width: 640px) 20vw, 120px"
-                              fallback={
-                                fallbackLogoDataUrl
-                                  ? (
-                                      <img
-                                        src={fallbackLogoDataUrl}
-                                        alt={adaptedTool.name}
-                                        className="w-full h-full object-contain p-2"
-                                      />
-                                    )
-                                  : undefined
-                              }
-                            />
-                            {/* 截图编号 */}
-                            <div className={`absolute top-1 left-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                              isSelected
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-900/70 text-white'
-                            }`}>
-                              {index + 1}
-                            </div>
-                            {/* 选中指示器 */}
-                            {isSelected && (
-                              <div className="absolute top-1 right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                                <Check className="w-2.5 h-2.5 text-white" />
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <ScreenshotGallery
+                images={adaptedTool.images}
+                selectedImage={selectedImage}
+                onImageSelect={setSelectedImage}
+                onOpenFullscreen={() => setIsFullscreenViewer(true)}
+                toolName={adaptedTool.name}
+                fallbackLogoUrl={fallbackLogoDataUrl}
+              />
             </div>
 
             {/* 核心功能列表 */}
@@ -1257,183 +860,15 @@ const ToolDetailPage = () => {
       </div>
 
       {/* 全屏截图查看器 */}
-      {isFullscreenViewer && adaptedTool.images.length > 0 && (
-        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col">
-          {/* 顶部工具栏 */}
-          <div className="flex items-center justify-between px-4 py-3 bg-black/50 backdrop-blur-sm border-b border-white/10">
-            {/* 区域信息 */}
-            <div className="flex items-center text-white">
-              <span className="text-lg font-medium">{adaptedTool.name}</span>
-              <span className="mx-3 text-white/30">|</span>
-              <div className="flex items-center text-sm">
-                <span className="mr-1.5">
-                  {adaptedTool.images[selectedImage]?.region
-                    ? REGION_ICONS[adaptedTool.images[selectedImage].region as ScreenshotRegion]
-                    : '📷'}
-                </span>
-                <span>
-                  {adaptedTool.images[selectedImage]?.region
-                    ? REGION_LABELS[adaptedTool.images[selectedImage].region as ScreenshotRegion]
-                    : `截图 ${selectedImage + 1}`}
-                </span>
-              </div>
-              <span className="ml-3 text-sm text-white/50">
-                {selectedImage + 1} / {adaptedTool.images.length}
-              </span>
-            </div>
-
-            {/* 控制按钮 */}
-            <div className="flex items-center space-x-2">
-              {/* 缩放控制 */}
-              <button
-                onClick={zoomOut}
-                className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                title="缩小 (-)"
-              >
-                <ZoomOut className="w-5 h-5" />
-              </button>
-              <span className="text-white/70 text-sm min-w-[50px] text-center">
-                {Math.round(imageScale * 100)}%
-              </span>
-              <button
-                onClick={zoomIn}
-                className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                title="放大 (+)"
-              >
-                <ZoomIn className="w-5 h-5" />
-              </button>
-              <button
-                onClick={resetZoom}
-                className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                title="重置 (0)"
-              >
-                <RotateCcw className="w-5 h-5" />
-              </button>
-
-              <div className="w-px h-6 bg-white/20 mx-2" />
-
-              {/* 关闭按钮 */}
-              <button
-                onClick={closeFullscreenViewer}
-                className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                title="关闭 (ESC)"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-          </div>
-
-          {/* 主图片区域 */}
-          <div className="flex-1 relative overflow-hidden flex items-center justify-center">
-            {/* 上一张按钮 */}
-            <button
-              onClick={goToPreviousImage}
-              disabled={selectedImage === 0}
-              className={`absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full transition-all ${
-                selectedImage === 0
-                  ? 'bg-white/5 text-white/20 cursor-not-allowed'
-                  : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
-              }`}
-              title="上一张 (←)"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-
-            {/* 图片容器 */}
-            <div
-              className="relative flex items-center justify-center"
-              style={{ maxWidth: '100%', maxHeight: '100%' }}
-            >
-              <OptimizedImage
-                key={selectedImage}
-                src={adaptedTool.images[selectedImage]?.src || adaptedTool.logo}
-                alt={`${adaptedTool.name} 截图 ${selectedImage + 1}`}
-                className="max-w-full max-h-full transition-transform duration-200"
-                objectFit="contain"
-                style={{
-                  transform: `scale(${imageScale})`,
-                  transformOrigin: 'center center'
-                }}
-                srcsetWidths={[1200, 1600, 2400]}
-                sizes="100vw"
-                priority
-                lazyLoad={false}
-                fallback={
-                  fallbackLogoDataUrl
-                    ? (
-                        <img
-                          src={fallbackLogoDataUrl}
-                          alt={adaptedTool.name}
-                          className="max-w-full max-h-full object-contain"
-                        />
-                      )
-                    : undefined
-                }
-              />
-            </div>
-
-            {/* 下一张按钮 */}
-            <button
-              onClick={goToNextImage}
-              disabled={selectedImage === adaptedTool.images.length - 1}
-              className={`absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full transition-all ${
-                selectedImage === adaptedTool.images.length - 1
-                  ? 'bg-white/5 text-white/20 cursor-not-allowed'
-                  : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
-              }`}
-              title="下一张 (→)"
-            >
-              <ChevronRightIcon className="w-6 h-6" />
-            </button>
-          </div>
-
-          {/* 底部缩略图栏 */}
-          <div className="px-4 py-3 bg-black/50 backdrop-blur-sm border-t border-white/10">
-            <div className="flex justify-center space-x-2 overflow-x-auto pb-2 scrollbar-hide">
-              {adaptedTool.images.map((image, index) => {
-                const isSelected = selectedImage === index;
-                return (
-                  <button
-                    key={index}
-                    onClick={() => {
-                      setSelectedImage(index);
-                      resetImageState();
-                    }}
-                    className={`flex-shrink-0 w-20 h-14 rounded overflow-hidden border-2 transition-all ${
-                      isSelected
-                        ? 'border-blue-500 shadow-lg shadow-blue-500/30'
-                        : 'border-white/20 hover:border-white/40'
-                    }`}
-                  >
-                    <OptimizedImage
-                      src={image.src}
-                      alt={`缩略图 ${index + 1}`}
-                      className="w-full h-full"
-                      objectFit="cover"
-                      background
-                      fallback={
-                        fallbackLogoDataUrl
-                          ? (
-                              <img
-                                src={fallbackLogoDataUrl}
-                                alt={adaptedTool.name}
-                                className="w-full h-full object-contain p-1"
-                              />
-                            )
-                          : undefined
-                      }
-                    />
-                  </button>
-                );
-              })}
-            </div>
-            {/* 快捷键提示 */}
-            <div className="text-center text-xs text-white/40 mt-2">
-              快捷键: ← → 切换图片 | + - 缩放 | 0 重置 | ESC 退出
-            </div>
-          </div>
-        </div>
-      )}
+      <ScreenshotViewer
+        isOpen={isFullscreenViewer}
+        images={adaptedTool.images}
+        selectedImage={selectedImage}
+        toolName={adaptedTool.name}
+        fallbackLogoUrl={fallbackLogoDataUrl}
+        onClose={() => setIsFullscreenViewer(false)}
+        onSelectImage={setSelectedImage}
+      />
     </div>
   );
 };
