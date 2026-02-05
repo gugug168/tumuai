@@ -10,7 +10,8 @@ import {
   Calendar,
   Tag,
   Home,
-  ChevronRight
+  ChevronRight,
+  Check
 } from 'lucide-react';
 import { addToFavorites, removeFromFavorites, isFavorited, addToolReview, getToolReviews } from '../lib/community';
 import { getToolById, incrementToolViews, getRelatedTools } from '../lib/supabase';
