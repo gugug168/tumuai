@@ -138,7 +138,6 @@ const ToolDetailPage = () => {
   // 截图查看器状态
   const [isFullscreenViewer, setIsFullscreenViewer] = useState(false);
   const [imageScale, setImageScale] = useState(1);
-  const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
   const [tool, setTool] = useState<Tool | null>(() => {
     const state = location.state as null | { tool?: Partial<Tool> };
     const preloaded = state?.tool;
@@ -279,7 +278,7 @@ const ToolDetailPage = () => {
   }, [tool?.id]);
 
   const storedScreenshotUrls = useMemo(() => {
-    const raw = (tool as any)?.screenshots;
+    const raw = tool?.screenshots as string[] | undefined;
     let list = Array.isArray(raw)
       ? raw.filter((u: unknown): u is string => typeof u === 'string' && u.trim().length > 0)
       : [];
@@ -346,12 +345,12 @@ const ToolDetailPage = () => {
   }, [storedScreenshotUrls, websiteScreenshotUrl, safePrimaryLogoUrl, fallbackLogoDataUrl]);
 
   // 将数据库工具数据适配为组件需要的格式
-  const adaptedTool = tool ? {
+  const adaptedTool = useMemo(() => tool ? {
     id: tool.id,
     name: tool.name,
     logo: safePrimaryLogoUrl || fallbackLogoDataUrl,
     category: tool.categories?.[0] || '工具',
-    website: (tool as any)?.website_url || '',
+    website: tool.website_url || '',
     shortDescription: tool.tagline,
     detailedDescription: tool.description || tool.tagline,
     images: galleryImages,
@@ -371,14 +370,13 @@ const ToolDetailPage = () => {
     tags: tool.categories || [],
     addedDate: tool.date_added ? tool.date_added.split('T')[0] : '',
     lastUpdated: tool.updated_at ? tool.updated_at.split('T')[0] : ''
-  } : null;
+  } : null, [tool, safePrimaryLogoUrl, fallbackLogoDataUrl, galleryImages]);
 
   const hasDetailFields = useMemo(() => {
     if (!tool || tool.id !== toolIdAsString) return false;
-    const t = tool as any;
     // When navigating from a list, the tool object can be partial; only skip the detail query
     // if we already have the key fields the page needs.
-    return 'website_url' in t && 'description' in t && 'updated_at' in t;
+    return 'website_url' in tool && 'description' in tool && 'updated_at' in tool;
   }, [tool, toolIdAsString]);
   
   useEffect(() => {
@@ -816,7 +814,7 @@ const ToolDetailPage = () => {
                   {adaptedTool.images.some(img => img.region) ? (
                     // 有区域信息时，按区域分组显示
                     Array.from(groupScreenshotsByRegion(adaptedTool.images).entries())
-                      .filter(([_, images]) => images.length > 0)
+                      .filter(([, images]) => images.length > 0)
                       .map(([region, images]) => (
                         <div key={region} className="space-y-2">
                           {/* 区域标题 */}
