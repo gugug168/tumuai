@@ -416,7 +416,6 @@ const ToolDetailPage = () => {
           case 'Escape':
             setIsFullscreenViewer(false);
             setImageScale(1);
-            setImagePosition({ x: 0, y: 0 });
             break;
           case 'ArrowLeft':
             e.preventDefault();
@@ -438,7 +437,6 @@ const ToolDetailPage = () => {
           case '0':
             e.preventDefault();
             setImageScale(1);
-            setImagePosition({ x: 0, y: 0 });
             break;
         }
         return;
@@ -464,7 +462,6 @@ const ToolDetailPage = () => {
   // 重置图片状态
   const resetImageState = useCallback(() => {
     setImageScale(1);
-    setImagePosition({ x: 0, y: 0 });
   }, []);
 
   // 打开全屏查看器
@@ -504,7 +501,6 @@ const ToolDetailPage = () => {
   // 重置缩放
   const resetZoom = useCallback(() => {
     setImageScale(1);
-    setImagePosition({ x: 0, y: 0 });
   }, []);
 
   if (loading && !tool) {

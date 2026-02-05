@@ -28,19 +28,5 @@
     "vercel@claude-plugins-official": true,
     "supabase@claude-plugins-official": true
   },
-  "outputStyle": "nekomata-engineer",
-  "mcpServers": {
-    "supabase": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@supabase/mcp-server-supabase"
-      ],
-      "env": {
-        "SUPABASE_URL": "https://bixljqdwkjuzftlpmgtb.supabase.co",
-        "SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpeGxqcWR3a2p1emZ0bHBtZ3RiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDkxNzg3NSwiZXhwIjoyMDcwNDkzODc1fQ.sBkAjHucMdBRC62-0JEGuuVP7gCWRt8P4AI4xzvLp2Q",
-        "SUPABASE_ACCESS_TOKEN": "sbp_2009c9bbe6e27ba133a1badd5445da4e1c2e7244"
-      }
-    }
-  }
+  "outputStyle": "nekomata-engineer"
 }
