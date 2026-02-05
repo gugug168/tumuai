@@ -41,6 +41,7 @@ const Header = () => {
     { path: '/tools', label: '工具中心' },
     { path: '/submit', label: '提交工具' },
     { path: '/about', label: '关于我们' },
+    { path: 'https://claudecode.tumuai.net/', label: 'Claude Code 教学', external: true },
   ];
 
   const handleAuthClick = (mode: 'login' | 'register') => {
@@ -81,40 +82,53 @@ const Header = () => {
           <nav className="hidden md:flex items-center space-x-6">
             {navItems.map((item) => (
               (!item.requireAuth || user) && (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onMouseEnter={() => {
-                    if (item.path === '/tools') void prefetchToolsPage();
-                    if (item.path === '/tools') void prefetchToolsData();
-                    if (item.path === '/submit') void prefetchSubmitToolPage();
-                  }}
-                  onFocus={() => {
-                    if (item.path === '/tools') void prefetchToolsPage();
-                    if (item.path === '/tools') void prefetchToolsData();
-                    if (item.path === '/submit') void prefetchSubmitToolPage();
-                  }}
-                  onPointerDown={() => {
-                    if (item.path === '/tools') void prefetchToolsPage();
-                    if (item.path === '/tools') void prefetchToolsData();
-                    if (item.path === '/submit') void prefetchSubmitToolPage();
-                  }}
-                  onTouchStart={() => {
-                    if (item.path === '/tools') void prefetchToolsPage();
-                    if (item.path === '/tools') void prefetchToolsData();
-                    if (item.path === '/submit') void prefetchSubmitToolPage();
-                  }}
-                  className={`font-medium relative transition-colors group ${
-                    isActive(item.path)
-                      ? 'text-accent-600'
-                      : 'text-gray-700 hover:text-accent-600'
-                  }`}
-                >
-                  {item.label}
-                  <span className={`absolute -bottom-1 left-0 h-0.5 bg-accent-600 transition-all duration-300 ${
-                    isActive(item.path) ? 'w-full' : 'w-0 group-hover:w-full'
-                  }`}></span>
-                </Link>
+                item.external ? (
+                  <a
+                    key={item.path}
+                    href={item.path}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium relative transition-colors group text-gray-700 hover:text-accent-600"
+                  >
+                    {item.label}
+                    <span className="absolute -bottom-1 left-0 h-0.5 bg-accent-600 transition-all duration-300 w-0 group-hover:w-full"></span>
+                  </a>
+                ) : (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onMouseEnter={() => {
+                      if (item.path === '/tools') void prefetchToolsPage();
+                      if (item.path === '/tools') void prefetchToolsData();
+                      if (item.path === '/submit') void prefetchSubmitToolPage();
+                    }}
+                    onFocus={() => {
+                      if (item.path === '/tools') void prefetchToolsPage();
+                      if (item.path === '/tools') void prefetchToolsData();
+                      if (item.path === '/submit') void prefetchSubmitToolPage();
+                    }}
+                    onPointerDown={() => {
+                      if (item.path === '/tools') void prefetchToolsPage();
+                      if (item.path === '/tools') void prefetchToolsData();
+                      if (item.path === '/submit') void prefetchSubmitToolPage();
+                    }}
+                    onTouchStart={() => {
+                      if (item.path === '/tools') void prefetchToolsPage();
+                      if (item.path === '/tools') void prefetchToolsData();
+                      if (item.path === '/submit') void prefetchSubmitToolPage();
+                    }}
+                    className={`font-medium relative transition-colors group ${
+                      isActive(item.path)
+                        ? 'text-accent-600'
+                        : 'text-gray-700 hover:text-accent-600'
+                    }`}
+                  >
+                    {item.label}
+                    <span className={`absolute -bottom-1 left-0 h-0.5 bg-accent-600 transition-all duration-300 ${
+                      isActive(item.path) ? 'w-full' : 'w-0 group-hover:w-full'
+                    }`}></span>
+                  </Link>
+                )
               )
             ))}
             
@@ -202,38 +216,51 @@ const Header = () => {
             <nav className="flex flex-col space-y-3">
               {navItems.map((item) => (
                 (!item.requireAuth || user) && (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onMouseEnter={() => {
-                      if (item.path === '/tools') void prefetchToolsPage();
-                      if (item.path === '/tools') void prefetchToolsData();
-                      if (item.path === '/submit') void prefetchSubmitToolPage();
-                    }}
-                    onFocus={() => {
-                      if (item.path === '/tools') void prefetchToolsPage();
-                      if (item.path === '/tools') void prefetchToolsData();
-                      if (item.path === '/submit') void prefetchSubmitToolPage();
-                    }}
-                    onPointerDown={() => {
-                      if (item.path === '/tools') void prefetchToolsPage();
-                      if (item.path === '/tools') void prefetchToolsData();
-                      if (item.path === '/submit') void prefetchSubmitToolPage();
-                    }}
-                    onTouchStart={() => {
-                      if (item.path === '/tools') void prefetchToolsPage();
-                      if (item.path === '/tools') void prefetchToolsData();
-                      if (item.path === '/submit') void prefetchSubmitToolPage();
-                    }}
-                    className={`font-medium py-2 transition-colors ${
-                      isActive(item.path)
-                        ? 'text-accent-600'
-                        : 'text-gray-700 hover:text-accent-600'
-                    }`}
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    {item.label}
-                  </Link>
+                  item.external ? (
+                    <a
+                      key={item.path}
+                      href={item.path}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium py-2 transition-colors text-gray-700 hover:text-accent-600"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      {item.label}
+                    </a>
+                  ) : (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onMouseEnter={() => {
+                        if (item.path === '/tools') void prefetchToolsPage();
+                        if (item.path === '/tools') void prefetchToolsData();
+                        if (item.path === '/submit') void prefetchSubmitToolPage();
+                      }}
+                      onFocus={() => {
+                        if (item.path === '/tools') void prefetchToolsPage();
+                        if (item.path === '/tools') void prefetchToolsData();
+                        if (item.path === '/submit') void prefetchSubmitToolPage();
+                      }}
+                      onPointerDown={() => {
+                        if (item.path === '/tools') void prefetchToolsPage();
+                        if (item.path === '/tools') void prefetchToolsData();
+                        if (item.path === '/submit') void prefetchSubmitToolPage();
+                      }}
+                      onTouchStart={() => {
+                        if (item.path === '/tools') void prefetchToolsPage();
+                        if (item.path === '/tools') void prefetchToolsData();
+                        if (item.path === '/submit') void prefetchSubmitToolPage();
+                      }}
+                      className={`font-medium py-2 transition-colors ${
+                        isActive(item.path)
+                          ? 'text-accent-600'
+                          : 'text-gray-700 hover:text-accent-600'
+                      }`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      {item.label}
+                    </Link>
+                  )
                 )
               ))}
               

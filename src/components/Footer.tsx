@@ -119,6 +119,17 @@ const Footer = () => {
                   </a>
                 </li>
                 <li>
+                  <a
+                    href="https://claudecode.tumuai.net/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-400 hover:text-white transition-colors inline-flex items-center group"
+                  >
+                    <span className="group-hover:translate-x-1 transition-transform duration-200">→</span>
+                    <span className="ml-2">Claude Code 教程</span>
+                  </a>
+                </li>
+                <li>
                   <Link to="/about" className="text-gray-400 hover:text-white transition-colors inline-flex items-center group">
                     <span className="group-hover:translate-x-1 transition-transform duration-200">→</span>
                     <span className="ml-2">隐私政策</span>

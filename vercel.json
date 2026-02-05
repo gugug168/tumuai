@@ -25,6 +25,10 @@
       "destination": "/api/$1"
     },
     {
+      "source": "/tools/:match*",
+      "destination": "/tools/:match*.html"
+    },
+    {
       "source": "/about",
       "destination": "/about.html"
     },
@@ -38,7 +42,7 @@
     },
     {
       "source": "/(.*)",
-      "destination": "/"
+      "destination": "/index.html"
     }
   ],
   "headers": [
@@ -178,22 +182,5 @@
   "github": {
     "silent": true
   },
-  "installCommand": "npm install",
-  "functions": {
-    "api/categories-cache.ts": {
-      "runtime": "edge",
-      "memory": 128,
-      "maxDuration": 30
-    },
-    "api/increment-views.ts": {
-      "runtime": "edge",
-      "memory": 128,
-      "maxDuration": 10
-    },
-    "api/favorites-cache.ts": {
-      "runtime": "edge",
-      "memory": 128,
-      "maxDuration": 30
-    }
-  }
+  "installCommand": "npm install"
 }
