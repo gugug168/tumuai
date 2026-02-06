@@ -25,10 +25,6 @@
       "destination": "/api/$1"
     },
     {
-      "source": "/tools/:match*",
-      "destination": "/tools/:match*.html"
-    },
-    {
       "source": "/about",
       "destination": "/about.html"
     },

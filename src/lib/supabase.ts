@@ -369,8 +369,9 @@ export async function getToolsSmart(
   // API 优先策略：优先走 Vercel API（CDN 缓存命中很快），
   // 但避免在后台“同时直连 Supabase”造成双倍请求/资源竞争。
   // 超时后再回退到本地缓存/直连。
-  // Give the Vercel function a bit more room for cold starts; SW + warmup will usually make this instant.
-  const API_TIMEOUT = 3500
+  // Give the Vercel function a bit more room for cold starts; if this times out we fall back to
+  // client-side Supabase reads (which can be slower/unreliable on some networks).
+  const API_TIMEOUT = IS_DEV ? 3500 : 8000
 
   // If API is in backoff, skip the network request entirely.
   if (isApiBackedOff()) {
