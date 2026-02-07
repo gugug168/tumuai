@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "test:e2e": "playwright test --reporter=list",
     "test:e2e:headed": "playwright test --headed --project=chromium",
+    "tools:desc:zh": "node scripts/enrich-tool-descriptions-zh.cjs",
     "db:indexes": "node database/scripts/execute-indexes.js"
   },
   "dependencies": {
