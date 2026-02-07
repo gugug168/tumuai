@@ -246,7 +246,7 @@ const ToolGrid = React.memo<ToolGridProps>(({
 
         {/* Virtual Grid */}
         <VirtuosoGrid
-          style={{ height: 'auto' }}
+          useWindowScroll
           totalCount={allTools.length}
           endReached={hasMore ? handleLoadMore : undefined}
           overscan={200}
@@ -312,7 +312,7 @@ const ToolGrid = React.memo<ToolGridProps>(({
 
         {/* Virtual List */}
         <Virtuoso
-          style={{ height: 'calc(100vh - 240px)' }}
+          useWindowScroll
           data={allTools}
           endReached={hasMore ? handleLoadMore : undefined}
           overscan={200}
