@@ -4,7 +4,6 @@ import {
   ExternalLink,
   Heart,
   Star,
-  Play,
   ArrowLeft,
   Eye,
   Calendar,
@@ -274,6 +273,25 @@ const ToolDetailPage = () => {
     lastUpdated: tool.updated_at ? tool.updated_at.split('T')[0] : ''
   } : null, [tool, safePrimaryLogoUrl, fallbackLogoDataUrl, galleryImages]);
 
+  const pricingLabel = useMemo(() => {
+    const pricing = tool?.pricing;
+    if (pricing === 'Free') return '免费';
+    if (pricing === 'Freemium') return '免费增值';
+    if (pricing === 'Trial') return '可试用';
+    if (pricing === 'Paid') return '付费';
+    return '';
+  }, [tool?.pricing]);
+
+  const normalizedWebsiteUrl = useMemo(() => {
+    const raw = adaptedTool?.website?.trim();
+    if (!raw) return '';
+    try {
+      return new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`).toString();
+    } catch {
+      return '';
+    }
+  }, [adaptedTool?.website]);
+
   const hasDetailFields = useMemo(() => {
     if (!tool || tool.id !== toolIdAsString) return false;
     // When navigating from a list, the tool object can be partial; only skip the detail query
@@ -374,6 +392,34 @@ const ToolDetailPage = () => {
       toast.error('操作失败', '请稍后重试');
     } finally {
       setLoadingFavorite(false);
+    }
+  };
+
+  const handleCopyWebsiteUrl = async () => {
+    if (!normalizedWebsiteUrl) {
+      toast.error('复制失败', '未找到可复制的官网链接');
+      return;
+    }
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(normalizedWebsiteUrl);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = normalizedWebsiteUrl;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      toast.success('已复制链接', '可粘贴到浏览器或分享给他人');
+    } catch (error) {
+      console.error('复制官网链接失败:', error);
+      toast.error('复制失败', '请稍后重试');
     }
   };
 
@@ -481,10 +527,11 @@ const ToolDetailPage = () => {
                 </div>
               </div>
             </div>
-            <div className="flex flex-col space-y-3">
-              {adaptedTool.website ? (
+            {/* Mobile/Tablet CTA */}
+            <div className="flex flex-col space-y-3 lg:hidden">
+              {normalizedWebsiteUrl ? (
                 <a
-                  href={adaptedTool.website}
+                  href={normalizedWebsiteUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center"
@@ -501,20 +548,32 @@ const ToolDetailPage = () => {
                   官网加载中...
                 </button>
               )}
-              <button
-                onClick={handleToggleFavorite}
-                disabled={loadingFavorite}
-                className={`px-6 py-3 rounded-lg font-semibold flex items-center justify-center transition-colors ${
-                  isFavoritedTool
-                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                } ${loadingFavorite ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <Heart
-                  className={`mr-2 w-4 h-4 ${isFavoritedTool ? 'fill-current text-red-500' : ''}`}
-                />
-                {loadingFavorite ? '处理中...' : isFavoritedTool ? '已收藏' : '收藏工具'}
-              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={handleCopyWebsiteUrl}
+                  disabled={!normalizedWebsiteUrl}
+                  className={`px-4 py-3 rounded-lg font-semibold flex items-center justify-center transition-colors ${
+                    normalizedWebsiteUrl ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  复制链接
+                </button>
+                <button
+                  onClick={handleToggleFavorite}
+                  disabled={loadingFavorite}
+                  className={`px-4 py-3 rounded-lg font-semibold flex items-center justify-center transition-colors ${
+                    isFavoritedTool
+                      ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  } ${loadingFavorite ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <Heart
+                    className={`mr-2 w-4 h-4 ${isFavoritedTool ? 'fill-current text-red-500' : ''}`}
+                  />
+                  {loadingFavorite ? '处理中...' : isFavoritedTool ? '已收藏' : '收藏'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -522,20 +581,8 @@ const ToolDetailPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* 左侧主要内容 */}
           <div className="lg:col-span-2 space-y-8">
-            {/* 详细介绍 */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">详细介绍</h2>
-              <div className="prose prose-lg max-w-none text-gray-800 leading-relaxed">
-                {adaptedTool.detailedDescription.split('\n\n').map((paragraph, index) => (
-                  <p key={index} className="mb-4 text-gray-800">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
-            </div>
-
             {/* 图片/视频画廊 */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+            <div id="screenshots" className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 scroll-mt-24">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">产品截图</h2>
               </div>
@@ -550,20 +597,38 @@ const ToolDetailPage = () => {
             </div>
 
             {/* 核心功能列表 */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+            <div id="features" className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 scroll-mt-24">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">核心功能</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {adaptedTool.features.map((feature, index) => (
-                  <div key={index} className="flex items-center space-x-3">
-                    <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
-                    <span className="text-gray-700">{feature}</span>
-                  </div>
+              {adaptedTool.features.length === 0 ? (
+                <p className="text-gray-600">
+                  暂无结构化功能点。可先通过上方截图快速了解，再点击“访问官网”查看完整介绍。
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {adaptedTool.features.map((feature, index) => (
+                    <div key={index} className="flex items-center space-x-3">
+                      <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+                      <span className="text-gray-700">{feature}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 详细介绍 */}
+            <div id="about" className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 scroll-mt-24">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">详细介绍</h2>
+              <div className="prose prose-lg max-w-none text-gray-800 leading-relaxed">
+                {adaptedTool.detailedDescription.split('\n\n').map((paragraph, index) => (
+                  <p key={index} className="mb-4 text-gray-800">
+                    {paragraph}
+                  </p>
                 ))}
               </div>
             </div>
 
             {/* 用户评论区 */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+            <div id="reviews" className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 scroll-mt-24">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">用户评价</h2>
               
               {/* 评论统计 */}
@@ -699,8 +764,92 @@ const ToolDetailPage = () => {
 
           {/* 右侧边栏 */}
           <div className="space-y-8">
+            {/* Desktop sticky CTA + quick nav */}
+            <div className="hidden lg:block sticky top-24 space-y-4">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">开始使用</h3>
+                  {pricingLabel && (
+                    <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">
+                      {pricingLabel}
+                    </span>
+                  )}
+                </div>
+
+                {normalizedWebsiteUrl ? (
+                  <a
+                    href={normalizedWebsiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-blue-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center"
+                  >
+                    访问官网
+                    <ExternalLink className="ml-2 w-4 h-4" />
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="bg-gray-200 text-gray-600 px-4 py-3 rounded-lg font-semibold flex items-center justify-center cursor-not-allowed w-full"
+                  >
+                    暂无官网链接
+                  </button>
+                )}
+
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <button
+                    type="button"
+                    onClick={handleCopyWebsiteUrl}
+                    disabled={!normalizedWebsiteUrl}
+                    className={`px-4 py-3 rounded-lg font-semibold flex items-center justify-center transition-colors ${
+                      normalizedWebsiteUrl
+                        ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    复制链接
+                  </button>
+                  <button
+                    onClick={handleToggleFavorite}
+                    disabled={loadingFavorite}
+                    className={`px-4 py-3 rounded-lg font-semibold flex items-center justify-center transition-colors ${
+                      isFavoritedTool ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    } ${loadingFavorite ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <Heart className={`mr-2 w-4 h-4 ${isFavoritedTool ? 'fill-current text-red-500' : ''}`} />
+                    {loadingFavorite ? '处理中...' : isFavoritedTool ? '已收藏' : '收藏'}
+                  </button>
+                </div>
+
+                {normalizedWebsiteUrl && (
+                  <p className="mt-3 text-xs text-gray-500 break-all">{normalizedWebsiteUrl}</p>
+                )}
+              </div>
+
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">页面导航</h3>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { href: '#screenshots', label: '截图' },
+                    { href: '#features', label: '功能' },
+                    { href: '#about', label: '介绍' },
+                    { href: '#pricing', label: '定价' },
+                    { href: '#reviews', label: '评价' }
+                  ].map((item) => (
+                    <a
+                      key={item.href}
+                      href={item.href}
+                      className="px-3 py-1.5 rounded-full text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                    >
+                      {item.label}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* 定价信息 */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div id="pricing" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 scroll-mt-24">
               <h3 className="text-xl font-bold text-gray-900 mb-6">定价方案</h3>
               <div className="space-y-4">
                 {adaptedTool.pricing.map((plan, index) => (
