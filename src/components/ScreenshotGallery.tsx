@@ -8,7 +8,7 @@
  * - 响应式图片加载
  */
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Check, Maximize2 } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
 import {
@@ -190,6 +190,7 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({
   fallbackLogoUrl
 }) => {
   const currentImage = images[selectedImage];
+  const [activeRegion, setActiveRegion] = useState<ScreenshotRegion | 'all'>('all');
 
   // 检查是否有分组的截图
   const hasGroupedScreenshots = useMemo(() => {
@@ -200,6 +201,36 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({
   const groupedImages = useMemo(() => {
     return groupScreenshotsByRegion(images);
   }, [images]);
+
+  const regionTabs = useMemo(() => {
+    const tabs: Array<{ key: ScreenshotRegion; label: string; icon: string; count: number }> = [];
+    (['hero', 'features', 'pricing', 'fullpage'] as const).forEach((region) => {
+      const count = groupedImages.get(region)?.length || 0;
+      if (count > 0) {
+        tabs.push({ key: region, label: REGION_LABELS[region], icon: REGION_ICONS[region], count });
+      }
+    });
+    return tabs;
+  }, [groupedImages]);
+
+  const visibleImages = useMemo(() => {
+    if (!hasGroupedScreenshots || activeRegion === 'all') {
+      return images.map((image, globalIndex) => ({ image, globalIndex }));
+    }
+
+    const regionImages = groupedImages.get(activeRegion) || [];
+    return regionImages.map((image) => ({ image, globalIndex: images.indexOf(image) }));
+  }, [hasGroupedScreenshots, activeRegion, groupedImages, images]);
+
+  // If the current selected image isn't in the visible set, jump to the first visible one.
+  useEffect(() => {
+    if (!hasGroupedScreenshots || activeRegion === 'all') return;
+    if (visibleImages.length === 0) return;
+    const isVisible = visibleImages.some(({ globalIndex }) => globalIndex === selectedImage);
+    if (!isVisible) {
+      onImageSelect(visibleImages[0].globalIndex);
+    }
+  }, [hasGroupedScreenshots, activeRegion, visibleImages, selectedImage, onImageSelect]);
 
   return (
     <div className="space-y-4">
@@ -217,36 +248,61 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({
       {/* 缩略图区域 */}
       <div className="space-y-4">
         {hasGroupedScreenshots ? (
-          // 有区域信息时，按区域分组显示
-          Array.from(groupedImages.entries())
-            .filter(([, imgs]) => imgs.length > 0)
-            .map(([region, imgs]) => (
-              <div key={region} className="space-y-2">
-                {/* 区域标题 */}
-                <div className="flex items-center text-sm font-medium text-gray-600">
-                  <span className="mr-1.5">{region !== 'other' ? REGION_ICONS[region] : '📷'}</span>
-                  <span>{region !== 'other' ? REGION_LABELS[region] : '其他截图'}</span>
-                  <span className="ml-2 text-xs text-gray-400">({imgs.length})</span>
-                </div>
+          <div className="space-y-3">
+            {/* 区域选择（横向） */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              <button
+                type="button"
+                onClick={() => setActiveRegion('all')}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                  activeRegion === 'all'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                全部
+              </button>
+              {regionTabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => {
+                    setActiveRegion(tab.key);
+                    const first = (groupedImages.get(tab.key) || [])[0];
+                    if (first) {
+                      const idx = images.indexOf(first);
+                      if (idx >= 0) onImageSelect(idx);
+                    }
+                  }}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                    activeRegion === tab.key
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="mr-1">{tab.icon}</span>
+                  {tab.label}
+                  <span className={`ml-2 text-xs ${activeRegion === tab.key ? 'text-white/80' : 'text-gray-400'}`}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
 
-                {/* 缩略图网格 */}
-                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-                  {imgs.map((image) => {
-                    const globalIndex = images.indexOf(image);
-                    return (
-                      <Thumbnail
-                        key={globalIndex}
-                        image={image}
-                        index={globalIndex}
-                        isSelected={selectedImage === globalIndex}
-                        onSelect={() => onImageSelect(globalIndex)}
-                        fallbackLogoUrl={fallbackLogoUrl}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            ))
+            {/* 缩略图网格 */}
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+              {visibleImages.map(({ image, globalIndex }) => (
+                <Thumbnail
+                  key={globalIndex}
+                  image={image}
+                  index={globalIndex}
+                  isSelected={selectedImage === globalIndex}
+                  onSelect={() => onImageSelect(globalIndex)}
+                  fallbackLogoUrl={fallbackLogoUrl}
+                />
+              ))}
+            </div>
+          </div>
         ) : (
           // 无区域信息时，显示为网格布局
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">

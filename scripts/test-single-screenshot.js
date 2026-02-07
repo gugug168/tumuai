@@ -8,38 +8,14 @@
 
 require('dotenv').config({ path: '.env.local' });
 const { createClient } = require('@supabase/supabase-js');
+const { chromium } = require('playwright');
+const { captureRegionPngs } = require('./screenshot-utils');
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const BUCKET = 'tool-screenshots';
-
-/**
- * 使用 thum.io API 生成截图
- */
-async function fetchScreenshot(url, width = 1200) {
-  const targetUrl = url.startsWith('http') ? url : `https://${url}`;
-  const apiUrl = `https://image.thum.io/get/noanimate/width/${width}/${targetUrl}`;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-  try {
-    console.log(`    请求: ${apiUrl}`);
-    const response = await fetch(apiUrl, { signal: controller.signal });
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    return Buffer.from(await response.arrayBuffer());
-  } catch (error) {
-    clearTimeout(timeoutId);
-    throw error;
-  }
-}
 
 /**
  * 转换为 WebP
@@ -68,12 +44,32 @@ async function generateToolScreenshots(tool) {
     { name: 'fullpage', width: 1200, height: 1200 }
   ];
 
+  const browser = await chromium.launch();
+  const context = await browser.newContext({ viewport: { width: 1200, height: 800 } });
+  const page = await context.newPage();
+
+  const pngs = await captureRegionPngs(page, tool.website_url);
+  await browser.close();
+
+  if (!pngs) {
+    console.log('    ❌ 无法生成截图（URL 无效或加载失败）');
+    return 0;
+  }
+
+  const pngByRegion = {
+    hero: pngs.hero,
+    features: pngs.features,
+    pricing: pngs.pricing,
+    fullpage: pngs.fullpage
+  };
+
+  const version = Date.now();
+
   for (const region of regions) {
     try {
       console.log(`\n  - 生成 ${region.name} (${region.width}x${region.height})...`);
 
-      // 获取截图
-      const buffer = await fetchScreenshot(tool.website_url, region.width);
+      const buffer = pngByRegion[region.name];
 
       if (!buffer || buffer.length === 0) {
         console.log(`    ⚠️  截图失败`);
@@ -110,7 +106,7 @@ async function generateToolScreenshots(tool) {
         .getPublicUrl(objectPath);
 
       if (publicUrlData?.publicUrl) {
-        uploadedUrls.push(publicUrlData.publicUrl);
+        uploadedUrls.push(`${publicUrlData.publicUrl}?v=${version}`);
         console.log(`    ✅ 已上传: ${publicUrlData.publicUrl}`);
       }
 

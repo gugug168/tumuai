@@ -32,7 +32,7 @@ export const REGION_ORDER: ScreenshotRegion[] = ['hero', 'features', 'pricing', 
  * 从截图 URL 解析区域类型
  */
 export function parseScreenshotRegion(url: string): ScreenshotRegion | null {
-  const match = url.match(/\/(hero|features|pricing|fullpage)\.webp$/i);
+  const match = url.match(/\/(hero|features|pricing|fullpage)\.webp(?:\?.*)?$/i);
   if (match) {
     return match[1].toLowerCase() as ScreenshotRegion;
   }

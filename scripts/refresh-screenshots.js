@@ -12,37 +12,14 @@
 
 require('dotenv').config({ path: '.env.local' });
 const { createClient } = require('@supabase/supabase-js');
+const { chromium } = require('playwright');
+const { captureRegionPngs } = require('./screenshot-utils');
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const BUCKET = 'tool-screenshots';
-
-/**
- * 使用 thum.io API 生成截图
- */
-async function fetchScreenshot(url, width = 1200) {
-  const targetUrl = url.startsWith('http') ? url : `https://${url}`;
-  const apiUrl = `https://image.thum.io/get/noanimate/width/${width}/${targetUrl}`;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-  try {
-    const response = await fetch(apiUrl, { signal: controller.signal });
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    return Buffer.from(await response.arrayBuffer());
-  } catch (error) {
-    clearTimeout(timeoutId);
-    throw error;
-  }
-}
 
 /**
  * 转换为 WebP
@@ -57,7 +34,7 @@ async function convertToWebP(buffer, quality = 85) {
 /**
  * 为单个工具生成截图
  */
-async function generateToolScreenshots(tool) {
+async function generateToolScreenshots(tool, context) {
   console.log(`\n📸 处理: ${tool.name} (${tool.website_url})`);
 
   const uploadedUrls = [];
@@ -70,12 +47,36 @@ async function generateToolScreenshots(tool) {
     { name: 'fullpage', width: 1200, height: 1200 }
   ];
 
+  const page = await context.newPage();
+  let pngs = null;
+  try {
+    pngs = await captureRegionPngs(page, tool.website_url);
+  } catch (error) {
+    console.log(`  ❌ 页面加载/截图失败: ${error.message}`);
+  } finally {
+    await page.close().catch(() => {});
+  }
+
+  if (!pngs) {
+    console.log('  ⚠️  跳过：未生成截图');
+    return 0;
+  }
+
+  const pngByRegion = {
+    hero: pngs.hero,
+    features: pngs.features,
+    pricing: pngs.pricing,
+    fullpage: pngs.fullpage
+  };
+
+  // Cache-bust query for immediate refresh after upsert.
+  const version = Date.now();
+
   for (const region of regions) {
     try {
       console.log(`  - 生成 ${region.name} (${region.width}x${region.height})...`);
 
-      // 获取截图
-      const buffer = await fetchScreenshot(tool.website_url, region.width);
+      const buffer = pngByRegion[region.name];
 
       if (!buffer || buffer.length === 0) {
         console.log(`    ⚠️  截图失败`);
@@ -107,7 +108,7 @@ async function generateToolScreenshots(tool) {
         .getPublicUrl(objectPath);
 
       if (publicUrlData?.publicUrl) {
-        uploadedUrls.push(publicUrlData.publicUrl);
+        uploadedUrls.push(`${publicUrlData.publicUrl}?v=${version}`);
         console.log(`    ✅ 已上传: ${objectPath}`);
       }
 
@@ -142,6 +143,11 @@ async function generateToolScreenshots(tool) {
 async function main() {
   console.log('🚀 开始批量刷新工具截图...\n');
 
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('❌ 缺少 SUPABASE 配置（SUPABASE_URL/VITE_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY）');
+    process.exit(1);
+  }
+
   // 获取所有已发布的工具
   const { data: tools, error } = await supabase
     .from('tools')
@@ -161,6 +167,12 @@ async function main() {
 
   console.log(`📋 找到 ${tools.length} 个工具\n`);
 
+  const limitEnv = parseInt(process.env.SCREENSHOT_LIMIT || '', 10);
+  const toolsToProcess = Number.isFinite(limitEnv) && limitEnv > 0 ? tools.slice(0, limitEnv) : tools;
+
+  const browser = await chromium.launch();
+  const context = await browser.newContext({ viewport: { width: 1200, height: 800 } });
+
   // 统计
   let successCount = 0;
   let totalScreenshots = 0;
@@ -168,15 +180,15 @@ async function main() {
 
   // 批量处理 (每 5 个一组，避免过载)
   const batchSize = 5;
-  for (let i = 0; i < tools.length; i += batchSize) {
-    const batch = tools.slice(i, i + batchSize);
+  for (let i = 0; i < toolsToProcess.length; i += batchSize) {
+    const batch = toolsToProcess.slice(i, i + batchSize);
     console.log(`\n${'='.repeat(50)}`);
-    console.log(`批次 ${Math.floor(i / batchSize) + 1}/${Math.ceil(tools.length / batchSize)}`);
+    console.log(`批次 ${Math.floor(i / batchSize) + 1}/${Math.ceil(toolsToProcess.length / batchSize)}`);
     console.log(`${'='.repeat(50)}`);
 
     for (const tool of batch) {
       try {
-        const count = await generateToolScreenshots(tool);
+        const count = await generateToolScreenshots(tool, context);
         if (count > 0) {
           successCount++;
           totalScreenshots += count;
@@ -188,17 +200,20 @@ async function main() {
     }
 
     // 批次间延迟
-    if (i + batchSize < tools.length) {
+    if (i + batchSize < toolsToProcess.length) {
       console.log('\n⏳ 等待 2 秒后继续...\n');
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
 
+  await context.close().catch(() => {});
+  await browser.close().catch(() => {});
+
   // 总结
   console.log('\n' + '='.repeat(50));
   console.log('📊 处理完成!');
   console.log('='.repeat(50));
-  console.log(`✅ 成功: ${successCount}/${tools.length} 个工具`);
+  console.log(`✅ 成功: ${successCount}/${toolsToProcess.length} 个工具`);
   console.log(`📸 截图: ${totalScreenshots} 张`);
   console.log(`❌ 失败: ${errors.length} 个`);
 
