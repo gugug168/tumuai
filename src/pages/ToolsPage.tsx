@@ -212,8 +212,9 @@ const ToolsPage = React.memo(() => {
     }
   }, [needsServerFiltering, hasActiveFilters, loadMore, serverFilters]);
 
-  // 判断是否启用虚拟滚动：无筛选条件时启用
-  const enableVirtualScroll = !needsServerFiltering && !hasActiveFilters && !isOffline;
+  // 虚拟滚动（react-virtuoso）在部分环境会出现“已加载但不渲染卡片”的兼容性问题。
+  // 为确保工具中心首屏稳定可见，默认关闭虚拟滚动，使用普通分页渲染。
+  const enableVirtualScroll = false;
 
   // 统一重试（带上当前筛选/页码）
   const handleRetryLoad = useCallback(() => {
