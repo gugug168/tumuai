@@ -387,6 +387,7 @@ const ToolsPage = React.memo(() => {
             tools={tools}
             totalCount={displayCount}
             allTools={allTools}
+            loading={loading}
             viewMode={viewMode}
             paginatedTools={paginatedTools}
             currentPage={currentPage}

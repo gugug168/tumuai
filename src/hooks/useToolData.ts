@@ -83,6 +83,7 @@ export function useToolData(performanceHooks?: {
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const userIdRef = useRef<string | null>(null);
   const preloadingPagesRef = useRef<Set<string>>(new Set());
+  const countLoadingRef = useRef(false);
 
   const { recordApiCall, recordInteraction } = performanceHooks || {};
 
@@ -142,6 +143,34 @@ export function useToolData(performanceHooks?: {
     setState(prev => ({ ...prev, ...updates }));
   }, []);
 
+  const loadTotalToolsCount = useCallback(async () => {
+    if (countLoadingRef.current) return;
+    if (stateRef.current.totalToolsCount > 0) return;
+
+    countLoadingRef.current = true;
+    try {
+      const result = recordApiCall
+        ? await recordApiCall('load_tools_count', () => getToolsSmart(1, 0, true))
+        : await getToolsSmart(1, 0, true);
+
+      if (typeof result.count === 'number' && result.count > 0) {
+        setState(prev => ({
+          ...prev,
+          totalToolsCount: result.count || prev.totalToolsCount
+        }));
+
+        setVirtualScrollState(prev => ({
+          ...prev,
+          hasMore: prev.allTools.length < result.count
+        }));
+      }
+    } catch {
+      // Count is best-effort; keep UI responsive even if it fails.
+    } finally {
+      countLoadingRef.current = false;
+    }
+  }, [recordApiCall, stateRef]);
+
   /**
    * 加载工具数据
    */
@@ -187,8 +216,8 @@ export function useToolData(performanceHooks?: {
         // 普通分页加载
         const limit = TOOLS_PER_PAGE;
         const offset = (page - 1) * TOOLS_PER_PAGE;
-        // 只有在首次加载时请求总数，避免每次翻页都触发一次 count 查询（会明显拖慢响应）。
-        const shouldIncludeCount = page === 1 && stateRef.current.totalToolsCount === 0;
+        // 列表首屏优先快速展示工具；总数统计异步获取，避免 count 查询拖慢首屏并导致超时回退。
+        const shouldIncludeCount = false;
 
         console.log(`🔄 开始加载工具数据 (limit: ${limit}, offset: ${offset}, page: ${page})...`);
 
@@ -199,7 +228,9 @@ export function useToolData(performanceHooks?: {
           : await getToolsSmart(limit, offset, shouldIncludeCount);
 
         const newTools = Array.isArray(result.tools) ? result.tools : [];
-        const totalCount = typeof result.count === 'number' ? result.count : stateRef.current.totalToolsCount;
+        const totalCount = typeof result.count === 'number'
+          ? result.count
+          : Math.max(stateRef.current.totalToolsCount, newTools.length);
 
         console.log(`✅ 工具数据加载成功: ${newTools.length}个工具, 总数${result.count}`);
 
@@ -219,6 +250,11 @@ export function useToolData(performanceHooks?: {
             hasMore: newTools.length < totalCount,
             currentPage: 1
           });
+
+          // Best-effort: fetch accurate total count after first render.
+          if (stateRef.current.totalToolsCount === 0) {
+            void loadTotalToolsCount();
+          }
         }
       }
     } catch (error) {

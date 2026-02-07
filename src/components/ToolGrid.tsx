@@ -20,6 +20,7 @@ interface ToolGridProps {
   tools: Tool[];
   totalCount: number;
   allTools?: Tool[]; // 所有已加载的工具（用于无限滚动）
+  loading?: boolean;
 
   // 显示
   viewMode: 'grid' | 'list';
@@ -53,6 +54,7 @@ const ToolGrid = React.memo<ToolGridProps>(({
   tools,
   totalCount,
   allTools,
+  loading = false,
   viewMode,
   paginatedTools,
   currentPage,
@@ -196,6 +198,17 @@ const ToolGrid = React.memo<ToolGridProps>(({
 
   // 空状态
   if (displayTools.length === 0) {
+    if (loading) {
+      return (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+          <div className="flex justify-center">
+            <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+          </div>
+          <p className="mt-4 text-gray-600">正在加载工具…</p>
+        </div>
+      );
+    }
+
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
         <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
