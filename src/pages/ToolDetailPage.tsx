@@ -880,7 +880,9 @@ const ToolDetailPage = () => {
                   </span>
                 ))}
                 {/* 其他功能标签 */}
-                {tool.features.map((feature, index) => (
+                {tool.features
+                  .filter((feature) => /[\u4e00-\u9fff]/.test(String(feature || '')))
+                  .map((feature, index) => (
                   <span
                     key={`feature-${index}`}
                     className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm flex items-center"

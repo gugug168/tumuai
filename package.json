@@ -16,6 +16,7 @@
     "tools:desc:site": "node scripts/enrich-tool-descriptions-from-site.cjs",
     "tools:desc:translate": "node scripts/translate-tool-descriptions-to-zh.cjs",
     "tools:desc:zh-only": "node scripts/normalize-tool-descriptions-zh-only.cjs",
+    "tools:cat:zh": "node scripts/normalize-tool-categories-zh.cjs",
     "db:indexes": "node database/scripts/execute-indexes.js"
   },
   "dependencies": {
