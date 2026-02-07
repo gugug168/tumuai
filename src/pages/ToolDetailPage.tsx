@@ -812,6 +812,7 @@ const ToolDetailPage = () => {
                 <div className="flex flex-wrap gap-2">
                   {[
                     { href: '#screenshots', label: '截图' },
+                    { href: '#tags', label: '功能' },
                     { href: '#about', label: '介绍' },
                     { href: '#pricing', label: '定价' },
                     { href: '#reviews', label: '评价' }
@@ -865,7 +866,7 @@ const ToolDetailPage = () => {
             </div>
 
             {/* 工具标签 */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div id="tags" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 scroll-mt-24">
               <h3 className="text-xl font-bold text-gray-900 mb-4">工具标签</h3>
               <div className="flex flex-wrap gap-2">
                 {/* 优先显示分类标签 */}
