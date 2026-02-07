@@ -31,6 +31,65 @@ interface Review {
   comment: string;
 }
 
+function extractStructuredFeaturesFromDescription(description: string): string[] {
+  const text = (description || '').replace(/\s+/g, ' ').trim();
+  if (!text) return [];
+
+  const segments: string[] = [];
+  const patterns: RegExp[] = [
+    /你可以用它来：([^。]+)。/,
+    /适用场景参考：([^。]+)。/,
+    /常见亮点包括：([^。]+)。/,
+    /主要提供：([^。]+)。/,
+    /You can use it to:\s*([^.\n]+)\./i
+  ];
+
+  for (const re of patterns) {
+    const m = text.match(re);
+    if (m && m[1]) segments.push(m[1]);
+  }
+
+  const parts = segments
+    .join('、')
+    .split(/、|，|,|\/|和|；|;|\||·/g)
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  const stop = [
+    '产品截图',
+    '官网介绍',
+    '访问官网',
+    '完整介绍',
+    '快速判断',
+    '工作流',
+    '典型工作环节',
+    '以官网为准',
+    '上手建议',
+    '围绕',
+    '参考'
+  ];
+
+  const cleaned = parts
+    .map((s) => s.replace(/[。.!！？]+$/g, '').trim())
+    .filter((s) => s.length >= 4 && s.length <= 32)
+    .filter((s) => !stop.some((x) => s.includes(x)))
+    .filter((s) => !/cookie|隐私|条款|登录|注册|subscribe|newsletter|captcha|access denied/i.test(s));
+
+  return Array.from(new Set(cleaned)).slice(0, 10);
+}
+
+function inferFallbackHighlights(primaryCategory: string): string[] {
+  const cat = (primaryCategory || '').trim();
+
+  if (/BIM|建模/i.test(cat)) return ['建模效率提升', '构件信息整理', '协同与交付'];
+  if (/结构|设计/i.test(cat)) return ['方案比选与推演', '参数快速调整', '规范与校核辅助'];
+  if (/施工|进度|现场/i.test(cat)) return ['计划与进度跟踪', '质量/安全检查辅助', '现场沟通记录'];
+  if (/造价|预算|清单/i.test(cat)) return ['清单与工程量整理', '成本测算与对比', '报价材料准备'];
+  if (/项目|协作|管理/i.test(cat)) return ['任务分解与跟踪', '跨角色协作', '项目资料沉淀'];
+
+  return [];
+}
+
 const ToolDetailPage = () => {
   const { toolId } = useParams();
   const location = useLocation();
@@ -245,6 +304,20 @@ const ToolDetailPage = () => {
     return fallback ? [{ src: fallback, objectFit: 'contain', objectPosition: '50% 50%' }] : [];
   }, [storedScreenshotUrls, websiteScreenshotUrl, safePrimaryLogoUrl, fallbackLogoDataUrl]);
 
+  const effectiveFeatures = useMemo(() => {
+    const structured = Array.isArray(tool?.features)
+      ? tool!.features.filter((f: unknown): f is string => typeof f === 'string' && f.trim().length > 0)
+      : [];
+
+    if (structured.length > 0) return Array.from(new Set(structured)).slice(0, 12);
+
+    const derived = tool?.description ? extractStructuredFeaturesFromDescription(tool.description) : [];
+    if (derived.length > 0) return derived.slice(0, 10);
+
+    const primaryCategory = Array.isArray(tool?.categories) && tool!.categories.length > 0 ? String(tool!.categories[0] || '') : '';
+    return inferFallbackHighlights(primaryCategory);
+  }, [tool?.features, tool?.description, tool?.categories]);
+
   // 将数据库工具数据适配为组件需要的格式
   const adaptedTool = useMemo(() => tool ? {
     id: tool.id,
@@ -256,7 +329,7 @@ const ToolDetailPage = () => {
     detailedDescription: tool.description || tool.tagline,
     images: galleryImages,
     videoUrl: '',
-    features: tool.features || [],
+    features: effectiveFeatures,
     pricing: [
       {
         plan: tool.pricing === 'Free' ? '免费版' : tool.pricing === 'Freemium' ? '免费版' : '基础版',
@@ -271,7 +344,7 @@ const ToolDetailPage = () => {
     tags: tool.categories || [],
     addedDate: tool.date_added ? tool.date_added.split('T')[0] : '',
     lastUpdated: tool.updated_at ? tool.updated_at.split('T')[0] : ''
-  } : null, [tool, safePrimaryLogoUrl, fallbackLogoDataUrl, galleryImages]);
+  } : null, [tool, safePrimaryLogoUrl, fallbackLogoDataUrl, galleryImages, effectiveFeatures]);
 
   const pricingLabel = useMemo(() => {
     const pricing = tool?.pricing;
@@ -599,13 +672,28 @@ const ToolDetailPage = () => {
             {/* 核心功能列表 */}
             <div id="features" className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 scroll-mt-24">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">核心功能</h2>
-              {adaptedTool.features.length === 0 ? (
-                <p className="text-gray-600">
-                  暂无结构化功能点。可先通过上方截图快速了解，再点击“访问官网”查看完整介绍。
-                </p>
+              {effectiveFeatures.length === 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <div className="text-sm font-semibold text-gray-900 mb-1">一句话简介</div>
+                    <div className="text-sm text-gray-700">{adaptedTool.shortDescription || '暂无简介'}</div>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <div className="text-sm font-semibold text-gray-900 mb-1">分类</div>
+                    <div className="text-sm text-gray-700">{adaptedTool.category}</div>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <div className="text-sm font-semibold text-gray-900 mb-1">定价</div>
+                    <div className="text-sm text-gray-700">{pricingLabel || '以官网为准'}</div>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <div className="text-sm font-semibold text-gray-900 mb-1">快速判断是否适合你</div>
+                    <div className="text-sm text-gray-700">先看截图，再阅读「详细介绍」，最后用一个真实任务做试用验证。</div>
+                  </div>
+                </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {adaptedTool.features.map((feature, index) => (
+                  {effectiveFeatures.map((feature, index) => (
                     <div key={index} className="flex items-center space-x-3">
                       <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
                       <span className="text-gray-700">{feature}</span>
@@ -899,7 +987,7 @@ const ToolDetailPage = () => {
                   </span>
                 ))}
                 {/* 其他功能标签 */}
-                {tool.features.map((feature, index) => (
+                {effectiveFeatures.map((feature, index) => (
                   <span
                     key={`feature-${index}`}
                     className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm flex items-center"
