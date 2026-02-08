@@ -98,10 +98,13 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
       .from('admin_users')
       .select('id, user_id, role, permissions, created_at, updated_at')
       .eq('user_id', session.user.id)
-      .single()
+      .limit(1)
+      .maybeSingle()
 
     if (adminError || !adminUser) {
-      console.log('❌ 客户端验证：用户不是管理员')
+      // `maybeSingle()` returns null when no row exists; treat as non-admin.
+      // Avoid logging as an error to prevent console noise (e.g. PostgREST 406 for .single()).
+      console.log('ℹ️ 客户端验证：用户不是管理员')
       return null
     }
 

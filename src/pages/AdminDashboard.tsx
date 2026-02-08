@@ -199,7 +199,7 @@ const AdminDashboard = () => {
         
         if (!adminStatus) {
           console.error('❌ 权限验证失败，重定向到登录页');
-          navigate('/admin-login');
+          navigate('/admin-login', { replace: true });
           return;
         }
         
@@ -207,7 +207,7 @@ const AdminDashboard = () => {
         setIsAuthorized(true);
       } catch (error) {
         console.error('❌ 权限验证异常:', error);
-        navigate('/admin-login');
+        navigate('/admin-login', { replace: true });
       } finally {
         setAuthChecking(false);
       }
