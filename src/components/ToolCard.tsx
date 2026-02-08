@@ -68,7 +68,7 @@ const ToolCard = React.memo(({
   const shouldIgnoreCardInteraction = React.useCallback((target: EventTarget | null) => {
     const el = target as HTMLElement | null;
     if (!el) return false;
-    return !!el.closest('a,button,input,select,textarea,label,[role=\"button\"],[role=\"link\"]');
+    return !!el.closest('a,button,input,select,textarea,label,[role=\"button\"]');
   }, []);
 
   const handleCardClick = React.useCallback((e: React.MouseEvent) => {
