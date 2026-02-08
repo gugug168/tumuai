@@ -14,6 +14,28 @@
   },
   "redirects": [
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "tumuai.net"
+        }
+      ],
+      "destination": "https://www.tumuai.net/",
+      "statusCode": 301
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "tumuai.net"
+        }
+      ],
+      "destination": "https://www.tumuai.net/:path*",
+      "statusCode": 301
+    },
+    {
       "source": "/favicon.ico",
       "destination": "/favicon.svg",
       "permanent": true

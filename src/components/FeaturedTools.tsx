@@ -3,11 +3,14 @@ import { Link } from 'react-router-dom';
 import { Star, Heart } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
 import { getFeaturedTools } from '../lib/supabase';
-import { generateInitialLogo, isValidHighQualityLogoUrl, getBestDisplayLogoUrl } from '../lib/logoUtils';
+import { getBestDisplayLogoUrl } from '../lib/logoUtils';
 import { apiRequestWithRetry } from '../lib/api';
 import { useUnifiedCache } from '../lib/unified-cache-manager';
 import { usePerformance } from '../hooks/usePerformance';
 import { SkeletonCard, SkeletonWrapper } from './SkeletonLoader';
+import { useAuth } from '../contexts/AuthContext';
+import AuthModal from './AuthModal';
+import { useToast, createToastHelpers } from './Toast';
 import type { Tool } from '../types/index';
 
 // 已移除硬编码的featuredTools数组，现在使用动态数据
@@ -17,6 +20,12 @@ const FeaturedTools = React.memo(() => {
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const toast = createToastHelpers(showToast);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [favoriteStates, setFavoriteStates] = useState<Record<string, boolean>>({});
+  const [favoriteLoading, setFavoriteLoading] = useState<Record<string, boolean>>({});
 
   // 性能监控和缓存hooks
   const { fetchWithCache } = useUnifiedCache();
@@ -115,6 +124,63 @@ const FeaturedTools = React.memo(() => {
   useEffect(() => {
     fetchFeaturedTools();
   }, [fetchFeaturedTools]);
+
+  // 用户登录后，加载当前页工具的收藏状态
+  useEffect(() => {
+    if (!user || tools.length === 0) {
+      setFavoriteStates({});
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const { batchCheckFavorites } = await import('../lib/community');
+        const states = await batchCheckFavorites(tools.map(t => t.id));
+        if (!cancelled) setFavoriteStates(states);
+      } catch {
+        if (!cancelled) setFavoriteStates({});
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, tools]);
+
+  const handleFavoriteToggle = useCallback(async (tool: Tool) => {
+    recordInteraction('favorite_toggle', { toolId: tool.id, toolName: tool.name });
+
+    if (!user) {
+      setShowAuthModal(true);
+      toast.info('需要登录', '登录后即可收藏工具');
+      return;
+    }
+
+    // 防止重复点击
+    if (favoriteLoading[tool.id]) return;
+
+    setFavoriteLoading(prev => ({ ...prev, [tool.id]: true }));
+    try {
+      const current = !!favoriteStates[tool.id];
+      const { addToFavorites, removeFromFavorites } = await import('../lib/community');
+
+      if (current) {
+        await removeFromFavorites(tool.id);
+        setFavoriteStates(prev => ({ ...prev, [tool.id]: false }));
+        toast.success('已取消收藏');
+      } else {
+        await addToFavorites(tool.id);
+        setFavoriteStates(prev => ({ ...prev, [tool.id]: true }));
+        toast.success('已收藏');
+      }
+    } catch (e) {
+      console.error('收藏操作失败:', e);
+      toast.error('操作失败', '请稍后重试');
+    } finally {
+      setFavoriteLoading(prev => ({ ...prev, [tool.id]: false }));
+    }
+  }, [user, favoriteLoading, favoriteStates, recordInteraction, toast]);
 
   return (
     <section className="py-16 bg-white">
@@ -232,10 +298,21 @@ const FeaturedTools = React.memo(() => {
                   <span className="text-xs text-gray-500">{tool.pricing || '免费'}</span>
                 </div>
                 <button 
-                  className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                  onClick={() => recordInteraction('favorite_click', { toolId: tool.id, toolName: tool.name })}
+                  type="button"
+                  disabled={!!favoriteLoading[tool.id]}
+                  className={`p-2 transition-colors ${
+                    favoriteStates[tool.id]
+                      ? 'text-red-500'
+                      : 'text-gray-400 hover:text-red-500'
+                  } ${favoriteLoading[tool.id] ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    void handleFavoriteToggle(tool);
+                  }}
+                  aria-label={favoriteStates[tool.id] ? '取消收藏' : '添加收藏'}
                 >
-                  <Heart className="w-5 h-5" />
+                  <Heart className={`w-5 h-5 ${favoriteStates[tool.id] ? 'fill-current' : ''}`} />
                 </button>
                 <Link
                   to={`/tools/${tool.id}`}
@@ -253,6 +330,12 @@ const FeaturedTools = React.memo(() => {
         )}
         </SkeletonWrapper>
       </div>
+
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        initialMode="login"
+      />
     </section>
   );
 });

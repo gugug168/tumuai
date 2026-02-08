@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Hammer, Mail, Github, BookOpen, ArrowUp, ChevronUp } from 'lucide-react';
+import { Hammer, Mail, Github, BookOpen, ChevronUp } from 'lucide-react';
 
 const Footer = () => {
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -82,7 +82,7 @@ const Footer = () => {
                   </Link>
                 </li>
                 <li>
-                  <Link to="/tools?sort=upvotes" className="text-gray-400 hover:text-white transition-colors inline-flex items-center group">
+                  <Link to="/tools?sortBy=upvotes" className="text-gray-400 hover:text-white transition-colors inline-flex items-center group">
                     <span className="group-hover:translate-x-1 transition-transform duration-200">→</span>
                     <span className="ml-2">热门推荐</span>
                   </Link>
@@ -130,19 +130,19 @@ const Footer = () => {
                   </a>
                 </li>
                 <li>
-                  <Link to="/about" className="text-gray-400 hover:text-white transition-colors inline-flex items-center group">
+                  <Link to="/about#privacy" className="text-gray-400 hover:text-white transition-colors inline-flex items-center group">
                     <span className="group-hover:translate-x-1 transition-transform duration-200">→</span>
                     <span className="ml-2">隐私政策</span>
                   </Link>
                 </li>
                 <li>
-                  <Link to="/about" className="text-gray-400 hover:text-white transition-colors inline-flex items-center group">
+                  <Link to="/about#terms" className="text-gray-400 hover:text-white transition-colors inline-flex items-center group">
                     <span className="group-hover:translate-x-1 transition-transform duration-200">→</span>
                     <span className="ml-2">服务条款</span>
                   </Link>
                 </li>
                 <li>
-                  <Link to="/about" className="text-gray-400 hover:text-white transition-colors inline-flex items-center group">
+                  <Link to="/about#faq" className="text-gray-400 hover:text-white transition-colors inline-flex items-center group">
                     <span className="group-hover:translate-x-1 transition-transform duration-200">→</span>
                     <span className="ml-2">常见问题</span>
                   </Link>

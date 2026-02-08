@@ -2,6 +2,23 @@ import { useState, useCallback, useDeferredValue, useTransition, useRef, useMemo
 import { useSearchParams } from 'react-router-dom';
 import { SORT_OPTIONS } from '../lib/config';
 
+const DEFAULT_SORT_BY = 'upvotes';
+
+function normalizeSortBy(raw: string | null | undefined): string {
+  const v = (raw || '').trim();
+  if (!v) return DEFAULT_SORT_BY;
+  if (['upvotes', 'date_added', 'rating', 'views', 'name'].includes(v)) return v;
+  return DEFAULT_SORT_BY;
+}
+
+function parseCsvParam(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
 /**
  * 筛选状态接口
  */
@@ -28,13 +45,29 @@ export function useToolFilters() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
+  const initialFromUrl = useMemo<ToolFiltersState>(() => {
+    const search = searchParams.get('search') || '';
+    const categoryRaw = searchParams.get('category') || searchParams.get('categories') || '';
+    const featuresRaw = searchParams.get('features') || '';
+    const pricing = searchParams.get('pricing') || '';
+    const sortBy = normalizeSortBy(searchParams.get('sortBy') || searchParams.get('sort'));
+
+    return {
+      search,
+      categories: parseCsvParam(categoryRaw),
+      features: parseCsvParam(featuresRaw),
+      pricing,
+      sortBy
+    };
+  }, [searchParams]);
+
   // 筛选状态
   const [filters, setFiltersState] = useState<ToolFiltersState>({
-    search: searchParams.get('search') || '',
-    categories: [],
-    features: [],
-    pricing: '',
-    sortBy: 'upvotes'
+    search: initialFromUrl.search,
+    categories: initialFromUrl.categories,
+    features: initialFromUrl.features,
+    pricing: initialFromUrl.pricing,
+    sortBy: initialFromUrl.sortBy
   });
 
   // 搜索防抖定时器引用
@@ -79,6 +112,33 @@ export function useToolFilters() {
       startTransition(() => {
         setFiltersState(prev => ({ ...prev, [type]: value }));
       });
+
+      // 同步到 URL（不做防抖）
+      setSearchParams((params) => {
+        const newParams = new URLSearchParams(params);
+
+        const strValue = Array.isArray(value) ? value.join(',') : String(value || '');
+        if (type === 'categories') {
+          if (strValue) newParams.set('category', strValue);
+          else newParams.delete('category');
+          // Back-compat cleanup
+          newParams.delete('categories');
+        } else if (type === 'features') {
+          if (strValue) newParams.set('features', strValue);
+          else newParams.delete('features');
+        } else if (type === 'pricing') {
+          if (strValue) newParams.set('pricing', strValue);
+          else newParams.delete('pricing');
+        } else if (type === 'sortBy') {
+          const normalized = normalizeSortBy(strValue);
+          if (normalized !== DEFAULT_SORT_BY) newParams.set('sortBy', normalized);
+          else newParams.delete('sortBy');
+          // Back-compat cleanup
+          newParams.delete('sort');
+        }
+
+        return newParams;
+      });
     }
   }, [clearDebounce, setSearchParams]);
 
@@ -86,29 +146,46 @@ export function useToolFilters() {
    * 切换分类选择
    */
   const handleCategoryToggle = useCallback((category: string) => {
+    let nextCategories: string[] = [];
     startTransition(() => {
       setFiltersState(prev => ({
         ...prev,
-        categories: prev.categories.includes(category)
+        categories: (nextCategories = prev.categories.includes(category)
           ? prev.categories.filter(c => c !== category)
-          : [...prev.categories, category]
+          : [...prev.categories, category])
       }));
     });
-  }, []);
+
+    setSearchParams((params) => {
+      const newParams = new URLSearchParams(params);
+      if (nextCategories.length > 0) newParams.set('category', nextCategories.join(','));
+      else newParams.delete('category');
+      newParams.delete('categories');
+      return newParams;
+    });
+  }, [setSearchParams, startTransition]);
 
   /**
    * 切换功能特性选择
    */
   const handleFeatureToggle = useCallback((feature: string) => {
+    let nextFeatures: string[] = [];
     startTransition(() => {
       setFiltersState(prev => ({
         ...prev,
-        features: prev.features.includes(feature)
+        features: (nextFeatures = prev.features.includes(feature)
           ? prev.features.filter(f => f !== feature)
-          : [...prev.features, feature]
+          : [...prev.features, feature])
       }));
     });
-  }, []);
+
+    setSearchParams((params) => {
+      const newParams = new URLSearchParams(params);
+      if (nextFeatures.length > 0) newParams.set('features', nextFeatures.join(','));
+      else newParams.delete('features');
+      return newParams;
+    });
+  }, [setSearchParams, startTransition]);
 
   /**
    * 清除所有筛选条件
@@ -119,7 +196,7 @@ export function useToolFilters() {
       categories: [],
       features: [],
       pricing: '',
-      sortBy: 'upvotes'
+      sortBy: DEFAULT_SORT_BY
     });
     setSearchParams({});
     clearDebounce();
@@ -159,15 +236,29 @@ export function useToolFilters() {
    */
   const initializeFromUrl = useCallback(() => {
     const searchQuery = searchParams.get('search');
-    const categoryQuery = searchParams.get('category');
+    const categoryRaw = searchParams.get('category') || searchParams.get('categories');
+    const featuresRaw = searchParams.get('features');
+    const pricing = searchParams.get('pricing') || '';
+    const sortBy = normalizeSortBy(searchParams.get('sortBy') || searchParams.get('sort'));
+
+    const categories = parseCsvParam(categoryRaw);
+    const features = parseCsvParam(featuresRaw);
 
     setFiltersState(prev => ({
       ...prev,
       search: searchQuery || '',
-      categories: categoryQuery ? [categoryQuery] : []
+      categories,
+      features,
+      pricing,
+      sortBy
     }));
 
-    return categoryQuery !== null;
+    const hasNonSearchFilters = categories.length > 0 ||
+      features.length > 0 ||
+      !!pricing ||
+      sortBy !== DEFAULT_SORT_BY;
+
+    return hasNonSearchFilters;
   }, [searchParams]);
 
   /**

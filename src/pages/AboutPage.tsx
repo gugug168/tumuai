@@ -243,6 +243,8 @@ const AboutPage = React.memo(() => {
               { href: '#workflow', label: '收录流程' },
               { href: '#criteria', label: '筛选标准' },
               { href: '#faq', label: 'FAQ' },
+              { href: '#privacy', label: '隐私' },
+              { href: '#terms', label: '条款' },
               { href: '#contact', label: '联系' }
             ].map((item) => (
               <a
@@ -497,6 +499,82 @@ const AboutPage = React.memo(() => {
                 <p className="mt-3 text-gray-700 leading-relaxed text-sm pl-8">{item.a}</p>
               </details>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="privacy" className="scroll-mt-24 py-16 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">隐私政策（简版）</h2>
+            <p className="text-lg text-gray-600">我们只收集提供服务所必需的信息，尽量少打扰。</p>
+          </div>
+
+          <div className="space-y-4 text-gray-700 leading-relaxed">
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="text-base font-semibold text-gray-900 mb-2">我们可能会收集什么</h3>
+              <ul className="list-disc pl-5 space-y-1 text-sm">
+                <li>账户信息：邮箱（用于登录/验证）、公开展示的昵称与头像（如你填写）。</li>
+                <li>使用数据：收藏、评论、提交工具等与你主动操作相关的数据。</li>
+                <li>基础日志：用于排查错误、保障服务稳定（不用于向第三方售卖）。</li>
+              </ul>
+            </div>
+
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="text-base font-semibold text-gray-900 mb-2">我们如何使用这些信息</h3>
+              <ul className="list-disc pl-5 space-y-1 text-sm">
+                <li>提供核心功能：登录、收藏、评论、提交与审核流程。</li>
+                <li>提升体验：优化搜索/筛选、修复错误、改进性能。</li>
+              </ul>
+            </div>
+
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="text-base font-semibold text-gray-900 mb-2">数据存储与第三方</h3>
+              <p className="text-sm">
+                我们使用第三方基础设施（例如数据库/对象存储）来托管必要数据。外链工具官网由其自身隐私政策与条款约束。
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="text-base font-semibold text-gray-900 mb-2">联系我们</h3>
+              <p className="text-sm">
+                如需删除账户或数据导出，请邮件联系 <a className="text-blue-700 hover:underline" href="mailto:contact@tumuai.net">contact@tumuai.net</a>。
+              </p>
+              <p className="text-xs text-gray-500 mt-2">提示：本页面为简版说明，后续会持续完善。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="terms" className="scroll-mt-24 py-16">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">服务条款（简版）</h2>
+            <p className="text-lg text-gray-600">在使用前，建议快速浏览以下要点。</p>
+          </div>
+
+          <div className="space-y-4 text-gray-700 leading-relaxed">
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="text-base font-semibold text-gray-900 mb-2">定位与免责声明</h3>
+              <ul className="list-disc pl-5 space-y-1 text-sm">
+                <li>TumuAI.net 提供工具导航与信息聚合，不对第三方工具的功能、合规性或可用性作出保证。</li>
+                <li>访问第三方网站/服务产生的风险与费用由用户自行承担。</li>
+              </ul>
+            </div>
+
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="text-base font-semibold text-gray-900 mb-2">用户共建与内容规范</h3>
+              <ul className="list-disc pl-5 space-y-1 text-sm">
+                <li>提交工具/评论请确保信息真实、合法、无侵权。</li>
+                <li>我们保留对提交内容进行编辑、下架、拒绝收录的权利（例如失效链接、明显误导、侵权或不适内容）。</li>
+              </ul>
+            </div>
+
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="text-base font-semibold text-gray-900 mb-2">条款更新</h3>
+              <p className="text-sm">我们可能会根据功能更新与合规要求调整条款，并在本页同步更新。</p>
+              <p className="text-xs text-gray-500 mt-2">提示：本页面为简版说明，后续会持续完善。</p>
+            </div>
           </div>
         </div>
       </section>

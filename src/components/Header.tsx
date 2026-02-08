@@ -39,7 +39,6 @@ const Header = () => {
   const navItems = [
     { path: '/', label: '首页' },
     { path: '/tools', label: '工具中心' },
-    { path: '/submit', label: '提交工具' },
     { path: '/about', label: '关于我们' },
     { path: 'https://claudecode.tumuai.net/', label: 'Claude Code 教学', external: true },
   ];
@@ -263,6 +262,15 @@ const Header = () => {
                   )
                 )
               ))}
+
+              {/* 提交工具（移动端 CTA） */}
+              <Link
+                to="/submit"
+                onClick={() => setIsMenuOpen(false)}
+                className="bg-accent-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-accent-600 transition-colors inline-flex items-center justify-center"
+              >
+                提交你的工具
+              </Link>
               
               {user ? (
                 <>

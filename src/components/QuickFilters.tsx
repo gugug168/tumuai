@@ -22,30 +22,24 @@ const QuickFilters = () => {
     switch (filterId) {
       case 'today':
         queryParams.set('sortBy', 'date_added');
-        queryParams.set('sortOrder', 'desc');
         break;
       case 'latest':
         queryParams.set('category', 'AI结构设计');
         queryParams.set('sortBy', 'date_added');
-        queryParams.set('sortOrder', 'desc');
         break;
       case 'favorites':
         queryParams.set('sortBy', 'upvotes');
-        queryParams.set('sortOrder', 'desc');
         break;
       case 'popular':
         queryParams.set('sortBy', 'views');
-        queryParams.set('sortOrder', 'desc');
         break;
       case 'browser':
         queryParams.set('search', '插件');
         queryParams.set('sortBy', 'upvotes');
-        queryParams.set('sortOrder', 'desc');
         break;
       case 'apps':
         queryParams.set('search', '应用');
         queryParams.set('sortBy', 'upvotes');
-        queryParams.set('sortOrder', 'desc');
         break;
       default:
         // 无参数，直接跳转

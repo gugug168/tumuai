@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Star, ExternalLink, Heart, Eye } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Star, ChevronRight, Heart, Eye } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
-import { generateInitialLogo, isValidHighQualityLogoUrl, getBestDisplayLogoUrl } from '../lib/logoUtils';
+import { isValidHighQualityLogoUrl, getBestDisplayLogoUrl } from '../lib/logoUtils';
 import { prefetchToolDetailPage } from '../lib/route-prefetch';
 import type { Tool } from '../types';
 
@@ -31,6 +31,7 @@ const ToolCard = React.memo(({
   viewMode,
   className = ''
 }: ToolCardProps) => {
+  const navigate = useNavigate();
   const [favoriteAnimating, setFavoriteAnimating] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -59,6 +60,30 @@ const ToolCard = React.memo(({
       favoriteButtonRef.current?.click();
     }
   }, []);
+
+  const handleNavigateDetail = React.useCallback(() => {
+    navigate(`/tools/${tool.id}`, { state: { tool } });
+  }, [navigate, tool]);
+
+  const shouldIgnoreCardInteraction = React.useCallback((target: EventTarget | null) => {
+    const el = target as HTMLElement | null;
+    if (!el) return false;
+    return !!el.closest('a,button,input,select,textarea,label,[role=\"button\"],[role=\"link\"]');
+  }, []);
+
+  const handleCardClick = React.useCallback((e: React.MouseEvent) => {
+    if (shouldIgnoreCardInteraction(e.target)) return;
+    handleNavigateDetail();
+  }, [handleNavigateDetail, shouldIgnoreCardInteraction]);
+
+  const handleCardKeyDown = React.useCallback((e: React.KeyboardEvent) => {
+    // Only trigger when the card itself is focused (not a child control).
+    if (e.currentTarget !== e.target) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleNavigateDetail();
+    }
+  }, [handleNavigateDetail]);
 
   // 触摸/鼠标按下效果
   const handleMouseDown = React.useCallback(() => {
@@ -185,6 +210,11 @@ const ToolCard = React.memo(({
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onClick={handleCardClick}
+        onKeyDown={handleCardKeyDown}
+        role="link"
+        tabIndex={0}
+        aria-label={`查看工具：${tool.name}`}
       >
         {/* Tool Logo */}
         <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-100 p-2">
@@ -266,7 +296,7 @@ const ToolCard = React.memo(({
                      hover:bg-blue-700 active:bg-blue-800 active:scale-95
                      transition-all duration-200 inline-block"
           >
-            查看
+            查看详情
           </Link>
         </div>
       </article>
@@ -288,6 +318,11 @@ const ToolCard = React.memo(({
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      role="link"
+      tabIndex={0}
+      aria-label={`查看工具：${tool.name}`}
     >
       {/* Tool Image */}
       <div className="relative w-full h-40 bg-gray-50 flex items-center justify-center p-10">
@@ -349,7 +384,7 @@ const ToolCard = React.memo(({
         </div>
 
         <p className="text-gray-600 text-sm mb-3 leading-relaxed line-clamp-2">
-          {tool.tagline}
+          {tool.tagline || tool.description || '专业的土木工程工具'}
         </p>
 
         <div className="mb-3">
@@ -405,7 +440,7 @@ const ToolCard = React.memo(({
           "
         >
           查看详情
-          <ExternalLink className="ml-1 w-3 h-3 group-hover:translate-x-0.5 transition-transform duration-200" />
+          <ChevronRight className="ml-1 w-4 h-4 group-hover:translate-x-0.5 transition-transform duration-200" />
         </Link>
       </div>
     </article>
