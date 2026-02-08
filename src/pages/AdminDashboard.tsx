@@ -38,9 +38,9 @@ import {
   refreshToolLogo,
   refreshToolScreenshots,
   batchRefreshToolLogos,
-  type ToolSubmission,
   type AdminLog
 } from '../lib/admin';
+import type { ToolSubmission } from '../types';
 import ToolManagementModal from '../components/ToolManagementModal';
 import CategoryManagementModal from '../components/CategoryManagementModal';
 import SubmissionDetailModal from '../components/SubmissionDetailModal';
@@ -262,7 +262,7 @@ const AdminDashboard = () => {
       if (!response.ok) throw new Error('获取提交失败');
 
       const data = await response.json();
-      setSubmissions(data.submissions || []);
+      setSubmissions((data.submissions || []) as ToolSubmission[]);
       setSubmissionPagination(data.submissionsPagination || { page: submissionPage, perPage: SUBMISSIONS_PER_PAGE, total: (data.submissions || []).length, totalPages: 1 });
       setSelectedSubmissions(new Set());
       setLoadedTabs(prev => new Set(prev).add('submissions'));
@@ -1078,6 +1078,24 @@ const AdminDashboard = () => {
                             <div className="flex-1">
                               <h4 className="font-medium text-gray-900 text-lg">{submission.tool_name}</h4>
                               <p className="text-sm text-gray-600 mt-1">{submission.tagline}</p>
+                              {submission.already_in_tools && submission.existing_tools?.length ? (
+                                <div className="mt-2 text-xs text-amber-700">
+                                  <span
+                                    className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 mr-2"
+                                    title={submission.existing_tools.map(t => `${t.name} (${t.match_type === 'exact' ? '同网址' : '同域名'})`).join(' / ')}
+                                  >
+                                    可能已入库
+                                  </span>
+                                  <a
+                                    href={`/tools/${submission.existing_tools[0].id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline hover:text-amber-900"
+                                  >
+                                    查看：{submission.existing_tools[0].name}
+                                  </a>
+                                </div>
+                              ) : null}
                               <p className="text-xs text-gray-500 mt-2">
                                 提交时间: {new Date(submission.created_at).toLocaleString()}
                               </p>
@@ -1128,6 +1146,23 @@ const AdminDashboard = () => {
                                 <XCircle className="h-4 w-4 mr-1" />
                                 拒绝
                               </button>
+                              {submission.already_in_tools && submission.existing_tools?.length ? (
+                                <button
+                                  onClick={() => {
+                                    const t = submission.existing_tools?.[0]
+                                    const note = t
+                                      ? `疑似重复入库：工具库已存在 ${t.name}（${t.id}）`
+                                      : '疑似重复入库：工具库已存在同域名工具'
+                                    handleReviewSubmission(submission.id, 'rejected', note)
+                                  }}
+                                  className="inline-flex items-center px-3 py-1.5 border border-amber-300 text-sm leading-4 font-medium rounded-md text-amber-800 bg-amber-50 hover:bg-amber-100 focus:outline-none"
+                                  data-testid={`reject-duplicate-submission-${submission.id}`}
+                                  title="发现工具库可能已存在同一官网的工具，可直接按重复拒绝"
+                                >
+                                  <XCircle className="h-4 w-4 mr-1" />
+                                  重复拒绝
+                                </button>
+                              ) : null}
                             </>
                           )}
                           <button

@@ -161,6 +161,14 @@ export interface ToolSubmission {
   readonly updated_at: string
   reviewed_by: string | null
   reviewed_at: string | null
+  /** Best-effort hints from admin API to detect duplicates already in `tools`. */
+  already_in_tools?: boolean
+  existing_tools?: Array<{
+    id: string
+    name: string
+    website_url: string
+    match_type: 'exact' | 'host'
+  }>
 }
 
 // 管理员操作类型

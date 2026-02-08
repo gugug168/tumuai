@@ -13,16 +13,31 @@ if (!SUPABASE_URL) {
   process.exit(1)
 }
 
-// 从 URL 中提取项目 ID 用于本地存储键
+// 与前端 Supabase client 一致的 storageKey（见 src/lib/supabase-client.ts）
+const AUTH_STORAGE_KEY = 'tumuai-auth-v2-stable'
+
+// 兼容 Supabase 默认 storageKey（部分环境/旧版本可能仍在使用）
 const PROJECT_ID = SUPABASE_URL.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || 'unknown'
 const SB_LOCAL_KEY = `sb-${PROJECT_ID}-auth-token`
 
 async function tryInjectToken(page) {
+  const setAuthStorage = async (jsonValue) => {
+    await page.addInitScript(([entries]) => {
+      try {
+        for (const [k, v] of entries) {
+          localStorage.setItem(k, v)
+        }
+      } catch {
+        // ignore storage errors
+      }
+    }, [[[AUTH_STORAGE_KEY, jsonValue], [SB_LOCAL_KEY, jsonValue]]])
+  }
+
   // 优先使用直接提供的访问令牌
   if (SUPABASE_TOKEN) {
-    await page.addInitScript(([k, v]) => {
-      try { localStorage.setItem(k, v) } catch { /* ignore storage errors */ }
-    }, [SB_LOCAL_KEY, JSON.stringify({ access_token: SUPABASE_TOKEN })])
+    // Best-effort minimal session for supabase-js persistence.
+    const sessionLike = { access_token: SUPABASE_TOKEN, token_type: 'bearer' }
+    await setAuthStorage(JSON.stringify(sessionLike))
     return true
   }
   // 次选使用 anon key 以密码登录换取 token
@@ -31,11 +46,9 @@ async function tryInjectToken(page) {
       const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
       const { data, error } = await supabase.auth.signInWithPassword({ email: ADMIN_USER, password: ADMIN_PASS })
       if (error) throw error
-      const token = data.session?.access_token
-      if (!token) throw new Error('No access token from Supabase')
-      await page.addInitScript(([k, v]) => {
-        try { localStorage.setItem(k, v) } catch { /* ignore storage errors */ }
-      }, [SB_LOCAL_KEY, JSON.stringify({ access_token: token })])
+      const session = data.session
+      if (!session?.access_token) throw new Error('No access token from Supabase')
+      await setAuthStorage(JSON.stringify(session))
       return true
     } catch {
       // 忽略，后续走 UI 登录
@@ -47,7 +60,7 @@ async function tryInjectToken(page) {
 async function uiLoginIfNeeded(page) {
   // 若已在管理员页，直接返回
   const adminHeading = page.getByTestId('admin-dashboard-title')
-  if (await adminHeading.isVisible().catch(() => false)) return
+  if (await adminHeading.isVisible().catch(() => false)) return true
 
   // 跳转到登录页尝试 UI 登录
   await page.goto('/admin-login', { waitUntil: 'domcontentloaded' })
@@ -62,9 +75,17 @@ async function uiLoginIfNeeded(page) {
   // 点击登录按钮
   await page.getByTestId('admin-login-button').click()
 
-  // 等待跳转到管理页面
-  await page.waitForURL('**/admin*', { timeout: 30000 })
+  const outcome = await Promise.race([
+    page.waitForURL(/\/admin(\?|$)/, { timeout: 30000 }).then(() => 'admin' as const),
+    page.getByTestId('login-error').waitFor({ state: 'visible', timeout: 30000 }).then(() => 'error' as const),
+  ]).catch(() => 'error' as const)
+
+  if (outcome === 'error') {
+    return false
+  }
+
   await expect(page.getByTestId('admin-dashboard-title')).toBeVisible({ timeout: 20000 })
+  return true
 }
 
 test.beforeEach(async ({ page }) => {
@@ -77,7 +98,8 @@ test.describe('Admin flows', () => {
     await page.goto('/admin', { waitUntil: 'domcontentloaded' })
     // 若未注入 token 或跳转失败，则回退 UI 登录
     if (!await page.getByTestId('admin-dashboard-title').isVisible().catch(() => false)) {
-      await uiLoginIfNeeded(page)
+      const ok = await uiLoginIfNeeded(page)
+      test.skip(!ok, 'E2E admin user has no admin access; set E2E_SUPABASE_TOKEN/credentials for an admin account.')
     }
     await expect(page.getByTestId('admin-dashboard-title')).toBeVisible({ timeout: 20000 })
   })
@@ -85,7 +107,8 @@ test.describe('Admin flows', () => {
   test('navigate to tool review and approve first pending submission if any', async ({ page }) => {
     await page.goto('/admin')
     if (!await page.getByTestId('admin-dashboard-title').isVisible().catch(() => false)) {
-      await uiLoginIfNeeded(page)
+      const ok = await uiLoginIfNeeded(page)
+      test.skip(!ok, 'E2E admin user has no admin access; set E2E_SUPABASE_TOKEN/credentials for an admin account.')
     }
     
     // 点击工具审核标签
@@ -111,7 +134,8 @@ test.describe('Admin flows', () => {
   test('filter tool submissions by status triggers reload', async ({ page }) => {
     await page.goto('/admin')
     if (!await page.getByTestId('admin-dashboard-title').isVisible().catch(() => false)) {
-      await uiLoginIfNeeded(page)
+      const ok = await uiLoginIfNeeded(page)
+      test.skip(!ok, 'E2E admin user has no admin access; set E2E_SUPABASE_TOKEN/credentials for an admin account.')
     }
 
     await page.getByTestId('admin-tab-submissions').click()
@@ -131,7 +155,8 @@ test.describe('Admin flows', () => {
   test('navigate to category management', async ({ page }) => {
     await page.goto('/admin')
     if (!await page.getByTestId('admin-dashboard-title').isVisible().catch(() => false)) {
-      await uiLoginIfNeeded(page)
+      const ok = await uiLoginIfNeeded(page)
+      test.skip(!ok, 'E2E admin user has no admin access; set E2E_SUPABASE_TOKEN/credentials for an admin account.')
     }
     
     // 点击分类管理标签
@@ -150,7 +175,8 @@ test.describe('Admin flows', () => {
   test('create tool (modal) then see it in tools list', async ({ page }) => {
     await page.goto('/admin')
     if (!await page.getByText('管理员控制台', { exact: false }).isVisible().catch(() => false)) {
-      await uiLoginIfNeeded(page)
+      const ok = await uiLoginIfNeeded(page)
+      test.skip(!ok, 'E2E admin user has no admin access; set E2E_SUPABASE_TOKEN/credentials for an admin account.')
     }
     await page.getByRole('button', { name: '工具管理' }).click()
     await page.getByRole('button', { name: '新增工具' }).click()

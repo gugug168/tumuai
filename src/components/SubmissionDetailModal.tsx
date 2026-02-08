@@ -83,6 +83,9 @@ const SubmissionDetailModal: React.FC<SubmissionDetailModalProps> = ({
     }
   };
 
+  const existingTools = submission.existing_tools || [];
+  const hasExistingToolHint = !!submission.already_in_tools && existingTools.length > 0;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
@@ -143,6 +146,55 @@ const SubmissionDetailModal: React.FC<SubmissionDetailModalProps> = ({
                       <ExternalLink className="w-4 h-4 ml-1" />
                     </a>
                   </div>
+
+                  {hasExistingToolHint && (
+                    <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-medium text-amber-800">可能已入库（避免重复）</div>
+                          <div className="text-xs text-amber-700 mt-1">
+                            工具库里可能已存在同网址/同域名的工具，建议核对后再审批。
+                          </div>
+                        </div>
+                        {submission.status === 'pending' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const t = existingTools[0]
+                              const note = t
+                                ? `疑似重复入库：工具库已存在 ${t.name}（${t.id}）`
+                                : '疑似重复入库：工具库已存在同域名工具'
+                              setRejectNotes(note)
+                            }}
+                            className="shrink-0 inline-flex items-center px-3 py-2 rounded-md border border-amber-300 bg-white text-amber-800 text-sm hover:bg-amber-50"
+                          >
+                            填入重复拒绝理由
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="mt-3 space-y-2">
+                        {existingTools.slice(0, 3).map((t) => (
+                          <div key={t.id} className="flex items-center justify-between gap-3 text-sm">
+                            <div className="text-amber-900">
+                              {t.name}
+                              <span className="text-xs text-amber-700 ml-2">
+                                ({t.match_type === 'exact' ? '同网址' : '同域名'})
+                              </span>
+                            </div>
+                            <a
+                              href={`/tools/${t.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-amber-800 underline hover:text-amber-900"
+                            >
+                              打开
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

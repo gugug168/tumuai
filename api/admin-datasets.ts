@@ -7,6 +7,15 @@ interface ToolDataset {
   [key: string]: unknown
 }
 
+type ExistingToolMatchType = 'exact' | 'host'
+
+interface ExistingToolMatch {
+  id: string
+  name: string
+  website_url: string
+  match_type: ExistingToolMatchType
+}
+
 type SubmissionStatusFilter = 'all' | 'pending' | 'unapproved' | 'reviewed' | 'approved' | 'rejected'
 
 function normalizeSubmissionStatusFilter(input: string | null): SubmissionStatusFilter {
@@ -22,6 +31,31 @@ function escapePostgrestOrValue(value: string) {
     .replace(/,/g, '\\,')
     .replace(/\(/g, '\\(')
     .replace(/\)/g, '\\)')
+}
+
+function normalizeWebsiteUrl(raw: string): { normalized: string; host: string } {
+  const trimmed = (raw || '').trim()
+  const withProto = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+  const url = new URL(withProto)
+
+  const host = url.hostname.toLowerCase().replace(/^www\./, '')
+  let path = url.pathname || ''
+  if (path === '/') path = ''
+  else path = path.replace(/\/+$/, '')
+
+  const normalized = `${host}${path}`.toLowerCase()
+  return { normalized, host }
+}
+
+function isMissingTableOrColumn(err: unknown, pattern: RegExp): boolean {
+  const msg = (err as { message?: string })?.message || ''
+  return pattern.test(msg)
+}
+
+function chunk<T>(arr: T[], size: number) {
+  const out: T[][] = []
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
+  return out
 }
 
 async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?: string) {
@@ -128,6 +162,126 @@ export default async function handler(request: VercelRequest, response: VercelRe
       supabase.from('categories').select('id', { count: 'exact', head: true })
     ])
 
+    // Enrich submissions with "already exists in tools" hints (best-effort)
+    let enrichedSubmissions: unknown[] = submissions.data || []
+    if (requestedSections.includes('submissions') && Array.isArray(submissions.data) && submissions.data.length > 0) {
+      const submissionRows = submissions.data as Array<{ id: string; website_url?: string; tool_name?: string }>
+      const submissionKeys = new Map<string, { normalized: string; host: string }>()
+      const normalizedList: string[] = []
+      const hostList: string[] = []
+
+      for (const s of submissionRows) {
+        try {
+          const { normalized, host } = normalizeWebsiteUrl(String(s.website_url || ''))
+          submissionKeys.set(s.id, { normalized, host })
+          if (normalized) normalizedList.push(normalized)
+          if (host) hostList.push(host)
+        } catch {
+          // ignore malformed urls
+        }
+      }
+
+      const uniqueNormalized = Array.from(new Set(normalizedList)).slice(0, 200)
+      const uniqueHosts = Array.from(new Set(hostList)).slice(0, 200)
+
+      const toolsBySubmissionId = new Map<string, ExistingToolMatch[]>()
+
+      if (uniqueNormalized.length > 0) {
+        const normalizedToolsRes = await supabase
+          .from('tools')
+          .select('id,name,website_url,normalized_url,status')
+          .in('normalized_url', uniqueNormalized)
+          .in('status', ['published', 'pending'])
+
+        if (!normalizedToolsRes.error && Array.isArray(normalizedToolsRes.data) && normalizedToolsRes.data.length > 0) {
+          const toolsRows = normalizedToolsRes.data as Array<{ id: string; name: string; website_url: string; normalized_url?: string | null }>
+          const toolsByNormalized = new Map<string, ExistingToolMatch[]>()
+          for (const t of toolsRows) {
+            const key = String(t.normalized_url || '').toLowerCase()
+            if (!key) continue
+            const list = toolsByNormalized.get(key) || []
+            list.push({ id: t.id, name: t.name, website_url: t.website_url, match_type: 'exact' })
+            toolsByNormalized.set(key, list)
+          }
+
+          for (const s of submissionRows) {
+            const k = submissionKeys.get(s.id)
+            if (!k?.normalized) continue
+            const matches = toolsByNormalized.get(k.normalized) || []
+            if (matches.length > 0) toolsBySubmissionId.set(s.id, matches.slice(0, 3))
+          }
+        }
+
+        // Fallback if normalized_url column doesn't exist
+        if (
+          normalizedToolsRes.error &&
+          isMissingTableOrColumn(normalizedToolsRes.error, /column\\s+\"normalized_url\"\\s+does not exist/i) &&
+          uniqueHosts.length > 0
+        ) {
+          const toolCandidates: Array<{ id: string; name: string; website_url: string }> = []
+
+          // Chunk to avoid overly long OR filters
+          for (const hostChunk of chunk(uniqueHosts, 25)) {
+            const orParts: string[] = []
+            for (const host of hostChunk) {
+              const safeHost = escapePostgrestOrValue(host)
+              orParts.push(`website_url.ilike.%://${safeHost}%`)
+              orParts.push(`website_url.ilike.%://${escapePostgrestOrValue('www.' + host)}%`)
+            }
+
+            const res = await supabase
+              .from('tools')
+              .select('id,name,website_url,status')
+              .or(orParts.join(','))
+              .in('status', ['published', 'pending'])
+              .limit(500)
+
+            if (!res.error && Array.isArray(res.data)) {
+              for (const t of res.data as Array<{ id: string; name: string; website_url: string }>) {
+                toolCandidates.push({ id: t.id, name: t.name, website_url: t.website_url })
+              }
+            }
+          }
+
+          const candidatesByHost = new Map<string, Array<{ id: string; name: string; website_url: string; normalized: string; host: string }>>()
+          for (const t of toolCandidates) {
+            try {
+              const { normalized, host } = normalizeWebsiteUrl(String(t.website_url || ''))
+              const list = candidatesByHost.get(host) || []
+              list.push({ ...t, normalized, host })
+              candidatesByHost.set(host, list)
+            } catch {
+              // ignore
+            }
+          }
+
+          for (const s of submissionRows) {
+            const k = submissionKeys.get(s.id)
+            if (!k?.host) continue
+            const candidates = candidatesByHost.get(k.host) || []
+            if (candidates.length === 0) continue
+            const matches: ExistingToolMatch[] = candidates.map(c => ({
+              id: c.id,
+              name: c.name,
+              website_url: c.website_url,
+              match_type: c.normalized === k.normalized ? 'exact' : 'host'
+            }))
+            matches.sort((a, b) => (a.match_type === b.match_type ? 0 : a.match_type === 'exact' ? -1 : 1))
+            toolsBySubmissionId.set(s.id, matches.slice(0, 3))
+          }
+        }
+      }
+
+      enrichedSubmissions = submissionRows.map(s => {
+        const existing = toolsBySubmissionId.get(s.id) || []
+        return {
+          ...s,
+          already_in_tools: existing.length > 0,
+          existing_tools: existing.length > 0 ? existing : undefined,
+        }
+      })
+    }
+
     // 获取用户数量（不获取完整用户列表）
     const userResult = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 })
     const userCount = 'total' in userResult.data ? (userResult.data.total || 0) : 0
@@ -135,7 +289,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
     const submissionsTotal = typeof submissions.count === 'number' ? submissions.count : 0
 
     const body = {
-      submissions: submissions.data || [],
+      submissions: enrichedSubmissions,
       users: [], // 不再返回完整用户列表，按需获取
       tools: (tools.data || []).map((t: ToolDataset) => ({
         ...t,
