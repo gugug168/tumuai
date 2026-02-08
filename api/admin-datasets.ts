@@ -7,6 +7,23 @@ interface ToolDataset {
   [key: string]: unknown
 }
 
+type SubmissionStatusFilter = 'all' | 'pending' | 'unapproved' | 'reviewed' | 'approved' | 'rejected'
+
+function normalizeSubmissionStatusFilter(input: string | null): SubmissionStatusFilter {
+  const v = (input || '').trim().toLowerCase()
+  if (v === 'pending' || v === 'unapproved' || v === 'approved' || v === 'rejected' || v === 'reviewed') return v
+  return 'all'
+}
+
+function escapePostgrestOrValue(value: string) {
+  // PostgREST `or` filter uses commas/parentheses as syntax; escape to avoid query breakage.
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/,/g, '\\,')
+    .replace(/\(/g, '\\(')
+    .replace(/\)/g, '\\)')
+}
+
 async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?: string) {
   const supabase = createClient(supabaseUrl, serviceKey)
   if (!accessToken) return null
@@ -43,18 +60,54 @@ export default async function handler(request: VercelRequest, response: VercelRe
     const sections = url.searchParams.get('sections') || 'all'
     const page = parseInt(url.searchParams.get('page') || '1')
     const limit = parseInt(url.searchParams.get('limit') || '50')
+    const submissionStatus = normalizeSubmissionStatusFilter(url.searchParams.get('submissionStatus') || url.searchParams.get('status'))
+    const submissionQuery = (url.searchParams.get('q') || '').trim()
     const requestedSections = sections === 'all'
       ? ['stats', 'submissions', 'tools', 'categories', 'logs']
       : sections.split(',')
 
     const supabase = createClient(supabaseUrl, serviceKey)
+    const safePage = Number.isFinite(page) && page > 0 ? page : 1
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 50
+    const from = (safePage - 1) * safeLimit
+    const to = from + safeLimit - 1
 
     // 只请求需要的数据部分
     const [submissions, tools, logs, categories, stats, submissionCount, pendingCount, categoryCount] = await Promise.all([
       // 只在请求时获取 submissions
       requestedSections.includes('submissions')
-        ? supabase.from('tool_submissions').select('*').order('created_at', { ascending: false }).limit(limit)
-        : Promise.resolve({ data: [] }),
+        ? (() => {
+            let q = supabase
+              .from('tool_submissions')
+              .select('*', { count: 'exact' })
+              .order('created_at', { ascending: false })
+              .range(from, to)
+
+            if (submissionStatus === 'pending' || submissionStatus === 'approved' || submissionStatus === 'rejected') {
+              q = q.eq('status', submissionStatus)
+            } else if (submissionStatus === 'unapproved') {
+              q = q.in('status', ['pending', 'rejected'])
+            } else if (submissionStatus === 'reviewed') {
+              q = q.in('status', ['approved', 'rejected'])
+            }
+
+            if (submissionQuery) {
+              const v = escapePostgrestOrValue(submissionQuery)
+              const pattern = `%${v}%`
+              q = q.or(
+                [
+                  `tool_name.ilike.${pattern}`,
+                  `tagline.ilike.${pattern}`,
+                  `description.ilike.${pattern}`,
+                  `submitter_email.ilike.${pattern}`,
+                  `website_url.ilike.${pattern}`
+                ].join(',')
+              )
+            }
+
+            return q
+          })()
+        : Promise.resolve({ data: [], count: 0 }),
       // 只在请求时获取 tools
       requestedSections.includes('tools')
         ? supabase.from('tools').select('*').order('created_at', { ascending: false }).limit(limit)
@@ -79,6 +132,8 @@ export default async function handler(request: VercelRequest, response: VercelRe
     const userResult = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 })
     const userCount = 'total' in userResult.data ? (userResult.data.total || 0) : 0
 
+    const submissionsTotal = typeof submissions.count === 'number' ? submissions.count : 0
+
     const body = {
       submissions: submissions.data || [],
       users: [], // 不再返回完整用户列表，按需获取
@@ -89,6 +144,17 @@ export default async function handler(request: VercelRequest, response: VercelRe
       })),
       logs: logs.data || [],
       categories: categories.data || [],
+      submissionsPagination: requestedSections.includes('submissions')
+        ? {
+            page: safePage,
+            perPage: safeLimit,
+            total: submissionsTotal,
+            totalPages: Math.max(1, Math.ceil(submissionsTotal / safeLimit))
+          }
+        : undefined,
+      submissionsQuery: requestedSections.includes('submissions')
+        ? { status: submissionStatus, q: submissionQuery }
+        : undefined,
       stats: {
         totalTools: stats.count || 0,
         totalUsers: userCount || 0,

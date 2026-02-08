@@ -15,14 +15,12 @@ import {
   Tag,
   RefreshCw,
   ExternalLink,
-  Settings,
   Download,
   Ban,
   Check,
-  MoreVertical,
   Image
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import {
   checkAdminStatus,
@@ -83,6 +81,9 @@ const AdminDashboard = () => {
   const { showToast } = useToast();
   const toast = createToastHelpers(showToast);
 
+  const SUBMISSIONS_PER_PAGE = 50;
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [loading, setLoading] = useState(false);
   const [authChecking, setAuthChecking] = useState(true); // 新增：权限检查状态
   const [isAuthorized, setIsAuthorized] = useState(false); // 新增：权限状态
@@ -102,8 +103,11 @@ const AdminDashboard = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [logs, setLogs] = useState<AdminLog[]>([]);  // 预留：管理员日志功能
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('pending');
+  const [submissionSearchTerm, setSubmissionSearchTerm] = useState('');
+  const [debouncedSubmissionSearchTerm, setDebouncedSubmissionSearchTerm] = useState('');
+  const [submissionPage, setSubmissionPage] = useState(1);
+  const [submissionPagination, setSubmissionPagination] = useState({ page: 1, perPage: SUBMISSIONS_PER_PAGE, total: 0, totalPages: 1 });
   const [editingTool, setEditingTool] = useState<Tool | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [showToolModal, setShowToolModal] = useState(false);
@@ -134,6 +138,54 @@ const AdminDashboard = () => {
   const [userPage, setUserPage] = useState(1);
   const [userPagination, setUserPagination] = useState({ page: 1, perPage: 20, total: 0, totalPages: 1 });
   const navigate = useNavigate();
+
+  // URL 参数同步（tab + submissions 的状态/搜索/页码）
+  useEffect(() => {
+    const allowedTabs = new Set(['overview', 'submissions', 'tools', 'categories', 'users']);
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl && allowedTabs.has(tabFromUrl) && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+
+    const wantsSubmissions = (tabFromUrl === 'submissions') || (activeTab === 'submissions');
+    if (!wantsSubmissions) return;
+
+    const statusFromUrl = (searchParams.get('subStatus') || '').trim();
+    const validStatuses = new Set(['pending', 'unapproved', 'reviewed', 'approved', 'rejected', 'all']);
+    if (statusFromUrl && validStatuses.has(statusFromUrl) && statusFromUrl !== filterStatus) {
+      setFilterStatus(statusFromUrl);
+    }
+
+    const qFromUrl = (searchParams.get('subQ') || '').trim();
+    if (qFromUrl !== submissionSearchTerm) {
+      setSubmissionSearchTerm(qFromUrl);
+    }
+
+    const pageFromUrlRaw = (searchParams.get('subPage') || '').trim();
+    const pageFromUrl = pageFromUrlRaw ? parseInt(pageFromUrlRaw, 10) : 1;
+    const safePageFromUrl = Number.isFinite(pageFromUrl) && pageFromUrl > 0 ? pageFromUrl : 1;
+    if (safePageFromUrl !== submissionPage) {
+      setSubmissionPage(safePageFromUrl);
+    }
+  }, [activeTab, filterStatus, searchParams, submissionPage, submissionSearchTerm]);
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (next.get('tab') !== activeTab) next.set('tab', activeTab);
+    if (activeTab !== 'submissions') {
+      if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true });
+      return;
+    }
+    next.set('subStatus', filterStatus);
+    if (submissionSearchTerm.trim()) next.set('subQ', submissionSearchTerm.trim());
+    else next.delete('subQ');
+    if (submissionPage > 1) next.set('subPage', String(submissionPage));
+    else next.delete('subPage');
+
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [activeTab, filterStatus, submissionPage, submissionSearchTerm, searchParams, setSearchParams]);
 
   // 新增：立即进行权限检查
   useEffect(() => {
@@ -196,7 +248,14 @@ const AdminDashboard = () => {
       const accessToken = await getAccessToken();
       if (!accessToken) throw new Error('未登录');
 
-      const response = await fetch('/api/admin-datasets?sections=submissions', {
+      const params = new URLSearchParams();
+      params.set('sections', 'submissions');
+      params.set('page', String(submissionPage));
+      params.set('limit', String(SUBMISSIONS_PER_PAGE));
+      params.set('submissionStatus', filterStatus);
+      if (debouncedSubmissionSearchTerm.trim()) params.set('q', debouncedSubmissionSearchTerm.trim());
+
+      const response = await fetch(`/api/admin-datasets?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });
 
@@ -204,13 +263,15 @@ const AdminDashboard = () => {
 
       const data = await response.json();
       setSubmissions(data.submissions || []);
+      setSubmissionPagination(data.submissionsPagination || { page: submissionPage, perPage: SUBMISSIONS_PER_PAGE, total: (data.submissions || []).length, totalPages: 1 });
+      setSelectedSubmissions(new Set());
       setLoadedTabs(prev => new Set(prev).add('submissions'));
     } catch (error) {
       console.error('加载提交失败:', error);
     } finally {
       setLoadingStates(prev => ({ ...prev, submissions: false }));
     }
-  }, []);
+  }, [SUBMISSIONS_PER_PAGE, debouncedSubmissionSearchTerm, filterStatus, submissionPage]);
 
   // 按需加载工具列表
   const loadTools = useCallback(async () => {
@@ -265,8 +326,7 @@ const AdminDashboard = () => {
       const accessToken = await getAccessToken();
       if (!accessToken) throw new Error('未登录');
 
-      const searchParam = searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : '';
-      const response = await fetch(`/api/admin-users?page=${page}&perPage=20${searchParam}`, {
+      const response = await fetch(`/api/admin-users?page=${page}&perPage=20`, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });
 
@@ -281,7 +341,7 @@ const AdminDashboard = () => {
     } finally {
       setLoadingStates(prev => ({ ...prev, users: false }));
     }
-  }, [searchTerm]);
+  }, []);
 
   // 获取访问令牌辅助函数
   async function getAccessToken() {
@@ -297,16 +357,29 @@ const AdminDashboard = () => {
     loadStats();
 
     // 根据当前 tab 加载对应数据
-    if (activeTab === 'submissions' && !loadedTabs.has('submissions')) {
-      loadSubmissions();
-    } else if (activeTab === 'tools' && !loadedTabs.has('tools')) {
+    if (activeTab === 'tools' && !loadedTabs.has('tools')) {
       loadTools();
     } else if (activeTab === 'categories' && !loadedTabs.has('categories')) {
       loadCategories();
     } else if (activeTab === 'users' && !loadedTabs.has('users')) {
       loadUsers(1);
     }
-  }, [activeTab, isAuthorized, loadStats, loadSubmissions, loadTools, loadCategories, loadUsers, loadedTabs]);
+  }, [activeTab, isAuthorized, loadStats, loadTools, loadCategories, loadUsers, loadedTabs]);
+
+  // 提交搜索 - debounce
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setDebouncedSubmissionSearchTerm(submissionSearchTerm);
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [submissionSearchTerm]);
+
+  // 工具提交列表：随页码/筛选/搜索变化加载
+  useEffect(() => {
+    if (!isAuthorized) return;
+    if (activeTab !== 'submissions') return;
+    loadSubmissions();
+  }, [activeTab, isAuthorized, loadSubmissions]);
 
   // 手动刷新当前 tab 的数据
   const refreshCurrentTab = useCallback(() => {
@@ -662,17 +735,6 @@ const AdminDashboard = () => {
     });
   };
 
-  const filteredSubmissions = submissions.filter(submission => {
-    const toolName = submission.tool_name || '';
-    const tagline = submission.tagline || '';
-    const searchTermLower = searchTerm.toLowerCase();
-    
-    const matchesSearch = toolName.toLowerCase().includes(searchTermLower) ||
-                         tagline.toLowerCase().includes(searchTermLower);
-    const matchesStatus = filterStatus === 'all' || submission.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
-
   const tabs = [
     { id: 'overview', label: '概览', icon: BarChart3 },
     { id: 'submissions', label: '工具审核', icon: FileText, count: stats.pendingSubmissions },
@@ -905,20 +967,59 @@ const AdminDashboard = () => {
                     <input
                       type="text"
                       placeholder="搜索提交..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="block w-full max-w-xs rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      value={submissionSearchTerm}
+                      onChange={(e) => { setSubmissionSearchTerm(e.target.value); setSubmissionPage(1); }}
+                      className="block w-64 max-w-xs rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      data-testid="submissions-search-input"
                     />
-                    <select
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                      className="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                    >
-                      <option value="all">全部状态</option>
-                      <option value="pending">待审核</option>
-                      <option value="approved">已通过</option>
-                      <option value="rejected">已拒绝</option>
-                    </select>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">状态</span>
+                      <select
+                        value={filterStatus}
+                        onChange={(e) => { setFilterStatus(e.target.value); setSubmissionPage(1); setSelectedSubmissions(new Set()); }}
+                        className="block min-w-[120px] rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        data-testid="submissions-status-filter"
+                      >
+                        <option value="pending">待审核</option>
+                        <option value="unapproved">未通过</option>
+                        <option value="reviewed">已审批</option>
+                        <option value="approved">已通过</option>
+                        <option value="rejected">已拒绝</option>
+                        <option value="all">全部</option>
+                      </select>
+                      {filterStatus !== 'pending' && (
+                        <button
+                          type="button"
+                          onClick={() => { setFilterStatus('pending'); setSubmissionPage(1); setSelectedSubmissions(new Set()); }}
+                          className="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50 text-sm text-gray-700"
+                        >
+                          只看待审核
+                        </button>
+                      )}
+                    </div>
+                    <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
+                      <span data-testid="submissions-pagination-info">
+                        共 {submissionPagination.total} 条，第 {submissionPagination.page}/{submissionPagination.totalPages} 页
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedSubmissions(new Set()); setSubmissionPage(p => Math.max(1, p - 1)); }}
+                        disabled={submissionPagination.page <= 1 || loadingStates.submissions}
+                        className="px-2 py-1 rounded border border-gray-300 bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        data-testid="submissions-prev-page"
+                      >
+                        上一页
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedSubmissions(new Set()); setSubmissionPage(p => Math.min(submissionPagination.totalPages, p + 1)); }}
+                        disabled={submissionPagination.page >= submissionPagination.totalPages || loadingStates.submissions}
+                        className="px-2 py-1 rounded border border-gray-300 bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        data-testid="submissions-next-page"
+                      >
+                        下一页
+                      </button>
+                    </div>
                     {selectedSubmissions.size > 0 && (
                       <>
                         <button
@@ -944,7 +1045,7 @@ const AdminDashboard = () => {
                     <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
                     <p className="text-gray-600">加载提交列表...</p>
                   </div>
-                ) : filteredSubmissions.length === 0 ? (
+                ) : submissions.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">暂无符合条件的工具提交</p>
                 ) : (
                   <div className="space-y-4">
@@ -952,19 +1053,19 @@ const AdminDashboard = () => {
                     <div className="flex items-center space-x-2 text-sm text-gray-600">
                       <input
                         type="checkbox"
-                        checked={selectedSubmissions.size === filteredSubmissions.length && filteredSubmissions.length > 0}
+                        checked={selectedSubmissions.size === submissions.length && submissions.length > 0}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedSubmissions(new Set(filteredSubmissions.map(s => s.id)));
+                            setSelectedSubmissions(new Set(submissions.map(s => s.id)));
                           } else {
                             setSelectedSubmissions(new Set());
                           }
                         }}
                         className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                       />
-                      <span>全选 ({filteredSubmissions.length})</span>
+                      <span>全选 ({submissions.length})</span>
                     </div>
-                    {filteredSubmissions.map((submission) => (
+                    {submissions.map((submission) => (
                       <div key={submission.id} className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${selectedSubmissions.has(submission.id) ? 'bg-indigo-50 border-indigo-300' : 'border-gray-200'}`}>
                         <div className="flex justify-between items-start">
                           <div className="flex items-start space-x-3 flex-1">

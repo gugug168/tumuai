@@ -63,7 +63,7 @@ async function uiLoginIfNeeded(page) {
   await page.getByTestId('admin-login-button').click()
 
   // 等待跳转到管理页面
-  await page.waitForURL('**/admin', { timeout: 30000 })
+  await page.waitForURL('**/admin*', { timeout: 30000 })
   await expect(page.getByTestId('admin-dashboard-title')).toBeVisible({ timeout: 20000 })
 }
 
@@ -106,6 +106,26 @@ test.describe('Admin flows', () => {
     } else {
       console.log('No pending submissions found for approval')
     }
+  })
+
+  test('filter tool submissions by status triggers reload', async ({ page }) => {
+    await page.goto('/admin')
+    if (!await page.getByTestId('admin-dashboard-title').isVisible().catch(() => false)) {
+      await uiLoginIfNeeded(page)
+    }
+
+    await page.getByTestId('admin-tab-submissions').click()
+    await expect(page.getByTestId('submissions-status-filter')).toBeVisible({ timeout: 20000 })
+
+    const req = page.waitForRequest(r =>
+      r.url().includes('/api/admin-datasets') &&
+      r.url().includes('sections=submissions') &&
+      r.url().includes('submissionStatus=approved')
+    )
+
+    await page.getByTestId('submissions-status-filter').selectOption('approved')
+    await req
+    await expect(page).toHaveURL(/subStatus=approved/)
   })
 
   test('navigate to category management', async ({ page }) => {
