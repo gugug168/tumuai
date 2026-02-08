@@ -58,6 +58,14 @@ function chunk<T>(arr: T[], size: number) {
   return out
 }
 
+function getBearerToken(request: VercelRequest): string {
+  const authHeader = request.headers.authorization || request.headers.Authorization
+  const authHeaderStr = Array.isArray(authHeader) ? authHeader[0] : authHeader
+  if (!authHeaderStr || typeof authHeaderStr !== 'string') return ''
+  if (!/^Bearer\s+/i.test(authHeaderStr)) return ''
+  return authHeaderStr.replace(/^Bearer\s+/i, '').trim()
+}
+
 async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?: string) {
   const supabase = createClient(supabaseUrl, serviceKey)
   if (!accessToken) return null
@@ -82,8 +90,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
       return response.status(500).json({ error: 'Missing Supabase server config' })
     }
 
-    const authHeader = request.headers.authorization || request.headers.Authorization
-    const accessToken = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '') : ''
+    const accessToken = getBearerToken(request)
+    if (!accessToken) {
+      return response.status(401).json({ error: 'Unauthorized' })
+    }
     const admin = await verifyAdmin(supabaseUrl, serviceKey, accessToken)
     if (!admin) {
       return response.status(403).json({ error: 'Forbidden' })
