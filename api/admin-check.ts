@@ -27,6 +27,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
   console.log('🔐 开始管理员权限验证...')
   
   try {
+    setSecurityHeaders(response)
     const supabaseUrl = process.env.VITE_SUPABASE_URL as string
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
     if (!supabaseUrl || !serviceKey) {
@@ -76,6 +77,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
         .from('admin_users')
         .select('id,user_id,role,permissions,created_at,updated_at')
         .eq('user_id', userId)
+        .limit(1)
         .maybeSingle(),
       // 检查管理员总数
       supabase
@@ -101,20 +103,23 @@ export default async function handler(request: VercelRequest, response: VercelRe
     
     // 如果管理员表为空，或者当前用户是授权管理员邮箱，则自动创建管理员
     const userEmail = userRes.user.email
-    const adminEmail = process.env.E2E_ADMIN_USER
+    const superAdminEmail = (process.env.VITE_SUPER_ADMIN_EMAIL || '').trim()
+    const adminEmails = (process.env.VITE_ADMIN_EMAILS || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
     
     // 额外安全检查：确保管理员邮箱已配置且用户邮箱已验证
-    if (!adminEmail) {
-      console.error('❌ 管理员邮箱未配置')
-      return response.status(500).setHeader('Access-Control-Allow-Origin', '*').json({ error: 'Admin configuration missing' })
-    }
+    const hasAnyConfiguredAdmin = !!superAdminEmail || adminEmails.length > 0
     
     if (!userRes.user.email_confirmed_at) {
       console.log('⚠️ 用户邮箱未验证，拒绝管理员权限')
       return response.status(403).setHeader('Access-Control-Allow-Origin', '*').json({ error: 'Email verification required' })
     }
     
-    const shouldCreateAdmin = (!count || count === 0) || (userEmail === adminEmail)
+    const shouldCreateAdmin = (!count || count === 0)
+      ? true
+      : (hasAnyConfiguredAdmin && (userEmail === superAdminEmail || adminEmails.includes(userEmail || '')))
     
     if (shouldCreateAdmin) {
       const permissions = {

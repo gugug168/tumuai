@@ -91,8 +91,38 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
       return null
     }
 
-    // 直接使用客户端验证（服务端API暂不可用，避免404错误）
-    console.log('🔄 使用客户端验证管理员权限...')
+    // 优先使用服务端验证（使用 service role key，可绕过 RLS，避免前端直查 admin_users 的 406/403 噪音）
+    try {
+      const response = await fetch(API_ENDPOINTS.vercelFunctions.adminCheck, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        return {
+          user_id: data.user_id,
+          email: session.user.email,
+          role: data.role,
+          is_super_admin: data.role === 'super_admin',
+          permissions: data.permissions
+        } as AdminUser & { permissions?: any }
+      }
+
+      // 401/403 视为非管理员；其他错误（如 404）再走前端兜底
+      if (response.status === 401 || response.status === 403) {
+        console.log('ℹ️ 服务端验证：用户不是管理员')
+        return null
+      }
+    } catch {
+      // 网络异常/函数未部署等情况，继续走前端兜底
+    }
+
+    // 兜底：客户端验证（可能受 RLS 影响）
+    console.log('🔄 使用客户端兜底验证管理员权限...')
 
     const { data: adminUser, error: adminError } = await supabase
       .from('admin_users')
