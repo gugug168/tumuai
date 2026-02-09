@@ -200,5 +200,11 @@
   "github": {
     "silent": true
   },
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "crons": [
+    {
+      "path": "/api/refresh-stats",
+      "schedule": "0 * * * *"
+    }
+  ]
 }

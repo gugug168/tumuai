@@ -371,7 +371,8 @@ export async function getToolsSmart(
   // 超时后再回退到本地缓存/直连。
   // Give the Vercel function a bit more room for cold starts; if this times out we fall back to
   // client-side Supabase reads (which can be slower/unreliable on some networks).
-  const API_TIMEOUT = IS_DEV ? 3500 : 8000
+  // 性能优化: 减少超时时间以提升用户体验 (优化后 API 响应应 <500ms)
+  const API_TIMEOUT = IS_DEV ? 2000 : 3000
 
   // If API is in backoff, skip the network request entirely.
   if (isApiBackedOff()) {

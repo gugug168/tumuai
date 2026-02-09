@@ -54,13 +54,27 @@ async function fetchToolsFromDB(supabase: any, params: ToolQueryParams) {
 
   let count = 0
   if (includeCount) {
-    let countQuery = supabase.from('tools').select('*', { count: 'exact', head: true }).eq('status', 'published')
-    if (featuredOnly) countQuery = countQuery.eq('featured', true)
-    if (category) countQuery = countQuery.overlaps('categories', [category])
-    if (pricing) countQuery = countQuery.eq('pricing', pricing)
-    if (features.length > 0) countQuery = countQuery.overlaps('features', features)
-    const { count: countResult } = await countQuery
-    count = countResult || 0
+    // 性能优化: 对于无筛选条件的查询，从物化视图获取总数 (极快)
+    // 对于有筛选条件的查询，才使用原始 COUNT 查询
+    const hasFilters = featuredOnly || category || pricing || features.length > 0
+
+    if (!hasFilters) {
+      // 从物化视图获取总数，避免全表扫描
+      const { data: stats } = await supabase
+        .from('tools_stats')
+        .select('published_count')
+        .single()
+      count = stats?.published_count || 0
+    } else {
+      // 有筛选条件时使用原始查询
+      let countQuery = supabase.from('tools').select('*', { count: 'exact', head: true }).eq('status', 'published')
+      if (featuredOnly) countQuery = countQuery.eq('featured', true)
+      if (category) countQuery = countQuery.overlaps('categories', [category])
+      if (pricing) countQuery = countQuery.eq('pricing', pricing)
+      if (features.length > 0) countQuery = countQuery.overlaps('features', features)
+      const { count: countResult } = await countQuery
+      count = countResult || 0
+    }
   }
 
   const { data: tools, error } = await toolsQuery
@@ -146,7 +160,8 @@ async function handleTools(request: VercelRequest, response: VercelResponse, sup
     sortBy
   })
 
-  response.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
+  // 性能优化: 增加缓存时间从 300s 到 600s，减少数据库查询
+  response.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=900')
   return response.status(200).json({
     ...data,
     cached: false,
