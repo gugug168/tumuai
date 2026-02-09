@@ -6,13 +6,23 @@
 import { createClient } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
+function getBearerToken(request: VercelRequest): string {
+  const authHeader = request.headers.authorization || request.headers.Authorization
+  const authHeaderStr = Array.isArray(authHeader) ? authHeader[0] : authHeader
+  if (!authHeaderStr || typeof authHeaderStr !== 'string') return ''
+  if (!/^Bearer\\s+/i.test(authHeaderStr)) return ''
+  const token = authHeaderStr.replace(/^Bearer\\s+/i, '').trim()
+  if (!token || token === 'null' || token === 'undefined') return ''
+  return token
+}
+
 async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?: string) {
   const supabase = createClient(supabaseUrl, serviceKey)
   if (!accessToken) return null
   const { data: userRes } = await supabase.auth.getUser(accessToken)
   const userId = userRes?.user?.id
   if (!userId) return null
-  const { data: adminRow } = await supabase.from('admin_users').select('id,user_id').eq('user_id', userId).maybeSingle()
+  const { data: adminRow } = await supabase.from('admin_users').select('id,user_id').eq('user_id', userId).limit(1).maybeSingle()
   if (adminRow) return { userId }
   const { count } = await supabase.from('admin_users').select('id', { count: 'exact', head: true })
   if (!count || count === 0) {
@@ -43,8 +53,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
       return response.status(500).json({ error: 'Missing Supabase server config' })
     }
 
-    const authHeader = request.headers.authorization || request.headers.Authorization
-    const accessToken = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '') : ''
+    const accessToken = getBearerToken(request)
+    if (!accessToken) {
+      return response.status(401).json({ error: 'Unauthorized' })
+    }
     const admin = await verifyAdmin(supabaseUrl, serviceKey, accessToken)
     if (!admin) {
       return response.status(403).json({ error: 'Forbidden' })

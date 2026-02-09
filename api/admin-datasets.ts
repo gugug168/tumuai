@@ -63,7 +63,9 @@ function getBearerToken(request: VercelRequest): string {
   const authHeaderStr = Array.isArray(authHeader) ? authHeader[0] : authHeader
   if (!authHeaderStr || typeof authHeaderStr !== 'string') return ''
   if (!/^Bearer\s+/i.test(authHeaderStr)) return ''
-  return authHeaderStr.replace(/^Bearer\s+/i, '').trim()
+  const token = authHeaderStr.replace(/^Bearer\s+/i, '').trim()
+  if (!token || token === 'null' || token === 'undefined') return ''
+  return token
 }
 
 async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?: string) {

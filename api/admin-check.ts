@@ -39,7 +39,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
     if (!authHeaderStr || !authHeaderStr.startsWith('Bearer ')) {
       return response.status(401).setHeader('Access-Control-Allow-Origin', '*').json({ error: 'Unauthorized' })
     }
-    const accessToken = authHeaderStr.replace(/^Bearer\s+/i, '')
+    const accessToken = authHeaderStr.replace(/^Bearer\s+/i, '').trim()
+    if (!accessToken || accessToken === 'null' || accessToken === 'undefined') {
+      return response.status(401).setHeader('Access-Control-Allow-Origin', '*').json({ error: 'Unauthorized' })
+    }
 
     const supabase = createClient(supabaseUrl, serviceKey)
 

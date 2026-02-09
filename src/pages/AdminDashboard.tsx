@@ -346,7 +346,9 @@ const AdminDashboard = () => {
   // 获取访问令牌辅助函数
   async function getAccessToken() {
     const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token || null;
+    const token = session?.access_token || null;
+    if (!token || token === 'null' || token === 'undefined') return null;
+    return token;
   }
 
   // 监听 activeTab 变化，按需加载数据

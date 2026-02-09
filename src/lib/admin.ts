@@ -91,12 +91,17 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
       return null
     }
 
+    const accessToken = session.access_token
+    if (!accessToken || accessToken === 'null' || accessToken === 'undefined') {
+      return null
+    }
+
     // 优先使用服务端验证（使用 service role key，可绕过 RLS，避免前端直查 admin_users 的 406/403 噪音）
     try {
       const response = await fetch(API_ENDPOINTS.vercelFunctions.adminCheck, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
         }
       })

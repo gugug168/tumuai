@@ -48,6 +48,16 @@ interface ToolData {
   category_id?: string | null
 }
 
+function getBearerToken(request: VercelRequest): string {
+  const authHeader = request.headers.authorization || request.headers.Authorization
+  const authHeaderStr = Array.isArray(authHeader) ? authHeader[0] : authHeader
+  if (!authHeaderStr || typeof authHeaderStr !== 'string') return ''
+  if (!/^Bearer\\s+/i.test(authHeaderStr)) return ''
+  const token = authHeaderStr.replace(/^Bearer\\s+/i, '').trim()
+  if (!token || token === 'null' || token === 'undefined') return ''
+  return token
+}
+
 async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?: string): Promise<AdminUser | null> {
   const supabase = createClient(supabaseUrl, serviceKey)
   if (!accessToken) return null
@@ -61,6 +71,7 @@ async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?
       .from('admin_users')
       .select('id,user_id')
       .eq('user_id', userId)
+      .limit(1)
       .maybeSingle()
     
     let data = initialData
@@ -100,8 +111,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
       return response.status(500).json({ error: 'Server configuration error' })
     }
 
-    const authHeader = request.headers.authorization || request.headers.Authorization
-    const accessToken = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '') : ''
+    const accessToken = getBearerToken(request)
+    if (!accessToken) {
+      return response.status(401).json({ error: 'Unauthorized' })
+    }
     const admin = await verifyAdmin(supabaseUrl, serviceKey, accessToken)
     
     if (!admin) {
