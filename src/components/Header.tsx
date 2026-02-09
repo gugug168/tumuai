@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
 import { prefetchSubmitToolPage, prefetchToolsData, prefetchToolsPage } from '../lib/route-prefetch';
 
-const Header = () => {
+const Header = React.memo(() => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
@@ -341,6 +341,8 @@ const Header = () => {
       />
     </>
   );
-};
+});
+
+Header.displayName = 'Header';
 
 export default Header;

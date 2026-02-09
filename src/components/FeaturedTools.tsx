@@ -11,6 +11,7 @@ import { SkeletonCard, SkeletonWrapper } from './SkeletonLoader';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
 import { useToast, createToastHelpers } from './Toast';
+import { logger } from '../lib/logger';
 import type { Tool } from '../types/index';
 
 // 已移除硬编码的featuredTools数组，现在使用动态数据
@@ -31,10 +32,10 @@ const FeaturedTools = React.memo(() => {
   const { fetchWithCache } = useUnifiedCache();
   const { recordApiCall, recordInteraction } = usePerformance('FeaturedTools');
 
-  // 获取要显示的 logo URL（使用共享工具函数）
-  const getDisplayLogo = (tool: Tool): string => {
+  // 获取要显示的 logo URL（使用共享工具函数）- 使用 useCallback 优化
+  const getDisplayLogo = useCallback((tool: Tool): string => {
     return getBestDisplayLogoUrl(tool.logo_url, tool.name, tool.categories || []);
-  };
+  }, []);
 
   // 生成兜底 SVG 图标
   const getFallbackIcon = (tool: Tool): React.ReactNode => {
@@ -111,9 +112,9 @@ const FeaturedTools = React.memo(() => {
       });
       
       setTools(Array.isArray(fetchedTools) ? fetchedTools : []);
-      console.log('✅ 成功加载精选工具:', fetchedTools.length + '个');
+      logger.log('成功加载精选工具:', fetchedTools.length + '个');
     } catch (error) {
-      console.error('❌ 加载精选工具失败:', error);
+      logger.error('加载精选工具失败:', error);
       setError(error instanceof Error ? error.message : '加载精选工具失败');
     } finally {
       setLoading(false);

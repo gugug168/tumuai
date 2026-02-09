@@ -31,15 +31,32 @@ export default defineConfig(({ mode }) => {
     
     rollupOptions: {
       output: {
-        manualChunks: {
-          // 核心框架
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-router': ['react-router-dom'],
-
-          // UI库按使用频率分割
-          'vendor-icons': ['lucide-react'],
-          'vendor-virtuoso': ['react-virtuoso'],
-          'vendor-auth': ['@supabase/supabase-js'],
+        // 更智能的代码分割策略
+        manualChunks(id) {
+          // 核心框架 - 最稳定的依赖
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return 'vendor-react';
+          }
+          // 路由
+          if (id.includes('node_modules/react-router')) {
+            return 'vendor-router';
+          }
+          // 图标库 - 单独分割以便按需加载
+          if (id.includes('node_modules/lucide-react')) {
+            return 'vendor-icons';
+          }
+          // 虚拟滚动
+          if (id.includes('node_modules/react-virtuoso')) {
+            return 'vendor-virtuoso';
+          }
+          // Supabase 客户端
+          if (id.includes('node_modules/@supabase')) {
+            return 'vendor-supabase';
+          }
+          // 其他 node_modules
+          if (id.includes('node_modules')) {
+            return 'vendor-others';
+          }
         },
         
         // 资源文件命名
@@ -65,8 +82,8 @@ export default defineConfig(({ mode }) => {
     // sourcemap配置 (生产环境关闭)
     sourcemap: false,
 
-    // chunk 大小警告阈值 (KB)
-    chunkSizeWarningLimit: 500,
+    // chunk 大小警告阈值 (KB) - 降低以在移动端获得更好性能
+    chunkSizeWarningLimit: 200,
 
     // 构建报告
     reportCompressedSize: true,

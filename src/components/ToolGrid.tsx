@@ -158,21 +158,7 @@ const ToolGrid = React.memo<ToolGridProps>(({
     }, 1000);
   }, [onLoadMore, isLoadingMore, hasMore]);
 
-  // 用于虚拟滚动的 Item 组件
-  const ItemComponent = useCallback((index: number) => {
-    const tool = (enableVirtualScroll ? allTools : tools)[index];
-    if (!tool) return null;
-
-    return (
-      <ToolCard
-        key={tool.id}
-        tool={tool}
-        isFavorited={favoriteStates[tool.id] || false}
-        onFavoriteToggle={handleFavoriteToggle}
-        viewMode={viewMode}
-      />
-    );
-  }, [enableVirtualScroll, allTools, tools, favoriteStates, handleFavoriteToggle, viewMode]);
+  // 虚拟滚动使用的完整数据集
 
   // 虚拟滚动使用的完整数据集
   const displayTools = useMemo(() => {

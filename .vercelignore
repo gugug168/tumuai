@@ -20,3 +20,10 @@ scripts/*
 # 忽略临时文件
 **/temp*
 **/.env.local
+
+# 忽略性能追踪和测试文件
+performance-trace*.json
+screenshot-performance*.json
+test-results/
+.tmp-*.json
+*.tmp
