@@ -184,7 +184,7 @@ export async function getToolsViaAPI(
   params?: ToolsCacheParams
 ): Promise<{ tools: Tool[]; count?: number }> {
   try {
-    const url = new URL('/api/tools-cache', window.location.origin)
+    const url = new URL('/api/public-api?action=tools', window.location.origin)
     url.searchParams.set('limit', limit.toString())
     url.searchParams.set('offset', offset.toString())
     if (includeCount) {
@@ -285,7 +285,7 @@ async function getToolByIdViaAPI(
   id: string,
   signal?: AbortSignal
 ): Promise<Tool | null> {
-  const url = new URL('/api/tools-cache', window.location.origin)
+  const url = new URL('/api/public-api?action=tools', window.location.origin)
   url.searchParams.set('id', id)
 
   const response = await fetch(url.toString(), { signal })

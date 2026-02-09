@@ -71,7 +71,7 @@ export class CategoryManager {
     // 1) Prefer Vercel API (CDN cached) in production.
     if (!isDev) {
       try {
-        const response = await fetch('/api/categories-cache');
+        const response = await fetch('/api/public-api?action=categories');
         if (response.ok) {
           const result = await response.json();
           return result.categories || [];

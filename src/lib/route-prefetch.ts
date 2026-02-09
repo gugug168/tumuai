@@ -34,8 +34,8 @@ export function prefetchToolDetailPage(): Promise<unknown> {
 export function prefetchToolsData(): Promise<void> {
   if (!toolsDataPromise) {
     toolsDataPromise = Promise.allSettled([
-      fetch('/api/tools-cache?limit=12&offset=0&includeCount=true'),
-      fetch('/api/categories-cache')
+      fetch('/api/public-api?action=tools&limit=12&offset=0&includeCount=true'),
+      fetch('/api/public-api?action=categories')
     ]).then(() => undefined);
   }
   return toolsDataPromise;

@@ -36,7 +36,7 @@ const Hero = () => {
           toolsCount = await getToolsCount();
         } else {
           // 生产环境：使用 Vercel API（不要加时间戳，否则每次都会绕过 CDN 缓存，反而更慢）
-          const toolsResponse = await fetch('/api/tools-cache?limit=1&includeCount=true');
+          const toolsResponse = await fetch('/api/public-api?action=tools&limit=1&includeCount=true');
           if (toolsResponse.ok) {
             const toolsData = await toolsResponse.json();
             toolsCount = toolsData.count || 0;
@@ -52,7 +52,7 @@ const Hero = () => {
           const categories = await getCategories();
           categoriesCount = categories.length || 0;
         } else {
-          const categoriesResponse = await fetch('/api/categories-cache');
+          const categoriesResponse = await fetch('/api/public-api?action=categories');
           if (categoriesResponse.ok) {
             const categoriesData = await categoriesResponse.json();
             categoriesCount = categoriesData?.categories?.length || 0;

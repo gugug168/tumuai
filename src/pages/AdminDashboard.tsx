@@ -223,7 +223,7 @@ const AdminDashboard = () => {
       const accessToken = await getAccessToken();
       if (!accessToken) throw new Error('未登录');
 
-      const response = await fetch('/api/admin-datasets?sections=stats', {
+      const response = await fetch('/api/admin-api?action=datasets&sections=stats', {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });
 
@@ -255,7 +255,7 @@ const AdminDashboard = () => {
       params.set('submissionStatus', filterStatus);
       if (debouncedSubmissionSearchTerm.trim()) params.set('q', debouncedSubmissionSearchTerm.trim());
 
-      const response = await fetch(`/api/admin-datasets?${params.toString()}`, {
+      const response = await fetch(`/api/admin-api?action=datasets&${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });
 
@@ -280,7 +280,7 @@ const AdminDashboard = () => {
       const accessToken = await getAccessToken();
       if (!accessToken) throw new Error('未登录');
 
-      const response = await fetch('/api/admin-datasets?sections=tools', {
+      const response = await fetch('/api/admin-api?action=datasets&sections=tools', {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });
 
@@ -303,7 +303,7 @@ const AdminDashboard = () => {
       const accessToken = await getAccessToken();
       if (!accessToken) throw new Error('未登录');
 
-      const response = await fetch('/api/admin-datasets?sections=categories', {
+      const response = await fetch('/api/admin-api?action=datasets&sections=categories', {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });
 
@@ -326,7 +326,7 @@ const AdminDashboard = () => {
       const accessToken = await getAccessToken();
       if (!accessToken) throw new Error('未登录');
 
-      const response = await fetch(`/api/admin-users?page=${page}&perPage=20`, {
+      const response = await fetch(`/api/admin-api?action=users&page=${page}&perPage=20`, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });
 

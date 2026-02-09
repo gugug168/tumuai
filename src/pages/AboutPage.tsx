@@ -163,7 +163,7 @@ const AboutPage = React.memo(() => {
         if (isDev) {
           toolsCount = await getToolsCount();
         } else {
-          const toolsResponse = await fetch('/api/tools-cache?limit=1&includeCount=true');
+          const toolsResponse = await fetch('/api/public-api?action=tools&limit=1&includeCount=true');
           if (toolsResponse.ok) {
             const toolsData = await toolsResponse.json();
             toolsCount = toolsData.count || 0;
@@ -178,7 +178,7 @@ const AboutPage = React.memo(() => {
           const categories = await getCategories();
           categoriesCount = categories.length || 0;
         } else {
-          const categoriesResponse = await fetch('/api/categories-cache');
+          const categoriesResponse = await fetch('/api/public-api?action=categories');
           if (categoriesResponse.ok) {
             const categoriesData = await categoriesResponse.json();
             categoriesCount = categoriesData?.categories?.length || 0;

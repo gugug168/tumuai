@@ -47,7 +47,7 @@ export function HomeDataProvider({ children }: { children: React.ReactNode }) {
     setToolsCountError(null);
     try {
       // Use the smart strategy:
-      // - production: Vercel `/api/tools-cache` (CDN cached, 2s timeout)
+      // - production: Vercel `/api/public-api?action=tools` (CDN cached, 2s timeout)
       // - fallback: cached direct Supabase queries
       const result = await getToolsSmart(1, 0, true);
       if (cancelledRef.cancelled) return;
