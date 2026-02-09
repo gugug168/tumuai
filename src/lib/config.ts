@@ -66,17 +66,25 @@ export const APP_CONFIG = {
 // API端点配置
 export const API_ENDPOINTS = {
   vercelFunctions: {
-    adminCheck: '/api/admin-check',
-    adminDatasets: '/api/admin-datasets',
-    adminUsers: '/api/admin-users',
+    // 统一后的端点
+    adminApi: '/api/admin-api', // action=check|users|datasets
+    publicApi: '/api/public-api', // action=categories|tools|tools-filtered
+    screenshotApi: '/api/screenshot-api', // action=enqueue|status|stats
+
+    // 保留的独立端点
     adminActions: '/api/admin-actions',
-    toolsCache: '/api/tools-cache',
-    toolsFiltered: '/api/tools-filtered',
-    categoriesCache: '/api/categories-cache',
     incrementViews: '/api/increment-views',
     aiSmartFill: '/api/ai-smart-fill',
     checkWebsiteDuplicate: '/api/check-website-duplicate',
     logoExtract: '/api/logo-extract',
-    errors: '/api/errors'
+    errors: '/api/errors',
+
+    // 兼容性映射（指向新端点）
+    adminCheck: '/api/admin-api?action=check',
+    adminDatasets: '/api/admin-api?action=datasets',
+    adminUsers: '/api/admin-api?action=users',
+    toolsCache: '/api/public-api?action=tools',
+    categoriesCache: '/api/public-api?action=categories',
+    toolsFiltered: '/api/public-api?action=tools-filtered'
   }
 } as const
