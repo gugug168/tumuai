@@ -204,7 +204,7 @@
   "crons": [
     {
       "path": "/api/refresh-stats",
-      "schedule": "0 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
