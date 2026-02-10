@@ -75,7 +75,7 @@ export async function getToolsWithCache(limit = 12, offset = 0): Promise<Tool[]>
     cacheKey,
     () => getTools(limit, offset),
     {
-      ttl: 10 * 60 * 1000, // 10分钟缓存
+      ttl: 20 * 60 * 1000, // 20分钟缓存 (Phase 1优化: 10min→20min)
       staleWhileRevalidate: true // 过期后先返回旧数据，后台刷新
     }
   )
@@ -89,7 +89,7 @@ export async function getToolsCountWithCache(): Promise<number> {
     cacheKey,
     () => getToolsCount(),
     {
-      ttl: 10 * 60 * 1000, // 10分钟缓存
+      ttl: 20 * 60 * 1000, // 20分钟缓存 (Phase 1优化: 10min→20min)
       staleWhileRevalidate: true
     }
   )
@@ -103,7 +103,7 @@ export async function getFeaturedToolsWithCache(): Promise<Tool[]> {
     cacheKey,
     () => getFeaturedTools(),
     {
-      ttl: 10 * 60 * 1000, // 精选工具10分钟缓存
+      ttl: 20 * 60 * 1000, // 精选工具20分钟缓存 (Phase 1优化: 10min→20min)
       staleWhileRevalidate: true
     }
   )
@@ -117,7 +117,7 @@ export async function getLatestToolsWithCache(): Promise<Tool[]> {
     cacheKey,
     () => getLatestTools(),
     {
-      ttl: 10 * 60 * 1000, // 10分钟缓存
+      ttl: 20 * 60 * 1000, // 20分钟缓存 (Phase 1优化: 10min→20min)
       staleWhileRevalidate: true
     }
   )
@@ -371,8 +371,8 @@ export async function getToolsSmart(
   // 超时后再回退到本地缓存/直连。
   // Give the Vercel function a bit more room for cold starts; if this times out we fall back to
   // client-side Supabase reads (which can be slower/unreliable on some networks).
-  // 性能优化: 减少超时时间以提升用户体验 (优化后 API 响应应 <500ms)
-  const API_TIMEOUT = IS_DEV ? 2000 : 3000
+  // Phase 1优化: 缩短超时时间配合增强CDN缓存，目标API响应<500ms
+  const API_TIMEOUT = IS_DEV ? 1000 : 1500
 
   // If API is in backoff, skip the network request entirely.
   if (isApiBackedOff()) {
@@ -606,7 +606,7 @@ export async function getToolById(id: string) {
         return data as Tool
       },
       {
-        ttl: 10 * 60 * 1000, // 10分钟缓存
+        ttl: 20 * 60 * 1000, // 20分钟缓存 (Phase 1优化: 10min→20min)
         staleTime: 2 * 60 * 1000,
         staleWhileRevalidate: true
       }
@@ -882,7 +882,7 @@ export async function getCategories(): Promise<Category[]> {
     cacheKey,
     () => CategoryManager.getCategories(),
     {
-      ttl: 15 * 60 * 1000, // 15分钟缓存 - 分类变化不频繁
+      ttl: 60 * 60 * 1000, // 60分钟缓存 (Phase 1优化: 15min→60min - 分类极少变化)
       staleWhileRevalidate: true,
       staleTime: 5 * 60 * 1000
     }
@@ -936,7 +936,7 @@ export async function getRelatedTools(
       }
     },
     {
-      ttl: 10 * 60 * 1000, // 10分钟缓存
+      ttl: 20 * 60 * 1000, // 20分钟缓存 (Phase 1优化: 10min→20min)
       staleWhileRevalidate: true
     }
   );

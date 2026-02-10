@@ -68,6 +68,67 @@ const SubmitToolPage = () => {
   // 重复检测状态
   const [duplicateInfo, setDuplicateInfo] = useState<DuplicateCheckResult | null>(null);
 
+  // 草稿恢复提示
+  const [showDraftNotice, setShowDraftNotice] = useState(false);
+
+  // Phase 3优化: 表单草稿自动保存 (LocalStorage)
+  const DRAFT_KEY = 'submit_tool_draft';
+
+  // 从草稿恢复（仅首次加载）
+  useEffect(() => {
+    try {
+      const savedDraft = localStorage.getItem(DRAFT_KEY);
+      if (savedDraft) {
+        const draft = JSON.parse(savedDraft);
+        // 排除 logoFile（File 对象不能序列化）
+        if (draft && typeof draft === 'object' && draft.toolName) {
+          setFormData(prev => ({
+            ...prev,
+            toolName: draft.toolName || '',
+            officialWebsite: draft.officialWebsite || '',
+            shortDescription: draft.shortDescription || '',
+            detailedDescription: draft.detailedDescription || '',
+            categories: Array.isArray(draft.categories) ? draft.categories : [],
+            mainFeatures: draft.mainFeatures || '',
+            pricingModel: draft.pricingModel || '',
+            submitterEmail: draft.submitterEmail || ''
+          }));
+          setShowDraftNotice(true);
+        }
+      }
+    } catch (e) {
+      console.warn('草稿恢复失败:', e);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 自动保存草稿（防抖 3 秒）
+  useEffect(() => {
+    // 检查表单是否有内容
+    const hasContent = formData.toolName || formData.officialWebsite ||
+      formData.shortDescription || formData.detailedDescription ||
+      formData.categories.length > 0 || formData.mainFeatures || formData.pricingModel;
+
+    if (!hasContent) return;
+
+    const timer = setTimeout(() => {
+      try {
+        // 排除 logoFile，File 对象无法序列化
+        const { logoFile, ...saveable } = formData;
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(saveable));
+      } catch (e) {
+        // LocalStorage 写入失败时静默处理
+      }
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [formData]);
+
+  // 清除草稿
+  const clearDraft = () => {
+    try { localStorage.removeItem(DRAFT_KEY); } catch (_) { /* ignore */ }
+  };
+
   // 获取分类数据
   useEffect(() => {
     const loadCategories = async () => {
@@ -426,6 +487,9 @@ const SubmitToolPage = () => {
       // 显示成功庆祝动画
       setShowSuccess(true);
 
+      // Phase 3优化: 提交成功后清除草稿
+      clearDraft();
+
       // 3秒后重置表单并关闭成功状态
       setTimeout(() => {
         setShowSuccess(false);
@@ -466,6 +530,35 @@ const SubmitToolPage = () => {
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             发现了优秀的土木工程AI工具？与社区分享，帮助更多工程师提升工作效率
           </p>
+
+          {/* Phase 3优化: 草稿恢复提示 */}
+          {showDraftNotice && (
+            <div className="mt-4 max-w-xl mx-auto p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between text-sm">
+              <span className="text-blue-700">已恢复上次未完成的草稿</span>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setShowDraftNotice(false)}
+                  className="text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  继续编辑
+                </button>
+                <button
+                  onClick={() => {
+                    clearDraft();
+                    setFormData({
+                      toolName: '', officialWebsite: '', shortDescription: '',
+                      detailedDescription: '', categories: [], mainFeatures: '',
+                      pricingModel: '', logoFile: null, submitterEmail: ''
+                    });
+                    setShowDraftNotice(false);
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  丢弃草稿
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 步骤指示器 */}

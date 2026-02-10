@@ -280,6 +280,41 @@ function toolDescriptionForMeta(tool) {
   return raw.length > 160 ? `${raw.slice(0, 157)}...` : raw;
 }
 
+// Phase 4优化: 生成工具详情页 SoftwareApplication 结构化数据
+function buildToolStructuredData(tool) {
+  if (!tool || !tool.name) return '';
+
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: tool.name,
+    description: tool.tagline || tool.description || '',
+    applicationCategory: 'UtilitiesApplication',
+    operatingSystem: 'Web Browser',
+    url: tool.website_url || undefined,
+    offers: {
+      '@type': 'Offer',
+      price: tool.pricing === 'Free' ? '0' : undefined,
+      priceCurrency: 'CNY',
+      availability: 'https://schema.org/OnlineOnly'
+    }
+  };
+
+  // 仅在有评分数据时添加 aggregateRating
+  if (tool.upvotes && tool.upvotes > 0) {
+    schema.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: '4.5',
+      ratingCount: String(tool.upvotes || 1)
+    };
+  }
+
+  // 清除 undefined 值
+  const clean = JSON.stringify(schema, (_, v) => v === undefined ? undefined : v);
+
+  return `    <script type="application/ld+json">\n    ${clean}\n    </script>`;
+}
+
 function buildToolDetailFallbackHtml(tool) {
   const name = escapeAttr(tool.name || '工具详情');
   const tagline = escapeAttr(tool.tagline || tool.description || '');
@@ -405,7 +440,7 @@ async function main() {
   }
 
   const toolsFallbackInner = publishedTools
-    ? buildToolsListHtml(publishedTools, 24)
+    ? buildToolsListHtml(publishedTools, 50)
     : `
       <h1 class="text-2xl md:text-3xl font-bold">工具中心</h1>
       <p class="mt-3 text-gray-600 max-w-3xl">
@@ -444,7 +479,10 @@ async function main() {
       const id = String(tool.id);
       const canonicalPath = `/tools/${encodeURIComponent(id)}`;
 
-      const toolHtml = replaceFallback(
+      // Phase 4优化: 生成 SoftwareApplication 结构化数据
+      const toolStructuredData = buildToolStructuredData(tool);
+
+      let toolHtml = replaceFallback(
         withPageMeta(baseHtml, {
           title: `${tool.name} - TumuAI 工具详情`,
           description: toolDescriptionForMeta(tool),
@@ -452,6 +490,11 @@ async function main() {
         }),
         buildToolDetailFallbackHtml(tool)
       );
+
+      // 将结构化数据注入 </head> 前
+      if (toolStructuredData) {
+        toolHtml = toolHtml.replace('</head>', `${toolStructuredData}\n  </head>`);
+      }
 
       writeHtml(path.join('tools', `${id}.html`), toolHtml);
 

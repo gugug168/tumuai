@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Star, ChevronRight, Heart, Eye } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
+import ToolFallbackIcon from './ToolFallbackIcon';
 import { isValidHighQualityLogoUrl, getBestDisplayLogoUrl } from '../lib/logoUtils';
 import { prefetchToolDetailPage } from '../lib/route-prefetch';
 import type { Tool } from '../types';
@@ -104,88 +105,10 @@ const ToolCard = React.memo(({
     return !isValidHighQualityLogoUrl(tool.logo_url);
   }, [tool.logo_url]);
 
-  // 生成兜底 SVG 元素
-  const fallbackIcon = React.useMemo(() => {
-    const initials = (() => {
-      if (!tool.name) return 'T';
-      const cleanName = tool.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, ' ');
-      const words = cleanName.trim().split(/\s+/);
-      if (words.length === 1) {
-        return words[0].substring(0, 2).toUpperCase();
-      } else {
-        return words.slice(0, 2).map(word => word.charAt(0)).join('').toUpperCase();
-      }
-    })();
-
-    const color = (() => {
-      const categoryColors: Record<string, string> = {
-        'AI工具': '#6366f1',
-        '结构设计': '#059669',
-        'BIM建模': '#0891b2',
-        '工程计算': '#dc2626',
-        '项目管理': '#9333ea',
-        '数据分析': '#ea580c',
-        '建筑设计': '#16a34a',
-        '施工管理': '#0f172a',
-        '计算机视觉': '#0891b2',
-        '目标检测': '#0891b2',
-        '自然语言处理': '#6366f1',
-        '文档智能': '#6366f1',
-        '边缘智能': '#0891b2',
-        '生成式人工智能': '#6366f1',
-        '工业自动化': '#0f172a',
-        '工程领域人工智能': '#6366f1',
-        '施工领域人工智能': '#0f172a',
-        '人工智能结构设计': '#6366f1',
-        // Backward compatibility (older DB values)
-        'Computer Vision': '#0891b2',
-        'Object Detection': '#0891b2',
-        'Natural Language Processing': '#6366f1',
-        'Document AI': '#6366f1',
-        'Edge AI': '#0891b2',
-        'Generative AI': '#6366f1',
-        'Industrial Automation': '#0f172a',
-        'AI for Engineering': '#6366f1',
-        'AI in Construction': '#0f172a',
-        'AI结构设计': '#6366f1',
-        'default': '#6b7280'
-      };
-
-      const primaryCategory = tool.categories?.[0] || '';
-      if (categoryColors[primaryCategory]) {
-        return categoryColors[primaryCategory];
-      }
-      for (const [key, c] of Object.entries(categoryColors)) {
-        if (primaryCategory.includes(key) || key.includes(primaryCategory)) {
-          return c;
-        }
-      }
-      return categoryColors.default;
-    })();
-
-    return (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 80 80"
-        className="w-full h-full"
-        style={{ maxWidth: '80px', maxHeight: '80px' }}
-      >
-        <rect width="80" height="80" fill={color} rx="12"/>
-        <text
-          x="40"
-          y="40"
-          fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif"
-          fontSize="28"
-          fontWeight="bold"
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill="white"
-        >
-          {initials}
-        </text>
-      </svg>
-    );
-  }, [tool.name, tool.categories]);
+  // Phase 5优化: 使用提取的 ToolFallbackIcon 组件，减少内存占用
+  const fallbackIcon = React.useMemo(() => (
+    <ToolFallbackIcon name={tool.name} categories={tool.categories} />
+  ), [tool.name, tool.categories]);
 
   // 收藏按钮动画类名
   const favoriteAnimationClass = `

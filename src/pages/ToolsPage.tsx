@@ -246,7 +246,7 @@ const ToolsPage = React.memo(() => {
 
           {/* 工具卡片骨架网格 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, index) => (
+            {[...Array(typeof window !== 'undefined' && window.innerWidth < 768 ? 3 : window.innerWidth < 1024 ? 6 : 9)].map((_, index) => (
               <ToolCardSkeleton key={index} viewMode="grid" />
             ))}
           </div>
