@@ -1,17 +1,20 @@
-import React, { useState, useEffect, useMemo, useId, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useId, useCallback } from 'react';
 import { WifiOff, RefreshCw, AlertCircle, Wifi, Clock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast, createToastHelpers } from '../components/Toast';
 import AuthModal from '../components/AuthModal';
 import ToolCardSkeleton from '../components/ToolCardSkeleton';
 
-// 动态导入优化代码分割
-const ToolFilters = lazy(() => import('../components/ToolFilters').then(m => ({ default: m.ToolFilters })));
-const ToolGrid = lazy(() => import('../components/ToolGrid').then(m => ({ default: m.ToolGrid })));
+// Phase 1优化: 静态导入 ToolFilters 和 ToolGrid，消除嵌套懒加载瀑布
+// App.tsx 已将 ToolsPage 设为 lazy，内部组件无需再次 lazy
+// 访问工具页的用户 100% 需要这两个组件，不存在"可能不需要"的场景
+import { ToolFilters } from '../components/ToolFilters';
+import { ToolGrid } from '../components/ToolGrid';
 
 import { useToolFilters, filterTools } from '../hooks/useToolFilters';
 import { useToolData } from '../hooks/useToolData';
 import { usePerformance } from '../hooks/usePerformance';
+import { useMetaTags } from '../hooks/useMetaTags';
 import type { ToolSearchFilters } from '../types';
 
 /**
@@ -25,6 +28,13 @@ import type { ToolSearchFilters } from '../types';
  * - 使用 React.memo 优化渲染
  */
 const ToolsPage = React.memo(() => {
+  // Phase 1优化: 接入 useMetaTags hook
+  useMetaTags({
+    title: '工具中心 - TumuAI.net',
+    description: '发现最适合土木工程师的AI工具和效率工具，涵盖结构设计、BIM建模、施工管理、造价估算等专业领域。',
+    canonical: 'https://www.tumuai.net/tools'
+  });
+
   // Hooks
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -246,7 +256,8 @@ const ToolsPage = React.memo(() => {
 
           {/* 工具卡片骨架网格 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(typeof window !== 'undefined' && window.innerWidth < 768 ? 3 : window.innerWidth < 1024 ? 6 : 9)].map((_, index) => (
+            {/* Phase 3优化: 固定渲染9个骨架屏，依赖 Tailwind grid 响应式自动适配显示数量 */}
+            {[...Array(9)].map((_, index) => (
               <ToolCardSkeleton key={index} viewMode="grid" />
             ))}
           </div>
@@ -340,15 +351,7 @@ const ToolsPage = React.memo(() => {
         </div>
 
         {/* Search and Filters */}
-        <Suspense fallback={
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-            <div className="animate-pulse">
-              <div className="h-12 bg-gray-200 rounded-lg mb-4"></div>
-              <div className="h-10 bg-gray-200 rounded w-1/3"></div>
-            </div>
-          </div>
-        }>
-          <ToolFilters
+        <ToolFilters
             searchValue={filters.search}
             onSearchChange={(value) => handleFilterChange('search', value)}
             isPending={isPending}
@@ -374,17 +377,9 @@ const ToolsPage = React.memo(() => {
             onFiltersToggle={() => setShowFilters(!showFilters)}
             onClearFilters={clearFilters}
           />
-        </Suspense>
 
         {/* Tools Grid */}
-        <Suspense fallback={
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, index) => (
-              <ToolCardSkeleton key={index} viewMode="grid" />
-            ))}
-          </div>
-        }>
-          <ToolGrid
+        <ToolGrid
             tools={tools}
             totalCount={displayCount}
             allTools={allTools}
@@ -407,7 +402,6 @@ const ToolsPage = React.memo(() => {
             hasMore={hasMore}
             enableVirtualScroll={enableVirtualScroll}
           />
-        </Suspense>
 
         {/* 开发模式性能报告按钮 */}
         {process.env.NODE_ENV === 'development' && (

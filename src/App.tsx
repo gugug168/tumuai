@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import PageLoader from './components/PageLoader';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
+import PageTransition from './components/PageTransition';
 
 // 首页保持直接导入以确保快速首屏
 import HomePage from './pages/HomePage';
@@ -28,21 +29,69 @@ function App() {
         <AppProviders>
           <Router>
           <div className="min-h-screen bg-white flex flex-col">
+            {/* Phase 2优化: 添加 Skip to Content 无障碍链接 */}
+            <a
+              href="#main-content"
+              className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:shadow-lg"
+            >
+              跳转到主要内容
+            </a>
             <Header />
-            <main className="flex-1">
+            <main id="main-content" className="flex-1">
               <ErrorBoundary>
                 <Suspense fallback={<PageLoader message="页面加载中..." />}>
                   <Routes>
-                    <Route path="/" element={<HomePage />} />
-                    <Route path="/tools" element={<ToolsPage />} />
-                    <Route path="/tools/:toolId" element={<ToolDetailPage />} />
-                    <Route path="/submit" element={<SubmitToolPage />} />
-                    <Route path="/about" element={<AboutPage />} />
-                    <Route path="/profile" element={<ProfilePage />} />
-                    <Route path="/admin/*" element={<AdminDashboard />} />
-                    <Route path="/admin-login" element={<AdminLoginPage />} />
-                    <Route path="/diagnostic" element={<DiagnosticPage />} />
-                    <Route path="*" element={<NotFoundPage />} />
+                    {/* Phase 3优化: 启用 PageTransition 组件，为各页面添加淡入动画 */}
+                    <Route path="/" element={
+                      <PageTransition type="fade" duration={200}>
+                        <HomePage />
+                      </PageTransition>
+                    } />
+                    <Route path="/tools" element={
+                      <PageTransition type="fade" duration={200}>
+                        <ToolsPage />
+                      </PageTransition>
+                    } />
+                    <Route path="/tools/:toolId" element={
+                      <PageTransition type="fade" duration={200}>
+                        <ToolDetailPage />
+                      </PageTransition>
+                    } />
+                    <Route path="/submit" element={
+                      <PageTransition type="fade" duration={200}>
+                        <SubmitToolPage />
+                      </PageTransition>
+                    } />
+                    <Route path="/about" element={
+                      <PageTransition type="fade" duration={200}>
+                        <AboutPage />
+                      </PageTransition>
+                    } />
+                    <Route path="/profile" element={
+                      <PageTransition type="fade" duration={200}>
+                        <ProfilePage />
+                      </PageTransition>
+                    } />
+                    <Route path="/admin/*" element={
+                      <PageTransition type="fade" duration={200}>
+                        <AdminDashboard />
+                      </PageTransition>
+                    } />
+                    <Route path="/admin-login" element={
+                      <PageTransition type="fade" duration={200}>
+                        <AdminLoginPage />
+                      </PageTransition>
+                    } />
+                    <Route path="/diagnostic" element={
+                      <PageTransition type="fade" duration={200}>
+                        <DiagnosticPage />
+                      </PageTransition>
+                    } />
+                    <Route path="*" element={
+                      <PageTransition type="fade" duration={200}>
+                        <NotFoundPage />
+                      </PageTransition>
+                    } />
                   </Routes>
                 </Suspense>
               </ErrorBoundary>

@@ -15,6 +15,7 @@ import {
 import { addToFavorites, removeFromFavorites, isFavorited, addToolReview, getToolReviews } from '../lib/community';
 import { getToolById, incrementToolViews, getRelatedTools } from '../lib/supabase';
 import { generateInitialLogo, isValidHighQualityLogoUrl } from '../lib/logoUtils';
+import { useMetaTags } from '../hooks/useMetaTags';
 import OptimizedImage from '../components/OptimizedImage';
 import { useToast, createToastHelpers } from '../components/Toast';
 import ScreenshotGallery, { type GalleryImage } from '../components/ScreenshotGallery';
@@ -326,6 +327,27 @@ const ToolDetailPage = () => {
       loadRelatedTools(adaptedTool.category, adaptedTool.id);
     }
   }, [adaptedTool, loadRelatedTools]);
+
+  // Phase 1优化: 接入 useMetaTags hook（工具数据加载完成后）
+  // 注意：必须在组件顶层调用 hook，使用条件数据而非条件调用
+  const categoriesText = tool?.categories?.join(', ') || '';
+  const toolMetaConfig = useMemo(() => {
+    if (!tool) return null;
+    return {
+      title: `${tool.name} - TumuAI`,
+      description: tool.tagline || tool.description || `查看${tool.name}的详细信息`,
+      keywords: `${tool.name},${categoriesText},AI工具,土木工程`.replace(/,{2,}/g, ','),
+      ogTitle: tool.name,
+      ogDescription: tool.tagline || tool.description,
+      ogImage: tool.logo_url,
+      twitterTitle: tool.name,
+      twitterDescription: tool.tagline || tool.description,
+      twitterImage: tool.logo_url
+    };
+  }, [tool, categoriesText]);
+
+  // 只有当 tool 数据可用时才更新 meta 标签
+  useMetaTags(toolMetaConfig || {});
 
   // 键盘导航 - 普通模式下方向键切换截图，F 键进入全屏
   useEffect(() => {

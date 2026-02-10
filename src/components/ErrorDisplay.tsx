@@ -128,7 +128,8 @@ const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
   };
 
   return (
-    <div className={`border rounded-lg ${getErrorColor()} ${sizeClasses[size]} ${className}`}>
+    // Phase 2优化: 添加 role="alert" 和 aria-live="polite" 无障碍支持
+    <div role="alert" aria-live="polite" className={`border rounded-lg ${getErrorColor()} ${sizeClasses[size]} ${className}`}>
       <div className="flex items-start">
         <div className="flex-shrink-0">
           {getErrorIcon()}

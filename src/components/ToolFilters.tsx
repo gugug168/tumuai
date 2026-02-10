@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useEffect } from 'react';
 import {
   Filter,
   Search,
@@ -81,6 +81,19 @@ const ToolFilters = React.memo<ToolFiltersProps>(({
   onClearFilters,
   isMobile = false
 }) => {
+  // Phase 3优化: 筛选面板无障碍增强 - Escape 键关闭
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showFilters) {
+        onFiltersToggle();
+      }
+    };
+
+    if (showFilters) {
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
+    }
+  }, [showFilters, onFiltersToggle]);
   // 计算激活的筛选器数量
   const activeFiltersCount = useMemo(() => {
     return selectedCategories.length +
@@ -143,12 +156,22 @@ const ToolFilters = React.memo<ToolFiltersProps>(({
               className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
               aria-label="搜索AI工具"
             />
-            {/* 加载指示器 */}
-            {isPending && (
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+            {/* 搜索框右侧操作区 */}
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center">
+              {/* Phase 1优化: 添加清除按钮，与加载指示器互斥显示 */}
+              {searchValue && !isPending ? (
+                <button
+                  type="button"
+                  onClick={() => onSearchChange('')}
+                  className="text-gray-400 hover:text-gray-600 transition-colors p-0.5"
+                  aria-label="清除搜索"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              ) : isPending ? (
                 <RefreshCw className="animate-spin text-gray-400 w-4 h-4" />
-              </div>
-            )}
+              ) : null}
+            </div>
           </div>
         </div>
 
@@ -214,14 +237,18 @@ const ToolFilters = React.memo<ToolFiltersProps>(({
             onClick={onFiltersToggle}
           />
 
-          {/* 筛选面板 */}
-          <div className={`${
-            showFilters
-              ? 'md:mt-6 md:pt-6 md:border-t relative md:relative fixed md:bg-transparent bg-white z-50'
-              : 'hidden'
-          } md:block ${
-            showFilters ? 'block' : ''
-          } ${showFilters ? 'inset-y-0 left-0 w-full md:w-auto md:inset-auto' : ''}`}>
+          {/* 筛选面板 - Phase 3优化: 添加无障碍属性 */}
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="筛选工具"
+            className={`${
+              showFilters
+                ? 'md:mt-6 md:pt-6 md:border-t relative md:relative fixed md:bg-transparent bg-white z-50'
+                : 'hidden'
+            } md:block ${
+              showFilters ? 'block' : ''
+            } ${showFilters ? 'inset-y-0 left-0 w-full md:w-auto md:inset-auto' : ''}`}>
             {/* 移动端关闭按钮 */}
             <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">筛选条件</h3>

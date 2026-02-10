@@ -9,6 +9,7 @@ const Header = React.memo(() => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const location = useLocation();
   const { user, profile, signOut } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -48,14 +49,40 @@ const Header = React.memo(() => {
     setShowAuthModal(true);
   };
 
+  // Phase 3优化: 提取预加载处理函数，桌面和移动导航共享
+  const getPrefetchHandlers = useCallback((path: string) => ({
+    onMouseEnter: () => {
+      if (path === '/tools') void prefetchToolsPage();
+      if (path === '/tools') void prefetchToolsData();
+      if (path === '/submit') void prefetchSubmitToolPage();
+    },
+    onFocus: () => {
+      if (path === '/tools') void prefetchToolsPage();
+      if (path === '/tools') void prefetchToolsData();
+      if (path === '/submit') void prefetchSubmitToolPage();
+    },
+    onPointerDown: () => {
+      if (path === '/tools') void prefetchToolsPage();
+      if (path === '/tools') void prefetchToolsData();
+      if (path === '/submit') void prefetchSubmitToolPage();
+    },
+    onTouchStart: () => {
+      if (path === '/tools') void prefetchToolsPage();
+      if (path === '/tools') void prefetchToolsData();
+      if (path === '/submit') void prefetchSubmitToolPage();
+    }
+  }), []);
+
   const handleSignOut = async () => {
     try {
+      setIsSigningOut(true);
       await signOut();
       // 显式跳转，确保用户感知
       // 使用硬刷新，清理任何残留状态
       window.location.assign('/');
     } catch (error) {
       console.error('登出失败:', error);
+      setIsSigningOut(false);
     }
   };
 
@@ -96,26 +123,7 @@ const Header = React.memo(() => {
                   <Link
                     key={item.path}
                     to={item.path}
-                    onMouseEnter={() => {
-                      if (item.path === '/tools') void prefetchToolsPage();
-                      if (item.path === '/tools') void prefetchToolsData();
-                      if (item.path === '/submit') void prefetchSubmitToolPage();
-                    }}
-                    onFocus={() => {
-                      if (item.path === '/tools') void prefetchToolsPage();
-                      if (item.path === '/tools') void prefetchToolsData();
-                      if (item.path === '/submit') void prefetchSubmitToolPage();
-                    }}
-                    onPointerDown={() => {
-                      if (item.path === '/tools') void prefetchToolsPage();
-                      if (item.path === '/tools') void prefetchToolsData();
-                      if (item.path === '/submit') void prefetchSubmitToolPage();
-                    }}
-                    onTouchStart={() => {
-                      if (item.path === '/tools') void prefetchToolsPage();
-                      if (item.path === '/tools') void prefetchToolsData();
-                      if (item.path === '/submit') void prefetchSubmitToolPage();
-                    }}
+                    {...getPrefetchHandlers(item.path)}
                     className={`font-medium relative transition-colors group ${
                       isActive(item.path)
                         ? 'text-accent-600'
@@ -134,10 +142,7 @@ const Header = React.memo(() => {
             {/* 提交工具按钮 */}
             <Link
               to="/submit"
-              onMouseEnter={() => void prefetchSubmitToolPage()}
-              onFocus={() => void prefetchSubmitToolPage()}
-              onPointerDown={() => void prefetchSubmitToolPage()}
-              onTouchStart={() => void prefetchSubmitToolPage()}
+              {...getPrefetchHandlers('/submit')}
               className="bg-accent-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-accent-600 transition-colors inline-flex items-center"
             >
               提交你的工具
@@ -175,10 +180,11 @@ const Header = React.memo(() => {
                 )}
                 <button
                   onClick={handleSignOut}
-                  className="flex items-center space-x-1 text-gray-700 hover:text-accent-600 font-medium transition-colors"
+                  disabled={isSigningOut}
+                  className="flex items-center space-x-1 text-gray-700 hover:text-accent-600 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <LogOut className="w-4 h-4" />
-                  <span>登出</span>
+                  <LogOut className={`w-4 h-4 ${isSigningOut ? 'animate-spin' : ''}`} />
+                  <span>{isSigningOut ? '登出中...' : '登出'}</span>
                 </button>
               </div>
             ) : (
@@ -230,26 +236,7 @@ const Header = React.memo(() => {
                     <Link
                       key={item.path}
                       to={item.path}
-                      onMouseEnter={() => {
-                        if (item.path === '/tools') void prefetchToolsPage();
-                        if (item.path === '/tools') void prefetchToolsData();
-                        if (item.path === '/submit') void prefetchSubmitToolPage();
-                      }}
-                      onFocus={() => {
-                        if (item.path === '/tools') void prefetchToolsPage();
-                        if (item.path === '/tools') void prefetchToolsData();
-                        if (item.path === '/submit') void prefetchSubmitToolPage();
-                      }}
-                      onPointerDown={() => {
-                        if (item.path === '/tools') void prefetchToolsPage();
-                        if (item.path === '/tools') void prefetchToolsData();
-                        if (item.path === '/submit') void prefetchSubmitToolPage();
-                      }}
-                      onTouchStart={() => {
-                        if (item.path === '/tools') void prefetchToolsPage();
-                        if (item.path === '/tools') void prefetchToolsData();
-                        if (item.path === '/submit') void prefetchSubmitToolPage();
-                      }}
+                      {...getPrefetchHandlers(item.path)}
                       className={`font-medium py-2 transition-colors ${
                         isActive(item.path)
                           ? 'text-accent-600'
@@ -299,10 +286,11 @@ const Header = React.memo(() => {
                       handleSignOut();
                       setIsMenuOpen(false);
                     }}
-                    className="flex items-center space-x-1 text-gray-700 hover:text-accent-600 font-medium py-2 transition-colors"
+                    disabled={isSigningOut}
+                    className="flex items-center space-x-1 text-gray-700 hover:text-accent-600 font-medium py-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <LogOut className="w-4 h-4" />
-                    <span>登出</span>
+                    <LogOut className={`w-4 h-4 ${isSigningOut ? 'animate-spin' : ''}`} />
+                    <span>{isSigningOut ? '登出中...' : '登出'}</span>
                   </button>
                 </>
               ) : (

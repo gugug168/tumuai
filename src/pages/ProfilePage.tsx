@@ -7,9 +7,17 @@ import { getUserFavorites } from '../lib/community';
 import { generateInitialLogo } from '../lib/logoUtils';
 import { useNavigate, Link } from 'react-router-dom';
 import { useToast, createToastHelpers } from '../components/Toast';
+import { useMetaTags } from '../hooks/useMetaTags';
 import type { Tool } from '../types';
 
 const ProfilePage = () => {
+  // Phase 1优化: 接入 useMetaTags hook（用户个人页面添加 noIndex）
+  useMetaTags({
+    title: '个人中心 - TumuAI.net',
+    description: '管理您的收藏、评价和个人资料',
+    noIndex: true // 个人页面不索引
+  });
+
   const { user } = useAuth();
   const { profile, refreshProfile } = useProfile();
   const { showToast } = useToast();

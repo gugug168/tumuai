@@ -7,6 +7,7 @@ import { getCategories } from '../lib/supabase';
 import { autoGenerateLogo, generateInitialLogo, extractLogoFromHtml } from '../lib/logoUtils';
 import SmartURLInput from '../components/SmartURLInput';
 import { useToast, createToastHelpers } from '../components/Toast';
+import { useMetaTags } from '../hooks/useMetaTags';
 import type { DuplicateCheckResult } from '../lib/duplicate-checker';
 
 // 表单步骤定义
@@ -31,6 +32,13 @@ interface AIAnalysisResult {
 }
 
 const SubmitToolPage = () => {
+  // Phase 1优化: 接入 useMetaTags hook
+  useMetaTags({
+    title: '提交新工具 - TumuAI.net',
+    description: '发现优质的土木工程AI工具？与社区分享，帮助更多工程师提升工作效率。',
+    canonical: 'https://www.tumuai.net/submit'
+  });
+
   const { showToast } = useToast();
   const toast = createToastHelpers(showToast);
 
