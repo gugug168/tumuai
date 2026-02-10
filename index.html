@@ -123,10 +123,7 @@
       预连接和 DNS 预取优化
     ============================================ -->
     <!-- 目前未使用 Google Fonts，避免无效预连接造成额外开销 -->
-
-    <!-- Phase 2优化: 关键资源预加载，改善LCP 50-100ms -->
-    <link rel="modulepreload" href="/src/main.tsx">
-    <link rel="preload" as="style" href="/src/index.css">
+    <!-- Vite 构建时会自动为入口 JS/CSS 生成 modulepreload，无需手动添加 -->
 
     <!-- ============================================
       其他 Meta 标签
