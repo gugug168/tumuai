@@ -122,9 +122,7 @@
     <!-- ============================================
       预连接和 DNS 预取优化
     ============================================ -->
-    <!-- Phase 2优化: Supabase DNS 预连接，首次 API 调用节省约 100-200ms -->
-    <link rel="dns-prefetch" href="https://your-project.supabase.co">
-    <link rel="preconnect" href="https://your-project.supabase.co" crossorigin>
+    <!-- Supabase 域名为运行时环境变量，避免占位域名造成无效预连接 -->
     <!-- 目前未使用 Google Fonts，避免无效预连接造成额外开销 -->
     <!-- Vite 构建时会自动为入口 JS/CSS 生成 modulepreload，无需手动添加 -->
 

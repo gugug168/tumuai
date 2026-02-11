@@ -86,7 +86,6 @@ function splitTitle(t: string): { name: string; rest: string } {
 }
 
 function guessPricing(text: string): Pricing {
-  const t = text.toLowerCase()
   if (/(free\s+trial|trial\s+period|start\s+trial|try\s+free)/i.test(text)) return 'Trial'
   if (/(pricing|subscribe|subscription|\$|€|¥|per\s+month|per\s+year)/i.test(text)) return 'Paid'
   if (/\bfree\b/i.test(text) && /(upgrade|pro|premium|paid)/i.test(text)) return 'Freemium'
@@ -246,4 +245,3 @@ export default async function handler(request: VercelRequest, response: VercelRe
     return response.status(502).json(errResponse('FETCH_FAILED', message, true, Date.now() - start, false))
   }
 }
-

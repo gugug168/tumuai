@@ -17,6 +17,20 @@ import { usePerformance } from '../hooks/usePerformance';
 import { useMetaTags } from '../hooks/useMetaTags';
 import type { ToolSearchFilters } from '../types';
 
+const PRICING_VALUES = ['Free', 'Freemium', 'Paid', 'Trial'] as const;
+const SORT_VALUES = ['upvotes', 'date_added', 'rating', 'views', 'name'] as const;
+
+type PricingValue = ToolSearchFilters['pricing'];
+type SortValue = Exclude<ToolSearchFilters['sortBy'], undefined>;
+
+function isPricingValue(value: string): value is PricingValue {
+  return PRICING_VALUES.includes(value as PricingValue);
+}
+
+function isSortValue(value: string): value is SortValue {
+  return SORT_VALUES.includes(value as SortValue);
+}
+
 /**
  * ToolsPage 组件 - 工具中心页面
  *
@@ -49,15 +63,13 @@ const ToolsPage = React.memo(() => {
     filters,
     deferredSearch,
     isPending,
-    activeFiltersCount,
     hasActiveFilters,
     needsServerFiltering,
     handleFilterChange,
     handleCategoryToggle,
     handleFeatureToggle,
     clearFilters,
-    initializeFromUrl,
-    cleanup: cleanupFilters
+    initializeFromUrl
   } = useToolFilters();
 
   // 数据获取
@@ -115,9 +127,13 @@ const ToolsPage = React.memo(() => {
     const f: ToolSearchFilters = {};
     if (filters.search.trim()) f.search = filters.search.trim();
     if (filters.categories.length > 0) f.categories = filters.categories;
-    if (filters.pricing) f.pricing = filters.pricing as any;
+    if (filters.pricing && isPricingValue(filters.pricing)) {
+      f.pricing = filters.pricing;
+    }
     if (filters.features.length > 0) f.features = filters.features;
-    f.sortBy = filters.sortBy as any;
+    if (isSortValue(filters.sortBy)) {
+      f.sortBy = filters.sortBy;
+    }
     return f;
   }, [needsServerFiltering, filters.search, filters.categories, filters.pricing, filters.features, filters.sortBy]);
 
@@ -404,7 +420,7 @@ const ToolsPage = React.memo(() => {
           />
 
         {/* 开发模式性能报告按钮 */}
-        {process.env.NODE_ENV === 'development' && (
+        {import.meta.env.DEV && (
           <div className="mt-8 flex justify-center">
             <button
               onClick={() => printReport()}

@@ -10,6 +10,31 @@
 import { createClient } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
+type AdminRole = 'super_admin' | 'admin' | 'user'
+
+interface AdminUserSummary {
+  user_id: string
+  role: AdminRole
+  is_active?: boolean | null
+  last_login?: string | null
+}
+
+interface AuthUserSummary {
+  id: string
+  email: string
+  created_at: string | null
+  last_sign_in_at: string | null
+  email_confirmed_at: string | null
+  user_metadata: Record<string, unknown> | null
+  app_metadata: Record<string, unknown> | null
+}
+
+interface AdminUserWithRole extends AuthUserSummary {
+  role: AdminRole
+  is_active: boolean
+  last_login: string | null
+}
+
 // 安全响应头配置
 const SECURITY_HEADERS = {
   'Content-Type': 'application/json',
@@ -58,8 +83,6 @@ async function verifyAdmin(supabaseUrl: string, serviceKey: string, accessToken?
 
 // 处理管理员权限检查
 async function handleCheck(request: VercelRequest, response: VercelResponse, accessToken: string, supabaseUrl: string, serviceKey: string) {
-  const startTime = Date.now()
-
   try {
     const supabase = createClient(supabaseUrl, serviceKey)
 
@@ -147,7 +170,7 @@ async function handleUsers(request: VercelRequest, response: VercelResponse, acc
   const userResult = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 })
   const totalCount = 'total' in userResult.data ? (userResult.data.total || 0) : 0
 
-  let users: unknown[] = []
+  let users: AuthUserSummary[] = []
   let filteredCount = totalCount || 0
 
   if (search) {
@@ -185,11 +208,14 @@ async function handleUsers(request: VercelRequest, response: VercelResponse, acc
   const { data: adminUsers } = await supabase
     .from('admin_users')
     .select('user_id, role, is_active, created_at, last_login')
-    .in('user_id', users.map((u: any) => u.id))
+    .in('user_id', users.map((u) => u.id))
 
-  const adminMap = new Map((adminUsers || []).map((au: any) => [au.user_id, au]))
+  const adminMap = new Map((adminUsers || []).map((au) => {
+    const row = au as AdminUserSummary
+    return [row.user_id, row]
+  }))
 
-  users = users.map((user: any) => ({
+  const usersWithRole: AdminUserWithRole[] = users.map((user) => ({
     ...user,
     role: adminMap.get(user.id)?.role || 'user',
     is_active: adminMap.get(user.id)?.is_active ?? true,
@@ -197,7 +223,7 @@ async function handleUsers(request: VercelRequest, response: VercelResponse, acc
   }))
 
   return response.status(200).json({
-    users,
+    users: usersWithRole,
     pagination: {
       page,
       perPage,

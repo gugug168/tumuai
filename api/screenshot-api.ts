@@ -49,6 +49,14 @@ function generateTaskId(): string {
 // 添加任务到队列
 function enqueueScreenshotTask(toolId: string, websiteUrl: string): string {
   cleanupOldTasks()
+
+  if (taskQueue.size >= MAX_QUEUE_SIZE) {
+    const oldestTask = Array.from(taskQueue.values()).sort((a, b) => a.createdAt - b.createdAt)[0]
+    if (oldestTask) {
+      taskQueue.delete(oldestTask.id)
+    }
+  }
+
   const taskId = generateTaskId()
   taskQueue.set(taskId, {
     id: taskId,

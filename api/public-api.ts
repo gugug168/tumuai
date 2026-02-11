@@ -8,7 +8,7 @@
  * - GET /api/public-api?action=tools - 获取工具列表
  * - POST /api/public-api?action=tools-filtered - 筛选工具
  */
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 type SortField = 'upvotes' | 'date_added' | 'rating' | 'views'
@@ -20,24 +20,46 @@ interface ToolQueryParams {
   includeCount?: boolean
   featuredOnly?: boolean
   category?: string
+  categories?: string[]
   pricing?: Pricing
   features?: string[]
   sortBy?: SortField
 }
 
-// 生成缓存键
-function generateCacheKey(params: ToolQueryParams): string {
-  const parts = ['tools', 'published', params.sortBy || 'upvotes', params.offset || 0, params.limit || 12]
-  if (params.featuredOnly) parts.push('featured')
-  if (params.category) parts.push(`cat:${params.category}`)
-  if (params.pricing) parts.push(`price:${params.pricing}`)
-  if (params.features?.length) parts.push(`features:${params.features.length}`)
-  return parts.join(':')
+type AppSupabaseClient = SupabaseClient
+
+interface CachePolicy {
+  browserMaxAge: number
+  sMaxAge: number
+  staleWhileRevalidate: number
+}
+
+function setCdnCacheHeaders(response: VercelResponse, policy: CachePolicy) {
+  const value = `public, max-age=${policy.browserMaxAge}, s-maxage=${policy.sMaxAge}, stale-while-revalidate=${policy.staleWhileRevalidate}`
+  const cdnValue = `public, s-maxage=${policy.sMaxAge}, stale-while-revalidate=${policy.staleWhileRevalidate}`
+
+  response.setHeader('CDN-Cache-Control', cdnValue)
+  response.setHeader('Vercel-CDN-Cache-Control', cdnValue)
+  response.setHeader('Cache-Control', value)
 }
 
 // 从数据库获取工具
-async function fetchToolsFromDB(supabase: any, params: ToolQueryParams) {
-  const { limit = 12, offset = 0, includeCount = false, featuredOnly, category, pricing, features = [], sortBy = 'upvotes' } = params
+async function fetchToolsFromDB(supabase: AppSupabaseClient, params: ToolQueryParams) {
+  const {
+    limit = 12,
+    offset = 0,
+    includeCount = false,
+    featuredOnly,
+    category,
+    categories = [],
+    pricing,
+    features = [],
+    sortBy = 'upvotes'
+  } = params
+
+  const categoryFilters = categories.length > 0
+    ? categories.filter(Boolean)
+    : (category ? [category] : [])
 
   let toolsQuery = supabase
     .from('tools')
@@ -45,7 +67,7 @@ async function fetchToolsFromDB(supabase: any, params: ToolQueryParams) {
     .eq('status', 'published')
 
   if (featuredOnly) toolsQuery = toolsQuery.eq('featured', true)
-  if (category) toolsQuery = toolsQuery.overlaps('categories', [category])
+  if (categoryFilters.length > 0) toolsQuery = toolsQuery.overlaps('categories', categoryFilters)
   if (pricing) toolsQuery = toolsQuery.eq('pricing', pricing)
   if (features.length > 0) toolsQuery = toolsQuery.overlaps('features', features)
 
@@ -56,7 +78,7 @@ async function fetchToolsFromDB(supabase: any, params: ToolQueryParams) {
   if (includeCount) {
     // 性能优化: 对于无筛选条件的查询，从物化视图获取总数 (极快)
     // 对于有筛选条件的查询，才使用原始 COUNT 查询
-    const hasFilters = featuredOnly || category || pricing || features.length > 0
+    const hasFilters = featuredOnly || categoryFilters.length > 0 || pricing || features.length > 0
 
     if (!hasFilters) {
       // 从物化视图获取总数，避免全表扫描
@@ -69,7 +91,7 @@ async function fetchToolsFromDB(supabase: any, params: ToolQueryParams) {
       // 有筛选条件时使用原始查询
       let countQuery = supabase.from('tools').select('*', { count: 'exact', head: true }).eq('status', 'published')
       if (featuredOnly) countQuery = countQuery.eq('featured', true)
-      if (category) countQuery = countQuery.overlaps('categories', [category])
+      if (categoryFilters.length > 0) countQuery = countQuery.overlaps('categories', categoryFilters)
       if (pricing) countQuery = countQuery.eq('pricing', pricing)
       if (features.length > 0) countQuery = countQuery.overlaps('features', features)
       const { count: countResult } = await countQuery
@@ -84,7 +106,7 @@ async function fetchToolsFromDB(supabase: any, params: ToolQueryParams) {
 }
 
 // 处理分类请求
-async function handleCategories(response: VercelResponse, supabase: any) {
+async function handleCategories(response: VercelResponse, supabase: AppSupabaseClient) {
   let { data, error } = await supabase
     .from('categories')
     .select('*')
@@ -103,7 +125,7 @@ async function handleCategories(response: VercelResponse, supabase: any) {
     return response.status(500).json({ error: 'Failed to fetch categories' })
   }
 
-  response.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=900')
+  setCdnCacheHeaders(response, { browserMaxAge: 60, sMaxAge: 600, staleWhileRevalidate: 900 })
   return response.status(200).json({
     categories: data || [],
     cached: false,
@@ -112,7 +134,7 @@ async function handleCategories(response: VercelResponse, supabase: any) {
 }
 
 // 处理工具列表请求
-async function handleTools(request: VercelRequest, response: VercelResponse, supabase: any) {
+async function handleTools(request: VercelRequest, response: VercelResponse, supabase: AppSupabaseClient) {
   const url = new URL(request.url || '', `http://${request.headers.host}`)
 
   // 支持按 ID 查询单个工具
@@ -129,7 +151,7 @@ async function handleTools(request: VercelRequest, response: VercelResponse, sup
       return response.status(404).json({ error: 'Tool not found' })
     }
 
-    response.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
+    setCdnCacheHeaders(response, { browserMaxAge: 60, sMaxAge: 300, staleWhileRevalidate: 600 })
     return response.status(200).json({
       tools: [data],
       cached: false,
@@ -142,6 +164,10 @@ async function handleTools(request: VercelRequest, response: VercelResponse, sup
   const includeCount = url.searchParams.get('includeCount') === 'true'
   const featuredOnly = url.searchParams.get('featured') === 'true'
   const category = url.searchParams.get('category') || undefined
+  const categoriesRaw = url.searchParams.get('categories')
+  const categories = categoriesRaw
+    ? categoriesRaw.split(',').map(s => s.trim()).filter(Boolean)
+    : []
   const pricingRaw = url.searchParams.get('pricing')
   const pricing: Pricing | undefined = (pricingRaw && ['Free', 'Freemium', 'Paid', 'Trial'].includes(pricingRaw)) ? pricingRaw as Pricing : undefined
   const featuresRaw = url.searchParams.get('features')
@@ -155,13 +181,14 @@ async function handleTools(request: VercelRequest, response: VercelResponse, sup
     includeCount,
     featuredOnly,
     category,
+    categories,
     pricing,
     features,
     sortBy
   })
 
   // Phase 1优化: CDN缓存从10min→20min，减少60%数据库查询
-  response.setHeader('Cache-Control', 'public, s-maxage=1200, stale-while-revalidate=1800')
+  setCdnCacheHeaders(response, { browserMaxAge: 60, sMaxAge: 1200, staleWhileRevalidate: 1800 })
   return response.status(200).json({
     ...data,
     cached: false,
@@ -170,27 +197,33 @@ async function handleTools(request: VercelRequest, response: VercelResponse, sup
 }
 
 // 处理工具筛选请求（POST）
-async function handleToolsFiltered(request: VercelRequest, response: VercelResponse, supabase: any) {
+async function handleToolsFiltered(request: VercelRequest, response: VercelResponse, supabase: AppSupabaseClient) {
   try {
     const body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body
 
     const {
       limit = 12,
       offset = 0,
+      includeCount = true,
       sortBy = 'upvotes',
       category,
+      categories,
       pricing,
       features,
       searchQuery,
       minRating
     } = body || {}
 
+    const categoryFilters = Array.isArray(categories)
+      ? categories.filter((item: unknown): item is string => typeof item === 'string' && item.trim().length > 0)
+      : (typeof category === 'string' && category.trim().length > 0 ? [category.trim()] : [])
+
     let query = supabase
       .from('tools')
       .select('id,name,tagline,description,website_url,logo_url,categories,features,pricing,rating,views,upvotes,date_added,featured,review_count')
       .eq('status', 'published')
 
-    if (category) query = query.overlaps('categories', [category])
+    if (categoryFilters.length > 0) query = query.overlaps('categories', categoryFilters)
     if (pricing) query = query.eq('pricing', pricing)
     if (features?.length) query = query.overlaps('features', features)
     if (minRating) query = query.gte('rating', minRating)
@@ -206,10 +239,30 @@ async function handleToolsFiltered(request: VercelRequest, response: VercelRespo
     const { data, error } = await query
     if (error) throw new Error(error.message)
 
-    response.setHeader('Cache-Control', 'public, s-maxage=180, stale-while-revalidate=300')
+    let totalCount = data?.length || 0
+    if (includeCount) {
+      let countQuery = supabase
+        .from('tools')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'published')
+
+      if (categoryFilters.length > 0) countQuery = countQuery.overlaps('categories', categoryFilters)
+      if (pricing) countQuery = countQuery.eq('pricing', pricing)
+      if (features?.length) countQuery = countQuery.overlaps('features', features)
+      if (minRating) countQuery = countQuery.gte('rating', minRating)
+      if (searchQuery) {
+        countQuery = countQuery.or(`name.ilike.%${searchQuery}%,tagline.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+      }
+
+      const { count, error: countError } = await countQuery
+      if (countError) throw new Error(countError.message)
+      totalCount = count || 0
+    }
+
+    setCdnCacheHeaders(response, { browserMaxAge: 30, sMaxAge: 180, staleWhileRevalidate: 300 })
     return response.status(200).json({
       tools: data || [],
-      count: data?.length || 0,
+      count: totalCount,
       timestamp: new Date().toISOString()
     })
   } catch (error) {

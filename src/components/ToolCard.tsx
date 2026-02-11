@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Star, ChevronRight, Heart, Eye } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
 import ToolFallbackIcon from './ToolFallbackIcon';
-import { isValidHighQualityLogoUrl, getBestDisplayLogoUrl } from '../lib/logoUtils';
+import { getBestDisplayLogoUrl } from '../lib/logoUtils';
 import { prefetchToolDetailPage } from '../lib/route-prefetch';
 import type { Tool } from '../types';
 
@@ -34,7 +34,6 @@ const ToolCard = React.memo(({
 }: ToolCardProps) => {
   const navigate = useNavigate();
   const [favoriteAnimating, setFavoriteAnimating] = useState(false);
-  const [isPressed, setIsPressed] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const favoriteButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -69,7 +68,7 @@ const ToolCard = React.memo(({
   const shouldIgnoreCardInteraction = React.useCallback((target: EventTarget | null) => {
     const el = target as HTMLElement | null;
     if (!el) return false;
-    return !!el.closest('a,button,input,select,textarea,label,[role=\"button\"]');
+    return !!el.closest('a,button,input,select,textarea,label,[role="button"]');
   }, []);
 
   const handleCardClick = React.useCallback((e: React.MouseEvent) => {
@@ -86,24 +85,10 @@ const ToolCard = React.memo(({
     }
   }, [handleNavigateDetail]);
 
-  // 触摸/鼠标按下效果
-  const handleMouseDown = React.useCallback(() => {
-    setIsPressed(true);
-  }, []);
-
-  const handleMouseUp = React.useCallback(() => {
-    setIsPressed(false);
-  }, []);
-
   // 获取要显示的 logo URL（使用共享工具函数）
   const displayLogoUrl = React.useMemo(() => {
     return getBestDisplayLogoUrl(tool.logo_url, tool.name, tool.categories || []);
   }, [tool.logo_url, tool.name, tool.categories]);
-
-  // 判断是否使用兜底 logo
-  const useFallbackLogo = React.useMemo(() => {
-    return !isValidHighQualityLogoUrl(tool.logo_url);
-  }, [tool.logo_url]);
 
   // Phase 5优化: 使用提取的 ToolFallbackIcon 组件，减少内存占用
   const fallbackIcon = React.useMemo(() => (
@@ -130,9 +115,6 @@ const ToolCard = React.memo(({
           focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2
           ${className}
         `}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
         onClick={handleCardClick}
         onKeyDown={handleCardKeyDown}
         role="link"
@@ -236,11 +218,8 @@ const ToolCard = React.memo(({
         active:scale-[0.98] active:shadow-md
         transition-all duration-300 ease-out overflow-hidden group cursor-pointer
         focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2
-        ${className}
-      `}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      ${className}
+    `}
       onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
       role="link"

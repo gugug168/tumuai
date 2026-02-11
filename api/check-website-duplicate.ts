@@ -174,7 +174,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
     }
 
     // Fallback: older schema without normalized_url
-    if (toolByNormalized.error && isMissingTableOrColumn(toolByNormalized.error, /column\\s+\"normalized_url\"\\s+does not exist/i)) {
+    if (toolByNormalized.error && isMissingTableOrColumn(toolByNormalized.error, /column\s+"normalized_url"\s+does not exist/i)) {
       const host = normalized.split('/')[0]
       const fallback = await supabase
         .from('tools')

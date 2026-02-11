@@ -6,21 +6,19 @@ const ADMIN_PASS = process.env.E2E_ADMIN_PASS || 'admin123'
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL || process.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = process.env.E2E_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || ''
 const SUPABASE_TOKEN = process.env.E2E_SUPABASE_TOKEN || ''
-
-if (!SUPABASE_URL) {
-  console.error('❌ 错误: 缺少 Supabase URL 环境变量')
-  console.log('请设置 E2E_SUPABASE_URL 或 VITE_SUPABASE_URL 环境变量')
-  process.exit(1)
-}
+const ADMIN_DATASETS_API = '/api/admin-api?action=datasets'
+const HAS_SUPABASE_URL = Boolean(SUPABASE_URL)
 
 // 与前端 Supabase client 一致的 storageKey（见 src/lib/supabase-client.ts）
 const AUTH_STORAGE_KEY = 'tumuai-auth-v2-stable'
 
 // 兼容 Supabase 默认 storageKey（部分环境/旧版本可能仍在使用）
-const PROJECT_ID = SUPABASE_URL.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || 'unknown'
+const PROJECT_ID = (SUPABASE_URL || '').match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || 'unknown'
 const SB_LOCAL_KEY = `sb-${PROJECT_ID}-auth-token`
 
 async function tryInjectToken(page) {
+  if (!SUPABASE_URL) return false
+
   const setAuthStorage = async (jsonValue) => {
     await page.addInitScript(([entries]) => {
       try {
@@ -89,11 +87,14 @@ async function uiLoginIfNeeded(page) {
 }
 
 test.beforeEach(async ({ page }) => {
+  if (!HAS_SUPABASE_URL) return
   await tryInjectToken(page)
   // 不抛错，让用例自行处理 UI 登录回退
 })
 
 test.describe('Admin flows', () => {
+  test.skip(!HAS_SUPABASE_URL, '缺少 Supabase URL 环境变量，请设置 E2E_SUPABASE_URL 或 VITE_SUPABASE_URL')
+
   test('login and load dashboard', async ({ page }) => {
     await page.goto('/admin', { waitUntil: 'domcontentloaded' })
     // 若未注入 token 或跳转失败，则回退 UI 登录
@@ -142,7 +143,7 @@ test.describe('Admin flows', () => {
     await expect(page.getByTestId('submissions-status-filter')).toBeVisible({ timeout: 20000 })
 
     const req = page.waitForRequest(r =>
-      r.url().includes('/api/admin-datasets') &&
+      r.url().includes(ADMIN_DATASETS_API) &&
       r.url().includes('sections=submissions') &&
       r.url().includes('submissionStatus=approved')
     )

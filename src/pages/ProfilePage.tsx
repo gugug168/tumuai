@@ -1,14 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { User, Heart, Star, Settings, TrendingUp, Camera, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfile } from '../contexts/ProfileContext';
 import { updateUserProfile } from '../lib/auth';
 import { getUserFavorites } from '../lib/community';
 import { generateInitialLogo } from '../lib/logoUtils';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useToast, createToastHelpers } from '../components/Toast';
 import { useMetaTags } from '../hooks/useMetaTags';
 import type { Tool } from '../types';
+
+type ProfileTab = 'favorites' | 'activity' | 'reviews' | 'settings';
+
+const VALID_PROFILE_TABS: ProfileTab[] = ['favorites', 'activity', 'reviews', 'settings'];
+
+function isValidProfileTab(value: string | null): value is ProfileTab {
+  return !!value && VALID_PROFILE_TABS.includes(value as ProfileTab);
+}
 
 const ProfilePage = () => {
   // Phase 1优化: 接入 useMetaTags hook（用户个人页面添加 noIndex）
@@ -22,7 +30,11 @@ const ProfilePage = () => {
   const { profile, refreshProfile } = useProfile();
   const { showToast } = useToast();
   const toast = createToastHelpers(showToast);
-  const [activeTab, setActiveTab] = useState('favorites');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<ProfileTab>(() => {
+    const tab = searchParams.get('tab');
+    return isValidProfileTab(tab) ? tab : 'favorites';
+  });
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     username: '',
@@ -60,7 +72,7 @@ const ProfilePage = () => {
   }, [user, navigate]);
 
   // 加载用户收藏数据
-  const loadFavorites = async () => {
+  const loadFavorites = useCallback(async () => {
     if (!user) return;
     try {
       setLoadingFavorites(true);
@@ -72,14 +84,31 @@ const ProfilePage = () => {
     } finally {
       setLoadingFavorites(false);
     }
-  };
+  }, [user]);
 
   // 当用户改变或激活收藏标签页时加载收藏数据
   useEffect(() => {
     if (user && activeTab === 'favorites') {
       loadFavorites();
     }
-  }, [user, activeTab]);
+  }, [user, activeTab, loadFavorites]);
+
+  // URL 参数同步（支持 /profile?tab=favorites 直达）
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (isValidProfileTab(tab) && tab !== activeTab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams, activeTab]);
+
+  const handleTabChange = (tab: ProfileTab) => {
+    setActiveTab(tab);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tab);
+      return next;
+    }, { replace: true });
+  };
 
   // 如果用户未登录，不渲染页面内容
   if (!user) {
@@ -179,7 +208,7 @@ const ProfilePage = () => {
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => handleTabChange(tab.id as ProfileTab)}
                     className={`flex items-center space-x-2 py-4 border-b-2 font-medium text-sm transition-colors ${
                       activeTab === tab.id
                         ? 'border-blue-500 text-blue-600'
@@ -257,7 +286,7 @@ const ProfilePage = () => {
                 {favorites.length > 6 && (
                   <div className="text-center mt-6">
                     <Link
-                      to="/favorites"
+                      to="/profile?tab=favorites"
                       className="text-blue-600 hover:text-blue-700 underline"
                     >
                       查看全部收藏 ({favorites.length})

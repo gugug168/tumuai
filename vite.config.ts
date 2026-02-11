@@ -33,13 +33,22 @@ export default defineConfig(({ mode }) => {
       output: {
         // 更智能的代码分割策略
         manualChunks(id) {
-          // 核心框架 - 最稳定的依赖
-          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
-            return 'vendor-react';
-          }
-          // 路由
-          if (id.includes('node_modules/react-router')) {
+          // 路由相关：优先匹配，避免被 react 前缀规则误归类到 vendor-react
+          if (
+            id.includes('node_modules/react-router-dom/') ||
+            id.includes('node_modules/react-router/') ||
+            id.includes('node_modules/@remix-run/router/')
+          ) {
             return 'vendor-router';
+          }
+
+          // 核心框架 - 最稳定的依赖
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/react-dom/') ||
+            id.includes('node_modules/scheduler/')
+          ) {
+            return 'vendor-react';
           }
           // 图标库 - 单独分割以便按需加载
           if (id.includes('node_modules/lucide-react')) {
@@ -115,7 +124,7 @@ export default defineConfig(({ mode }) => {
         target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
-        configure: (proxy, options) => {
+        configure: (proxy) => {
           // 如果代理服务器不可用，使用mock数据
           proxy.on('error', (err, req, res) => {
             console.log('Proxy error, using mock data:', err.message);

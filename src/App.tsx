@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProviders } from './contexts/AppProviders';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -72,6 +72,7 @@ function App() {
                         <ProfilePage />
                       </PageTransition>
                     } />
+                    <Route path="/favorites" element={<Navigate to="/profile?tab=favorites" replace />} />
                     <Route path="/admin/*" element={
                       <PageTransition type="fade" duration={200}>
                         <AdminDashboard />

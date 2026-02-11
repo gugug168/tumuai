@@ -73,7 +73,7 @@ export class URLProcessor {
         normalized,
         components
       }
-    } catch (error) {
+    } catch {
       return {
         isValid: false,
         error: '无效的URL格式'
@@ -105,13 +105,13 @@ export class URLProcessor {
         query: urlObj.search,
         fragment: urlObj.hash
       }
-    } catch (error) {
+    } catch {
       // 如果URL无效，返回基本解析
       const cleanUrl = url.toLowerCase()
         .replace(/^https?:\/\//, '')
         .replace(/^www\./, '')
       
-      const domainMatch = cleanUrl.match(/^([^\/\?#]+)/)
+      const domainMatch = cleanUrl.match(/^([^/?#]+)/)
       const domain = domainMatch ? domainMatch[1] : cleanUrl
       
       return {
@@ -165,7 +165,7 @@ export class URLProcessor {
       
       return normalized.toLowerCase()
       
-    } catch (error) {
+    } catch {
       // 兜底处理：简单字符串处理
       return url
         .toLowerCase()
@@ -206,7 +206,7 @@ export class URLProcessor {
       
       return displayUrl
       
-    } catch (error) {
+    } catch {
       return url.replace(/^https?:\/\//, '').replace(/^www\./, '')
     }
   }
@@ -241,7 +241,7 @@ export class URLProcessor {
       const normalized2 = this.normalize(url2)
       
       return normalized1 === normalized2
-    } catch (error) {
+    } catch {
       return false
     }
   }
@@ -255,7 +255,7 @@ export class URLProcessor {
     try {
       const components = this.parseURL(url)
       return components.domain
-    } catch (error) {
+    } catch {
       return ''
     }
   }
@@ -279,7 +279,7 @@ export class URLProcessor {
     try {
       const components = this.parseURL(url)
       return components.domain
-    } catch (error) {
+    } catch {
       return ''
     }
   }

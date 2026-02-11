@@ -230,28 +230,25 @@ export async function getToolsFiltered(
   includeCount = true
 ): Promise<{ tools: Tool[]; count?: number }> {
   try {
-    const url = new URL('/api/tools-filtered', window.location.origin)
-    url.searchParams.set('limit', limit.toString())
-    url.searchParams.set('offset', offset.toString())
-    url.searchParams.set('includeCount', includeCount ? 'true' : 'false')
-    url.searchParams.set('sortBy', sortBy)
-
-    // 添加筛选参数
-    if (filters?.search && filters.search.trim()) {
-      url.searchParams.set('search', filters.search.trim())
-    }
-    if (filters?.categories && filters.categories.length > 0) {
-      // 支持多分类（逗号分隔），服务端用 overlaps 匹配任意一个
-      url.searchParams.set('category', filters.categories.join(','))
-    }
-    if (filters?.pricing) {
-      url.searchParams.set('pricing', filters.pricing)
-    }
-    if (filters?.features && filters.features.length > 0) {
-      url.searchParams.set('features', filters.features.join(','))
+    const url = new URL('/api/public-api?action=tools-filtered', window.location.origin)
+    const requestBody = {
+      limit,
+      offset,
+      includeCount,
+      sortBy,
+      searchQuery: filters?.search?.trim() || undefined,
+      categories: filters?.categories && filters.categories.length > 0 ? filters.categories : undefined,
+      pricing: filters?.pricing || undefined,
+      features: filters?.features && filters.features.length > 0 ? filters.features : undefined
     }
 
-    const response = await fetch(url.toString())
+    const response = await fetch(url.toString(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    })
 
     if (!response.ok) {
       const err: ApiFetchError = new Error(`API error: ${response.status}`)

@@ -60,7 +60,6 @@ const CountUpAnimation = React.memo(({
   onComplete
 }: CountUpAnimationProps) => {
   const [count, setCount] = useState(start);
-  const [isVisible, setIsVisible] = useState(false);
   const elementRef = useRef<HTMLSpanElement>(null);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
@@ -124,7 +123,6 @@ const CountUpAnimation = React.memo(({
       (entries) => {
         const [entry] = entries;
         if (entry.isIntersecting && !hasAnimatedRef.current) {
-          setIsVisible(true);
           startAnimation();
         }
       },

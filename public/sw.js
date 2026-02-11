@@ -511,7 +511,7 @@ async function syncFavorites() {
 self.addEventListener('push', (event) => {
   const options = {
     body: event.data?.text() || 'TumuAI 有新内容更新',
-    icon: '/icon-192x192.png',
+    icon: '/icon.svg',
     badge: '/favicon.svg',
     vibrate: [200, 100, 200],
     data: {

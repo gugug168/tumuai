@@ -4,10 +4,39 @@ import App from './App.tsx';
 import './index.css';
 import { checkVersionAndRefresh, shouldCleanupCache, cleanupOldCache } from './lib/cache-cleanup';
 
+function addSupabasePreconnect(): void {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  if (!supabaseUrl || typeof document === 'undefined') return;
+
+  let origin = '';
+  try {
+    origin = new URL(supabaseUrl).origin;
+  } catch {
+    return;
+  }
+
+  const createLinkIfMissing = (rel: 'preconnect' | 'dns-prefetch') => {
+    const selector = `link[rel="${rel}"][href="${origin}"]`;
+    if (document.head.querySelector(selector)) return;
+    const link = document.createElement('link');
+    link.rel = rel;
+    link.href = origin;
+    if (rel === 'preconnect') {
+      link.crossOrigin = 'anonymous';
+    }
+    document.head.appendChild(link);
+  };
+
+  createLinkIfMissing('dns-prefetch');
+  createLinkIfMissing('preconnect');
+}
+
 // Canonical domain guard:
 // A lot of users may still open the legacy Netlify URL. That host doesn't have our Vercel `/api/*`
 // functions, which results in 503 and a broken Tools page. Redirect to the canonical domain early.
 if (typeof window !== 'undefined') {
+  addSupabasePreconnect();
+
   const CANONICAL_HOST = 'www.tumuai.net';
   const host = window.location.hostname;
   const isLegacyNetlifyHost = host.endsWith('netlify.app');

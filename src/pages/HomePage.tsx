@@ -6,12 +6,27 @@ import QuickFilters from '../components/QuickFilters';
 import { HomeDataProvider } from '../contexts/HomeDataContext';
 import { prefetchToolDetailPage, prefetchToolsData, prefetchToolsPage } from '../lib/route-prefetch';
 
+interface ConnectionInfoLike {
+  saveData?: boolean;
+  effectiveType?: string;
+}
+
+interface NavigatorWithConnection extends Navigator {
+  connection?: ConnectionInfoLike;
+}
+
+interface IdleCallbackWindow extends Window {
+  requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+  cancelIdleCallback?: (id: number) => void;
+}
+
 const HomePage = React.memo(() => {
   // Warm up the most common next navigation (Tools page + first page data) without blocking LCP.
   useEffect(() => {
     if (import.meta.env.DEV) return;
 
-    const conn = (navigator as any).connection as undefined | { saveData?: boolean; effectiveType?: string };
+    const navWithConnection = navigator as NavigatorWithConnection;
+    const conn = navWithConnection.connection;
     if (conn?.saveData) return;
     if (conn?.effectiveType && ['slow-2g', '2g'].includes(conn.effectiveType)) return;
 
@@ -24,9 +39,10 @@ const HomePage = React.memo(() => {
       void prefetchToolsData();
     };
 
-    if ('requestIdleCallback' in window) {
-      const id = (window as any).requestIdleCallback(warm, { timeout: 2500 });
-      return () => (window as any).cancelIdleCallback(id);
+    const idleWindow = window as IdleCallbackWindow;
+    if (typeof idleWindow.requestIdleCallback === 'function') {
+      const id = idleWindow.requestIdleCallback(warm, { timeout: 2500 });
+      return () => idleWindow.cancelIdleCallback?.(id);
     }
 
     // iOS Safari doesn't support requestIdleCallback; use a shorter delay to still benefit

@@ -262,7 +262,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
             }
 
             // 转换为 WebP (如果还不是)
-            let finalBytes = bytes
+            const finalBytes = bytes
             let finalContentType = contentType
 
             // 如果不是 WebP，尝试转换 (使用简单的 PNG->WebP 转换逻辑)
