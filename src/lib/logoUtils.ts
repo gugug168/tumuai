@@ -421,6 +421,20 @@ export async function validateLogoUrl(logoUrl: string): Promise<boolean> {
 export function isValidHighQualityLogoUrl(logoUrl?: string): boolean {
   if (!logoUrl) return false;
 
+  // 已知站点返回 404 的无效 favicon（会在控制台持续报错）
+  try {
+    const url = new URL(logoUrl);
+    const isUltralyticsBrokenFavicon =
+      (url.hostname === 'www.ultralytics.com' || url.hostname === 'ultralytics.com') &&
+      url.pathname === '/favicon.ico';
+
+    if (isUltralyticsBrokenFavicon) {
+      return false;
+    }
+  } catch {
+    return false;
+  }
+
   // 过滤低质量的 favicon 服务
   const lowQualityPatterns = [
     'google.com/s2/favicons',

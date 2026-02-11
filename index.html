@@ -140,8 +140,21 @@
     ============================================ -->
     <script>
       (function() {
+        var pathname = window.location.pathname || '';
+        var isAdminPath = pathname === '/admin' || pathname === '/admin-login' || pathname.startsWith('/admin/');
+
+        // 后台页面禁用 GA，避免管理界面高频状态变更触发 gtag 导航节流告警。
+        if (isAdminPath) return;
+
+        if (window.__tumuaiGAInitialized) return;
+        window.__tumuaiGAInitialized = true;
+
         // 使用 requestIdleCallback 降级到 setTimeout(fn, 3000)
         var loadGA = function() {
+          if (document.querySelector('script[src*="googletagmanager.com/gtag/js?id=G-6JQ44XXF2K"]')) {
+            return;
+          }
+
           var script = document.createElement('script');
           script.src = 'https://www.googletagmanager.com/gtag/js?id=G-6JQ44XXF2K';
           script.async = true;

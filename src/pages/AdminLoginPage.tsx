@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
 import { Shield, Mail, Lock } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { checkAdminStatus } from '../lib/admin'
 
 const AdminLoginPage = () => {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -72,7 +74,7 @@ const AdminLoginPage = () => {
       
       // 延迟一点显示性能信息再跳转
       setTimeout(() => {
-        window.location.assign('/admin')
+        navigate('/admin', { replace: true })
       }, 1000)
       
     } catch (err) {
@@ -162,5 +164,4 @@ const AdminLoginPage = () => {
 }
 
 export default AdminLoginPage
-
 
