@@ -5,8 +5,9 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Save, Trash2, AlertTriangle, RefreshCw, Image as ImageIcon } from 'lucide-react';
+import { X, Plus, Save, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { createTool, updateTool, deleteTool, extractLogoForPreview } from '../../lib/admin';
+import { getBestDisplayLogoUrl } from '../../lib/logoUtils';
 
 interface Tool {
   id?: string;
@@ -257,20 +258,14 @@ const ToolManagementModal: React.FC<ToolManagementModalProps> = ({
               </div>
               {formData.logo_url && (
                 <div className="mt-2 flex items-center gap-2 p-2 bg-gray-50 rounded-md">
-                  {formData.logo_url.startsWith('data:') || formData.logo_url.match(/\.(png|jpg|jpeg|svg|gif|webp)$/i) ? (
-                    <img
-                      src={formData.logo_url}
-                      alt="Logo预览"
-                      className="w-8 h-8 object-contain rounded"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
-                      <ImageIcon className="h-4 w-4 text-gray-400" />
-                    </div>
-                  )}
+                  <img
+                    src={getBestDisplayLogoUrl(formData.logo_url, formData.name || 'Tool', formData.categories || [])}
+                    alt="Logo预览"
+                    className="w-8 h-8 object-contain rounded"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
                   <span className="text-xs text-gray-500 truncate flex-1">{formData.logo_url}</span>
                 </div>
               )}
