@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { addToFavorites, removeFromFavorites, isFavorited, addToolReview, getToolReviews } from '../lib/community';
 import { getToolById, incrementToolViews, getRelatedTools } from '../lib/supabase';
-import { generateInitialLogo, isValidHighQualityLogoUrl } from '../lib/logoUtils';
+import { generateInitialLogo, getBestDisplayLogoUrl, isValidHighQualityLogoUrl } from '../lib/logoUtils';
 import { useMetaTags } from '../hooks/useMetaTags';
 import OptimizedImage from '../components/OptimizedImage';
 import { useToast, createToastHelpers } from '../components/Toast';
@@ -96,7 +96,7 @@ const ToolDetailPage = () => {
         name: tool.name,
         category: tool.categories[0] || currentCategory,
         description: tool.tagline,
-        logo: tool.logo_url || generateInitialLogo(tool.name, tool.categories || []),
+        logo: getBestDisplayLogoUrl(tool.logo_url, tool.name, tool.categories || []),
         rating: tool.rating || 0
       }));
 
