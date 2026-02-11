@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Link as LinkIcon, Tag, DollarSign, Image, FileText, AlertCircle, Sparkles, Check, RefreshCw } from 'lucide-react';
+import { Upload, Tag, DollarSign, Image, FileText, AlertCircle, Sparkles, Check, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { uploadToolLogo, validateImageFile } from '../lib/storage';
 import { SUBMIT_PRICING_OPTIONS, EMERGENCY_CATEGORIES } from '../lib/config';
@@ -104,10 +104,9 @@ const SubmitToolPage = () => {
           setShowDraftNotice(true);
         }
       }
-    } catch (e) {
-      console.warn('草稿恢复失败:', e);
+    } catch (error) {
+      console.warn('草稿恢复失败:', error);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 自动保存草稿（防抖 3 秒）
@@ -122,9 +121,11 @@ const SubmitToolPage = () => {
     const timer = setTimeout(() => {
       try {
         // 排除 logoFile，File 对象无法序列化
-        const { logoFile, ...saveable } = formData;
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(saveable));
-      } catch (e) {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({
+          ...formData,
+          logoFile: undefined
+        }));
+      } catch {
         // LocalStorage 写入失败时静默处理
       }
     }, 3000);
@@ -134,7 +135,7 @@ const SubmitToolPage = () => {
 
   // 清除草稿
   const clearDraft = () => {
-    try { localStorage.removeItem(DRAFT_KEY); } catch (_) { /* ignore */ }
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   };
 
   // 获取分类数据
@@ -572,7 +573,7 @@ const SubmitToolPage = () => {
         {/* 步骤指示器 */}
         <div className="mb-8 hidden md:block">
           <div className="flex items-center justify-between">
-            {FORM_STEPS.map((step, index) => {
+            {FORM_STEPS.map((step) => {
               const IconComponent = step.icon;
               const isCompleted = stepCompletion[step.id];
               const isCurrent = currentStep === step.id;
@@ -622,7 +623,7 @@ const SubmitToolPage = () => {
         {/* 移动端步骤指示器 */}
         <div className="md:hidden mb-6">
           <div className="flex items-center justify-between bg-white rounded-lg p-4 shadow-sm">
-            {FORM_STEPS.map((step, index) => {
+            {FORM_STEPS.map((step) => {
               const IconComponent = step.icon;
               const isCompleted = stepCompletion[step.id];
               const isCurrent = currentStep === step.id;

@@ -294,7 +294,12 @@ async function getToolByIdViaAPI(
     const ct = response.headers.get('Content-Type') || ''
     if (ct.includes('application/json')) {
       const body = await response.json().catch(() => null)
-      if (body && typeof body === 'object' && (body as any).error === 'Tool not found') {
+      if (
+        body &&
+        typeof body === 'object' &&
+        'error' in body &&
+        (body as { error?: unknown }).error === 'Tool not found'
+      ) {
         return null
       }
     }

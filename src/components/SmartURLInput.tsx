@@ -23,12 +23,6 @@ import {
   AlertCircle as AlertCircleIcon
 } from 'lucide-react';
 
-import { URLProcessor } from '../utils/url-processor';
-import {
-  checkWebsiteDuplicate,
-  DuplicateCheckClientError,
-  type DuplicateCheckResult
-} from '../lib/duplicate-check';
 import { useDuplicateCheck, CheckStatus, type DuplicateInfo } from '../hooks/useDuplicateCheck';
 import { useAIAnalysis, AIAnalysisStatus, type AIAnalysisResult, getConfidenceColor, getPricingColor } from '../hooks/useAIAnalysis';
 

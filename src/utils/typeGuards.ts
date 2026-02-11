@@ -113,18 +113,22 @@ export const isValidTool = (value: unknown): value is Tool => {
 
 // API 响应类型守卫
 export const isApiErrorResponse = (value: unknown): value is { error: string; message?: string } => {
-  return isObject(value) && isNonEmptyString((value as any).error);
+  if (!isObject(value)) return false;
+  return isNonEmptyString(value.error);
 };
 
 export const isApiSuccessResponse = <T>(
   value: unknown,
   dataGuard: (data: unknown) => data is T
 ): value is { data: T; success: boolean } => {
+  if (!isObject(value)) return false;
+  const success = value.success;
+  const data = value.data;
+
   return (
-    isObject(value) &&
-    isBoolean((value as any).success) &&
-    (value as any).success === true &&
-    dataGuard((value as any).data)
+    isBoolean(success) &&
+    success === true &&
+    dataGuard(data)
   );
 };
 

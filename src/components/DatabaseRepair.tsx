@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Wrench, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useToast, createToastHelpers } from './Toast';
 
 const DatabaseRepair = () => {
@@ -16,10 +15,6 @@ const DatabaseRepair = () => {
     setResult(null);
 
     try {
-      // 使用 Supabase 会话令牌（避免 401）
-      const { data: sessionRes } = await supabase.auth.getSession();
-      const token = sessionRes?.session?.access_token || '';
-      
       // 简化数据库修复 - 直接提示用户联系管理员
       setResult({ message: '数据库修复功能已迁移到服务器端，请联系管理员进行维护。' })
       return
@@ -33,9 +28,6 @@ const DatabaseRepair = () => {
 
   const verifyCategories = async () => {
     try {
-      const { data: sessionRes } = await supabase.auth.getSession();
-      const token = sessionRes?.session?.access_token || '';
-
       // 直接提示功能已迁移
       toast.info('提示', '分类刷新功能已迁移到服务器端，请联系管理员')
       return

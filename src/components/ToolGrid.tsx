@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useRef, useEffect, useState } from 'react';
+import React, { useMemo, useCallback, useRef, useEffect } from 'react';
 import { Search, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
 import ToolCard from './ToolCard';
@@ -40,7 +40,7 @@ interface ToolGridProps {
   // 收藏
   favoriteStates: Record<string, boolean>;
   onFavoriteToggle: (toolId: string) => void;
-  user?: any;
+  user?: unknown;
 
   // 预加载 / 加载更多
   onPreloadNext?: () => void;
@@ -50,8 +50,7 @@ interface ToolGridProps {
   enableVirtualScroll?: boolean; // 是否启用虚拟滚动
 }
 
-const ToolGrid = React.memo<ToolGridProps>(({
-  tools,
+const ToolGrid = React.memo<ToolGridProps>(({ 
   totalCount,
   allTools,
   loading = false,
@@ -60,9 +59,7 @@ const ToolGrid = React.memo<ToolGridProps>(({
   currentPage,
   totalPages,
   onPageChange,
-  toolsPerPage = 12,
   searchQuery = '',
-  hasActiveFilters = false,
   onClearFilters,
   favoriteStates,
   onFavoriteToggle,

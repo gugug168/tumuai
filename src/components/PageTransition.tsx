@@ -37,7 +37,6 @@ const PageTransition: React.FC<PageTransitionProps> = ({
   className = ''
 }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [shouldRender, setShouldRender] = useState(animateOnMount);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

@@ -16,7 +16,6 @@ import {
   type GalleryImage,
   REGION_LABELS,
   REGION_ICONS,
-  parseScreenshotRegion,
   getScreenshotLabel,
   getScreenshotIcon,
   groupScreenshotsByRegion

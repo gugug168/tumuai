@@ -5,7 +5,6 @@
  */
 
 import { useState, useCallback } from 'react';
-import { Sparkles } from 'lucide-react';
 
 // AI分析结果类型
 export interface AIAnalysisResult {

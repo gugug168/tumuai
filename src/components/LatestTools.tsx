@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, ExternalLink, Heart, Eye, Clock } from 'lucide-react';
 import { getLatestTools } from '../lib/supabase';
-import { generateInitialLogo, getBestDisplayLogoUrl } from '../lib/logoUtils';
+import { getBestDisplayLogoUrl } from '../lib/logoUtils';
 import OptimizedImage from './OptimizedImage';
 import { SkeletonCard, SkeletonWrapper } from './SkeletonLoader';
 import type { Tool } from '../types';
