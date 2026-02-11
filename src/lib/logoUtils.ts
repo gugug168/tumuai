@@ -15,17 +15,6 @@ interface LogoCandidate {
   isSvg?: boolean;
 }
 
-const LOGO_PRIORITY = [
-  { pattern: /apple\-touch\-icon.*?(\.png|\.jpg)/, quality: 95, type: 'apple-touch-icon' },
-  { pattern: /icon\.svg/, quality: 100, type: 'svg' }, // 矢量图，最高优先级
-  { pattern: /icon.*?(\.png|\.jpg).*?sizes=["'](\d+)x(\d+)/, quality: 85, type: 'sized-icon' },
-  { pattern: /icon.*?(\.png|\.jpg)/, quality: 80, type: 'icon' },
-  { pattern: /og\:image/, quality: 70, type: 'og-image' },
-  { pattern: /favicon\.ico/, quality: 50, type: 'favicon' },
-  { pattern: /shortcut\s+icon/, quality: 45, type: 'shortcut-icon' },
-  { pattern: /mask\-icon/, quality: 60, type: 'mask-icon' }
-];
-
 /**
  * 带超时的fetch请求
  */
@@ -246,7 +235,7 @@ export async function getFaviconUrl(websiteUrl: string): Promise<string | null> 
 
     for (const faviconUrl of faviconUrls) {
       try {
-        const response = await fetchWithTimeout(faviconUrl, {
+        await fetchWithTimeout(faviconUrl, {
           method: 'HEAD',
           mode: 'no-cors'
         }, 5000);
@@ -305,22 +294,6 @@ export function getDefaultLogoByCategory(categories: string[]): string {
   }
 
   return DEFAULT_LOGOS.default;
-}
-
-/**
- * 安全的Base64编码函数，支持中文字符
- */
-function safeBase64Encode(str: string): string {
-  try {
-    // 对于中文字符，先用encodeURIComponent编码，再使用btoa
-    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => {
-      return String.fromCharCode(parseInt(p1, 16));
-    }));
-  } catch (error) {
-    // 如果编码失败，使用URL编码方式
-    console.warn('Base64编码失败，使用URL编码:', error);
-    return encodeURIComponent(str);
-  }
 }
 
 /**

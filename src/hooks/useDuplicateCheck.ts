@@ -15,13 +15,13 @@ import { URLProcessor } from '../utils/url-processor';
 /**
  * 防抖函数实现
  */
-const debounce = <T extends (...args: any[]) => any>(
-  func: T,
+const debounce = <TArgs extends unknown[]>(
+  func: (...args: TArgs) => void,
   wait: number
-): ((...args: Parameters<T>) => void) & { cancel: () => void } => {
-  let timeout: NodeJS.Timeout | undefined;
+): ((...args: TArgs) => void) & { cancel: () => void } => {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
 
-  const debouncedFn = (...args: Parameters<T>) => {
+  const debouncedFn = (...args: TArgs) => {
     clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), wait);
   };
@@ -38,7 +38,7 @@ const debounce = <T extends (...args: any[]) => any>(
 export type CheckStatus = 'idle' | 'checking' | 'valid' | 'duplicate' | 'invalid' | 'error';
 
 // 重复信息扩展
-export interface DuplicateInfo extends DuplicateCheckResult {}
+export type DuplicateInfo = DuplicateCheckResult;
 
 export interface UseDuplicateCheckOptions {
   debounceMs?: number;
@@ -106,12 +106,9 @@ export function useDuplicateCheck(options: UseDuplicateCheckOptions = {}): UseDu
     setErrorMessage('');
     onStatusChange?.('checking');
 
-    const startTime = performance.now();
-
     try {
       // 调用重复检测API
       const result = await checkWebsiteDuplicate(url);
-      const endTime = performance.now();
 
       setProcessingTime(result.processing_time_ms);
 
@@ -127,8 +124,6 @@ export function useDuplicateCheck(options: UseDuplicateCheckOptions = {}): UseDu
         onValid?.(result);
       }
     } catch (error) {
-      const endTime = performance.now();
-
       setStatus('error');
 
       if (error instanceof DuplicateCheckClientError) {

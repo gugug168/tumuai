@@ -193,9 +193,46 @@ export function useAccessibility(options: AccessibilityOptions = {}) {
   const checkColorContrast = useCallback((textColor: string, backgroundColor: string) => {
     // 简化的对比度计算，实际项目中可能需要更复杂的实现
     const getLuminance = (color: string) => {
-      // 这里需要实现颜色到亮度的转换逻辑
-      // 为了简化，返回一个模拟值
-      return Math.random();
+      const normalized = color.trim().toLowerCase();
+
+      const parseHex = (hex: string): [number, number, number] | null => {
+        if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex)) return null;
+        const value = hex.slice(1);
+        if (value.length === 3) {
+          return [
+            parseInt(value[0] + value[0], 16),
+            parseInt(value[1] + value[1], 16),
+            parseInt(value[2] + value[2], 16)
+          ];
+        }
+        return [
+          parseInt(value.slice(0, 2), 16),
+          parseInt(value.slice(2, 4), 16),
+          parseInt(value.slice(4, 6), 16)
+        ];
+      };
+
+      const parseRgb = (rgb: string): [number, number, number] | null => {
+        const match = rgb.match(/^rgba?\(([^)]+)\)$/i);
+        if (!match) return null;
+        const parts = match[1].split(',').map(part => Number(part.trim()));
+        if (parts.length < 3 || parts.slice(0, 3).some(Number.isNaN)) return null;
+        return [
+          Math.max(0, Math.min(255, parts[0])),
+          Math.max(0, Math.min(255, parts[1])),
+          Math.max(0, Math.min(255, parts[2]))
+        ];
+      };
+
+      const rgb = parseHex(normalized) || parseRgb(normalized);
+      if (!rgb) return 0;
+
+      const [r, g, b] = rgb.map(channel => {
+        const srgb = channel / 255;
+        return srgb <= 0.03928 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
+      });
+
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
     };
 
     const textLuminance = getLuminance(textColor);
@@ -226,7 +263,7 @@ export function useAccessibility(options: AccessibilityOptions = {}) {
 
 // 用于表单可访问性的专门hook
 export function useFormAccessibility() {
-  const { announce, addAriaLabel, addAriaDescription } = useAccessibility();
+  const { announce } = useAccessibility();
 
   const validateField = useCallback((
     field: HTMLInputElement, 
