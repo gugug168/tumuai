@@ -339,12 +339,12 @@ const ToolDetailPage = () => {
       keywords: `${tool.name},${categoriesText},AI工具,土木工程`.replace(/,{2,}/g, ','),
       ogTitle: tool.name,
       ogDescription: tool.tagline || tool.description,
-      ogImage: tool.logo_url,
+      ogImage: safePrimaryLogoUrl || fallbackLogoDataUrl,
       twitterTitle: tool.name,
       twitterDescription: tool.tagline || tool.description,
-      twitterImage: tool.logo_url
+      twitterImage: safePrimaryLogoUrl || fallbackLogoDataUrl
     };
-  }, [tool, categoriesText]);
+  }, [tool, categoriesText, safePrimaryLogoUrl, fallbackLogoDataUrl]);
 
   // 只有当 tool 数据可用时才更新 meta 标签
   useMetaTags(toolMetaConfig || {});
