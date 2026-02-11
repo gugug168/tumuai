@@ -1,5 +1,5 @@
 import React from 'react';
-import { 
+import {
   X, 
   ExternalLink, 
   User, 
@@ -13,6 +13,7 @@ import {
   XCircle
 } from 'lucide-react';
 import type { ToolSubmission } from '../types';
+import { getBestDisplayLogoUrl } from '../lib/logoUtils';
 
 interface SubmissionDetailModalProps {
   isOpen: boolean;
@@ -217,7 +218,11 @@ const SubmissionDetailModal: React.FC<SubmissionDetailModalProps> = ({
                   </h4>
                   <div className="flex items-center justify-center bg-white border-2 border-dashed border-gray-300 rounded-lg p-6">
                     <img 
-                      src={submission.logo_url} 
+                      src={getBestDisplayLogoUrl(
+                        submission.logo_url,
+                        submission.tool_name,
+                        submission.categories || []
+                      )}
                       alt={`${submission.tool_name} Logo`}
                       className="max-w-32 max-h-32 object-contain"
                       onError={(e) => {

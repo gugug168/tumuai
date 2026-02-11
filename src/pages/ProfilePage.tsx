@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useProfile } from '../contexts/ProfileContext';
 import { updateUserProfile } from '../lib/auth';
 import { getUserFavorites } from '../lib/community';
-import { generateInitialLogo } from '../lib/logoUtils';
+import { getBestDisplayLogoUrl } from '../lib/logoUtils';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useToast, createToastHelpers } from '../components/Toast';
 import { useMetaTags } from '../hooks/useMetaTags';
@@ -250,7 +250,7 @@ const ProfilePage = () => {
                           <div className="flex items-center space-x-3 mb-3">
                             <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 flex-shrink-0">
                               <img
-                                src={tool.logo_url || generateInitialLogo(tool.name, tool.categories || [])}
+                                src={getBestDisplayLogoUrl(tool.logo_url, tool.name, tool.categories || [])}
                                 alt={tool.name}
                                 className="w-full h-full object-contain p-1"
                               />

@@ -25,6 +25,7 @@ import {
 
 import { useDuplicateCheck, CheckStatus, type DuplicateInfo } from '../hooks/useDuplicateCheck';
 import { useAIAnalysis, AIAnalysisStatus, type AIAnalysisResult, getConfidenceColor, getPricingColor } from '../hooks/useAIAnalysis';
+import { getBestDisplayLogoUrl } from '../lib/logoUtils';
 
 // 导出 hooks 的类型供外部使用
 export type { CheckStatus, DuplicateInfo, AIAnalysisResult, AIAnalysisStatus };
@@ -50,16 +51,14 @@ const DuplicateWarningPanel: React.FC<{
             <div className="space-y-2">
               {/* 工具信息 */}
               <div className="flex items-center space-x-2">
-                {tool.logo_url && (
-                  <img
-                    src={tool.logo_url}
-                    alt={tool.name}
-                    className="w-5 h-5 rounded object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                )}
+                <img
+                  src={getBestDisplayLogoUrl(tool.logo_url, tool.name, tool.categories || [])}
+                  alt={tool.name}
+                  className="w-5 h-5 rounded object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
                 <span className="font-medium text-red-900 text-sm">{tool.name}</span>
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                   tool.status === 'published'
