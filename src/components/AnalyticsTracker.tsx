@@ -6,10 +6,10 @@ export default function AnalyticsTracker() {
   const location = useLocation();
 
   useEffect(() => {
-    const path = `${location.pathname}${location.search || ''}`;
-    trackPageView(path);
-  }, [location.pathname, location.search]);
+    // Track SPA page views on route changes (pathname only).
+    // Querystring changes (filters, pagination) are treated as in-page interactions.
+    trackPageView(location.pathname);
+  }, [location.pathname]);
 
   return null;
 }
-
