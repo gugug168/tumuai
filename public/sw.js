@@ -248,9 +248,14 @@ async function handleApiRequest(request, event) {
 
   // Only use SWR for read-heavy public endpoints. Keep admin/user endpoints as Network First
   // to avoid showing stale data in privileged UIs.
+  const action = new URL(request.url).searchParams.get('action');
+  const isUnifiedPublicApi =
+    pathname === '/api/public-api' && (action === 'tools' || action === 'categories');
+
   const useStaleWhileRevalidate = pathname === '/api/tools-cache' ||
     pathname === '/api/categories-cache' ||
-    pathname === '/api/tools-filtered';
+    pathname === '/api/tools-filtered' ||
+    isUnifiedPublicApi;
 
   try {
     const fetchPromise = fetch(request)

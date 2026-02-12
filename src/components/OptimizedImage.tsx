@@ -131,6 +131,10 @@ function getErrorTypeFromEvent(event: React.SyntheticEvent<HTMLImageElement, Eve
 }
 
 function isHardBlockedUrl(url: string): boolean {
+  // Fast-path: cover edge cases where URL parsing fails or is avoided.
+  // (e.g. protocol-relative URLs, odd encodings, etc.)
+  if (/ultralytics\.com\/favicon\.ico/i.test(url)) return true;
+
   try {
     const u = new URL(url);
     const isUltralyticsBrokenFavicon =

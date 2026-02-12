@@ -171,7 +171,8 @@ const AdminDashboard = () => {
       return;
     }
     next.set('subStatus', filterStatus);
-    if (submissionSearchTerm.trim()) next.set('subQ', submissionSearchTerm.trim());
+    // Use the debounced term to avoid rapid history.replaceState calls while typing.
+    if (debouncedSubmissionSearchTerm.trim()) next.set('subQ', debouncedSubmissionSearchTerm.trim());
     else next.delete('subQ');
     if (submissionPage > 1) next.set('subPage', String(submissionPage));
     else next.delete('subPage');
@@ -179,7 +180,7 @@ const AdminDashboard = () => {
     if (next.toString() !== searchParams.toString()) {
       setSearchParams(next, { replace: true });
     }
-  }, [activeTab, filterStatus, submissionPage, submissionSearchTerm, searchParams, setSearchParams]);
+  }, [activeTab, debouncedSubmissionSearchTerm, filterStatus, submissionPage, searchParams, setSearchParams]);
 
   // 新增：立即进行权限检查
   useEffect(() => {

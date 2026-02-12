@@ -421,6 +421,11 @@ export async function validateLogoUrl(logoUrl: string): Promise<boolean> {
 export function isValidHighQualityLogoUrl(logoUrl?: string): boolean {
   if (!logoUrl) return false;
 
+  // Quick denylist (avoid noisy 404s and known-bad URLs even if parsing fails).
+  if (/ultralytics\.com\/favicon\.ico/i.test(logoUrl)) {
+    return false;
+  }
+
   // 已知站点返回 404 的无效 favicon（会在控制台持续报错）
   try {
     const url = new URL(logoUrl);
