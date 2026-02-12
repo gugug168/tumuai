@@ -7,6 +7,7 @@ import PageLoader from './components/PageLoader';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
 import PageTransition from './components/PageTransition';
+import AnalyticsTracker from './components/AnalyticsTracker';
 
 // 首页保持直接导入以确保快速首屏
 import HomePage from './pages/HomePage';
@@ -28,6 +29,7 @@ function App() {
       <ToastProvider position="top-right" maxToasts={3}>
         <AppProviders>
           <Router>
+          <AnalyticsTracker />
           <div className="min-h-screen bg-white flex flex-col">
             {/* Phase 2优化: 添加 Skip to Content 无障碍链接 */}
             <a

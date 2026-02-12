@@ -141,7 +141,10 @@
     <script>
       (function() {
         var pathname = window.location.pathname || '';
-        var isAdminPath = pathname === '/admin' || pathname === '/admin-login' || pathname.startsWith('/admin/');
+        // Admin pages should not load GA:
+        // - reduce console noise
+        // - avoid GA auto history hooks in high-frequency UIs
+        var isAdminPath = pathname === '/admin-login' || /^\/admin(?:\/|$)/.test(pathname);
 
         // 后台页面禁用 GA，避免管理界面高频状态变更触发 gtag 导航节流告警。
         if (isAdminPath) return;
@@ -163,7 +166,9 @@
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
-          gtag('config', 'G-6JQ44XXF2K');
+          // Disable GA auto page_view for SPA to avoid excessive history hooks.
+          // Page views are tracked manually on route changes in the app.
+          gtag('config', 'G-6JQ44XXF2K', { send_page_view: false });
         };
 
         if ('requestIdleCallback' in window) {

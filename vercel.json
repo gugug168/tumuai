@@ -43,6 +43,18 @@
   ],
   "rewrites": [
     {
+      "source": "/api/tools-cache",
+      "destination": "/api/public-api?action=tools"
+    },
+    {
+      "source": "/api/categories-cache",
+      "destination": "/api/public-api?action=categories"
+    },
+    {
+      "source": "/api/tools-filtered",
+      "destination": "/api/public-api?action=tools-filtered"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },
