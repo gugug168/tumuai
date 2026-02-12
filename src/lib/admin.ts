@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { ADMIN_CONFIG, API_ENDPOINTS } from './config'
+import { API_ENDPOINTS } from './config'
 import { unifiedCache } from './unified-cache-manager'
 
 // 基本类型定义
@@ -8,6 +8,7 @@ export interface AdminUser {
   email?: string
   role: string
   is_super_admin?: boolean
+  permissions?: unknown
 }
 
 // 工具类型接口
@@ -26,7 +27,7 @@ interface Tool {
 }
 
 // 添加缺失的类型定义
-export interface ToolSubmission extends Tool {}
+export type ToolSubmission = Tool
 export interface AdminLog {
   id: string
   action: string
@@ -107,14 +108,23 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
       })
 
       if (response.ok) {
-        const data = await response.json()
+        const data = (await response.json()) as {
+          user_id?: string
+          role?: string
+          permissions?: unknown
+        }
+
+        if (!data?.user_id || !data?.role) {
+          return null
+        }
+
         return {
           user_id: data.user_id,
           email: session.user.email,
           role: data.role,
           is_super_admin: data.role === 'super_admin',
           permissions: data.permissions
-        } as AdminUser & { permissions?: any }
+        }
       }
 
       // 401/403 视为非管理员；其他错误（如 404）再走前端兜底
@@ -151,7 +161,7 @@ export async function checkAdminStatus(): Promise<AdminUser | null> {
       role: adminUser.role,
       is_super_admin: adminUser.role === 'super_admin',
       permissions: adminUser.permissions
-    } as AdminUser & { permissions?: any }
+    }
 
   } catch (error) {
     console.error('❌ 管理员权限检查异常:', error)
@@ -202,9 +212,8 @@ export function clearAdminStatusCache(): void {
 // 获取系统统计数据 - 修复字段匹配问题
 export async function getSystemStats() {
   try {
-    const [toolsCount, publishedCount, pendingCount, categoriesCount, usersCount] = await Promise.all([
+    const [toolsCount, pendingCount, categoriesCount, usersCount] = await Promise.all([
       supabase.from('tools').select('id', { count: 'exact', head: true }),
-      supabase.from('tools').select('id', { count: 'exact', head: true }).eq('status', 'published'),
       supabase.from('tools').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
       supabase.from('categories').select('id', { count: 'exact', head: true }),
       // 获取真实的用户数量 - 统一查询逻辑

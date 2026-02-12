@@ -1,6 +1,7 @@
 import { useState, useCallback, useDeferredValue, useTransition, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SORT_OPTIONS } from '../lib/config';
+import type { Tool } from '../types';
 
 const DEFAULT_SORT_BY = 'upvotes';
 
@@ -104,8 +105,9 @@ export function useToolFilters() {
           } else {
             newParams.delete('search');
           }
-          return newParams;
-        });
+
+          return newParams.toString() === params.toString() ? params : newParams;
+        }, { replace: true });
       }, 300);
     } else {
       // 其他筛选使用transition（非紧急更新）
@@ -137,8 +139,8 @@ export function useToolFilters() {
           newParams.delete('sort');
         }
 
-        return newParams;
-      });
+        return newParams.toString() === params.toString() ? params : newParams;
+      }, { replace: true });
     }
   }, [clearDebounce, setSearchParams]);
 
@@ -161,8 +163,8 @@ export function useToolFilters() {
       if (nextCategories.length > 0) newParams.set('category', nextCategories.join(','));
       else newParams.delete('category');
       newParams.delete('categories');
-      return newParams;
-    });
+      return newParams.toString() === params.toString() ? params : newParams;
+    }, { replace: true });
   }, [setSearchParams, startTransition]);
 
   /**
@@ -183,8 +185,8 @@ export function useToolFilters() {
       const newParams = new URLSearchParams(params);
       if (nextFeatures.length > 0) newParams.set('features', nextFeatures.join(','));
       else newParams.delete('features');
-      return newParams;
-    });
+      return newParams.toString() === params.toString() ? params : newParams;
+    }, { replace: true });
   }, [setSearchParams, startTransition]);
 
   /**
@@ -198,7 +200,7 @@ export function useToolFilters() {
       pricing: '',
       sortBy: DEFAULT_SORT_BY
     });
-    setSearchParams({});
+    setSearchParams({}, { replace: true });
     clearDebounce();
   }, [setSearchParams, clearDebounce]);
 
@@ -296,10 +298,10 @@ export function useToolFilters() {
  * 筛选工具函数 - 客户端筛选逻辑
  */
 export function filterTools(
-  tools: any[],
+  tools: Tool[],
   searchQuery: string,
   filters: ToolFiltersState
-): any[] {
+): Tool[] {
   let filtered = [...tools];
 
   // 搜索筛选
@@ -309,22 +311,22 @@ export function filterTools(
       tool.name.toLowerCase().includes(searchLower) ||
       tool.tagline.toLowerCase().includes(searchLower) ||
       tool.description?.toLowerCase().includes(searchLower) ||
-      (tool.categories || []).some(cat => cat?.toLowerCase().includes(searchLower)) ||
-      (tool.features || []).some(feat => feat?.toLowerCase().includes(searchLower))
+      tool.categories.some(cat => cat.toLowerCase().includes(searchLower)) ||
+      tool.features.some(feat => feat.toLowerCase().includes(searchLower))
     );
   }
 
   // 分类筛选
   if (filters.categories.length > 0) {
     filtered = filtered.filter(tool =>
-      filters.categories.some(category => (tool.categories || []).includes(category))
+      filters.categories.some(category => tool.categories.includes(category))
     );
   }
 
   // 功能筛选
   if (filters.features.length > 0) {
     filtered = filtered.filter(tool =>
-      filters.features.every(feature => (tool.features || []).includes(feature))
+      filters.features.every(feature => tool.features.includes(feature))
     );
   }
 
@@ -337,7 +339,7 @@ export function filterTools(
   filtered.sort((a, b) => {
     switch (filters.sortBy) {
       case 'date_added':
-        return new Date(b.date_added).getTime() - new Date(a.date_added).getTime();
+        return Date.parse(b.date_added) - Date.parse(a.date_added);
       case 'rating':
         return (b.rating || 0) - (a.rating || 0);
       case 'views':

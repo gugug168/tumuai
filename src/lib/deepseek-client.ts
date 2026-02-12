@@ -46,6 +46,21 @@ export interface SmartFillResponse {
   };
 }
 
+interface DeepSeekUsage {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+}
+
+interface DeepSeekChatCompletionResponse {
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
+  usage?: DeepSeekUsage;
+}
+
 /**
  * DeepSeek API 客户端类
  * 
@@ -192,14 +207,15 @@ ${existingTool ? `参考信息: 名称："${existingTool.name}"，描述："${ex
         throw new Error(`DeepSeek API error: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json() as any;
-      
-      if (!data.choices || data.choices.length === 0) {
+      const data = await response.json() as DeepSeekChatCompletionResponse;
+      const content = data.choices?.[0]?.message?.content;
+
+      if (!content) {
         throw new Error('DeepSeek API returned no choices');
       }
 
       return {
-        content: data.choices[0].message.content,
+        content,
         usage: data.usage
       };
     } finally {
@@ -242,7 +258,7 @@ ${existingTool ? `参考信息: 名称："${existingTool.name}"，描述："${ex
   /**
    * 计算API使用量和成本
    */
-  private calculateUsage(usage: any) {
+  private calculateUsage(usage: DeepSeekUsage | undefined) {
     const promptTokens = usage?.prompt_tokens || 0;
     const completionTokens = usage?.completion_tokens || 0;
     const totalTokens = promptTokens + completionTokens;
@@ -261,26 +277,34 @@ ${existingTool ? `参考信息: 名称："${existingTool.name}"，描述："${ex
   /**
    * 统一错误处理
    */
-  private handleError(error: any): SmartFillResponse {
+  private handleError(error: unknown): SmartFillResponse {
     console.error('DeepSeek API Error:', error);
     
     let errorCode = 'UNKNOWN_ERROR';
     let errorMessage = '分析过程中出现未知错误';
     let retryable = false;
+
+    const errorName = typeof (error as { name?: unknown })?.name === 'string'
+      ? String((error as { name?: unknown }).name)
+      : '';
+
+    const errorText = typeof (error as { message?: unknown })?.message === 'string'
+      ? String((error as { message?: unknown }).message)
+      : String(error);
     
-    if (error.name === 'AbortError') {
+    if (errorName === 'AbortError') {
       errorCode = 'TIMEOUT';
       errorMessage = '请求超时，请稍后重试';
       retryable = true;
-    } else if (error.message.includes('API error: 429')) {
+    } else if (errorText.includes('API error: 429')) {
       errorCode = 'RATE_LIMIT';
       errorMessage = 'API调用频率超限，请稍后重试';
       retryable = true;
-    } else if (error.message.includes('API error: 401')) {
+    } else if (errorText.includes('API error: 401')) {
       errorCode = 'AUTH_ERROR';
       errorMessage = 'API密钥无效或已过期';
       retryable = false;
-    } else if (error.message.includes('API error: 5')) {
+    } else if (errorText.includes('API error: 5')) {
       errorCode = 'SERVER_ERROR';
       errorMessage = 'DeepSeek服务器暂时不可用';
       retryable = true;
@@ -303,17 +327,21 @@ ${existingTool ? `参考信息: 名称："${existingTool.name}"，描述："${ex
   }
 
   // 辅助验证方法
-  private validateString(value: any, defaultValue: string): string {
+  private validateString(value: unknown, defaultValue: string): string {
     return typeof value === 'string' && value.trim() ? value.trim() : defaultValue;
   }
 
-  private validatePricing(value: any): 'Free' | 'Freemium' | 'Paid' | 'Trial' {
+  private validatePricing(value: unknown): 'Free' | 'Freemium' | 'Paid' | 'Trial' {
     const validValues = ['Free', 'Freemium', 'Paid', 'Trial'];
-    return validValues.includes(value) ? value : 'Freemium';
+    return typeof value === 'string' && validValues.includes(value) ? value as 'Free' | 'Freemium' | 'Paid' | 'Trial' : 'Freemium';
   }
 
-  private validateConfidence(value: any): number {
-    const num = parseFloat(value);
+  private validateConfidence(value: unknown): number {
+    const num = typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? parseFloat(value)
+        : NaN;
     return !isNaN(num) && num >= 0 && num <= 1 ? num : 0.7;
   }
 

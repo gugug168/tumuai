@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
 
 /**
  * Meta 标签配置接口
@@ -49,7 +49,55 @@ const DEFAULT_CONFIG: MetaTagConfig = {
  * ```
  */
 export function useMetaTags(config: MetaTagConfig = {}) {
-  const mergedConfig = { ...DEFAULT_CONFIG, ...config };
+  const {
+    title,
+    description,
+    keywords,
+    ogTitle,
+    ogDescription,
+    ogImage,
+    ogType,
+    twitterCard,
+    twitterTitle,
+    twitterDescription,
+    twitterImage,
+    canonical,
+    noIndex
+  } = config;
+
+  const mergedConfig = useMemo(() => {
+    const next: MetaTagConfig = { ...DEFAULT_CONFIG };
+
+    if (title !== undefined) next.title = title;
+    if (description !== undefined) next.description = description;
+    if (keywords !== undefined) next.keywords = keywords;
+    if (ogTitle !== undefined) next.ogTitle = ogTitle;
+    if (ogDescription !== undefined) next.ogDescription = ogDescription;
+    if (ogImage !== undefined) next.ogImage = ogImage;
+    if (ogType !== undefined) next.ogType = ogType;
+    if (twitterCard !== undefined) next.twitterCard = twitterCard;
+    if (twitterTitle !== undefined) next.twitterTitle = twitterTitle;
+    if (twitterDescription !== undefined) next.twitterDescription = twitterDescription;
+    if (twitterImage !== undefined) next.twitterImage = twitterImage;
+    if (canonical !== undefined) next.canonical = canonical;
+    if (noIndex !== undefined) next.noIndex = noIndex;
+
+    return next;
+  }, [
+    title,
+    description,
+    keywords,
+    ogTitle,
+    ogDescription,
+    ogImage,
+    ogType,
+    twitterCard,
+    twitterTitle,
+    twitterDescription,
+    twitterImage,
+    canonical,
+    noIndex
+  ]);
 
   /**
    * 更新页面标题
@@ -71,7 +119,7 @@ export function useMetaTags(config: MetaTagConfig = {}) {
     if (!element) {
       element = document.createElement('meta');
       if (property) {
-        (element as any).setAttribute('property', name);
+        element.setAttribute('property', name);
       } else {
         element.setAttribute('name', name);
       }

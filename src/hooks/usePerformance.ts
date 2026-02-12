@@ -5,7 +5,7 @@ interface PerformanceEntry {
   startTime: number;
   duration?: number;
   type: 'render' | 'api' | 'interaction' | 'navigation';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 interface PerformanceMetrics {
@@ -34,10 +34,14 @@ const PROD_EMPTY_METRICS: PerformanceMetrics = {
 };
 
 const prodRecordApiCall = async <T>(
-  _name: string,
+  name: string,
   apiCall: () => Promise<T>,
-  _metadata?: Record<string, any>
-): Promise<T> => apiCall();
+  metadata?: Record<string, unknown>
+): Promise<T> => {
+  void name;
+  void metadata;
+  return apiCall();
+};
 
 const PROD_PERF_HELPERS = {
   startTiming: () => '',
@@ -61,27 +65,24 @@ const performanceData: {
 };
 
 export function usePerformance(componentName?: string) {
-  // Production: return lightweight no-op helpers to avoid runtime overhead.
-  if (!IS_DEV) {
-    return PROD_PERF_HELPERS;
-  }
-
   const componentRef = useRef<string>(componentName || 'Unknown');
   const renderCountRef = useRef(0);
   const lastRenderTime = useRef<number>(0);
 
   // 开始性能计时
-  const startTiming = useCallback((name: string, type: PerformanceEntry['type'], metadata?: Record<string, any>) => {
+  const startTiming = useCallback((name: string, type: PerformanceEntry['type'], metadata?: Record<string, unknown>) => {
     const key = `${componentRef.current}_${name}`;
-    performanceData.startTimes.set(key, performance.now());
+    const startTime = performance.now();
+    performanceData.startTimes.set(key, startTime);
     
     // 记录开始事件
     const entry: PerformanceEntry = {
       name: `${componentRef.current}_${name}`,
-      startTime: performance.now(),
+      startTime,
       type,
       metadata
     };
+    performanceData.entries.push(entry);
     
     return key;
   }, []);
@@ -159,7 +160,7 @@ export function usePerformance(componentName?: string) {
   const recordApiCall = useCallback(async <T>(
     name: string,
     apiCall: () => Promise<T>,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): Promise<T> => {
     const key = startTiming(name, 'api', metadata);
     
@@ -185,7 +186,7 @@ export function usePerformance(componentName?: string) {
   }, [startTiming, endTiming]);
 
   // 记录用户交互（仅开发环境）
-  const recordInteraction = useCallback((interactionName: string, metadata?: Record<string, any>) => {
+  const recordInteraction = useCallback((interactionName: string, metadata?: Record<string, unknown>) => {
     const entry: PerformanceEntry = {
       name: `${componentRef.current}_${interactionName}`,
       startTime: performance.now(),
@@ -265,6 +266,8 @@ export function usePerformance(componentName?: string) {
 
   // Web Vitals 监控
   useEffect(() => {
+    if (!IS_DEV) return;
+
     // LCP (Largest Contentful Paint) 监控
     const observeLCP = new PerformanceObserver((entryList) => {
       const entries = entryList.getEntries();
@@ -314,20 +317,23 @@ export function usePerformance(componentName?: string) {
 
   // 在组件每次渲染时记录（仅开发环境）
   useEffect(() => {
+    if (!IS_DEV) return;
     recordRender();
   });
 
-  return {
-    startTiming,
-    endTiming,
-    recordRender,
-    recordApiCall,
-    recordInteraction,
-    getMetrics,
-    printReport,
-    clearMetrics,
-    renderCount: renderCountRef.current
-  };
+  return IS_DEV
+    ? {
+        startTiming,
+        endTiming,
+        recordRender,
+        recordApiCall,
+        recordInteraction,
+        getMetrics,
+        printReport,
+        clearMetrics,
+        renderCount: renderCountRef.current
+      }
+    : PROD_PERF_HELPERS;
 }
 
 // 全局性能工具函数

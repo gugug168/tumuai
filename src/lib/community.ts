@@ -41,59 +41,6 @@ export interface ToolComment {
   replies?: ToolComment[]
 }
 
-// 通用：带超时的 JSON 请求（优化版）
-async function fetchJSONWithTimeout(
-  url: string,
-  options: RequestInit & { 
-    timeoutMs?: number
-    retries?: number
-    retryDelay?: number
-  } = {}
-) {
-  const { 
-    timeoutMs = 15000, // 增加到15秒
-    retries = 2,
-    retryDelay = 1000,
-    ...rest 
-  } = options
-  
-  let lastError: Error | null = null
-  
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    const controller = new AbortController()
-    const id = setTimeout(() => controller.abort(), timeoutMs)
-    
-    try {
-      const resp = await fetch(url, { ...rest, signal: controller.signal })
-      if (!resp.ok) {
-        // 4xx错误不重试，5xx错误可以重试
-        if (resp.status >= 400 && resp.status < 500 && resp.status !== 429) {
-          throw new Error(`HTTP ${resp.status}`)
-        }
-        throw new Error(`HTTP ${resp.status}`)
-      }
-      return await resp.json()
-    } catch (error) {
-      lastError = error as Error
-      clearTimeout(id)
-      
-      // 最后一次尝试或者是不可重试的错误
-      if (attempt === retries || (error as Error).name === 'AbortError') {
-        break
-      }
-      
-      // 指数退避延时
-      const delay = retryDelay * Math.pow(2, attempt)
-      console.warn(`请求失败 (尝试 ${attempt + 1}/${retries + 1}), ${delay}ms后重试:`, error)
-      await new Promise(resolve => setTimeout(resolve, delay))
-    } finally {
-      clearTimeout(id)
-    }
-  }
-  
-  throw lastError || new Error('请求失败')
-}
-
 // 收藏工具
 export async function addToFavorites(toolId: string) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -209,7 +156,7 @@ export async function batchCheckFavorites(toolIds: string[]): Promise<{[key: str
     })
 
     return result
-  } catch (error) {
+  } catch {
     // 静默处理错误，返回所有工具为未收藏状态
     const result: {[key: string]: boolean} = {}
     toolIds.forEach(id => result[id] = false)

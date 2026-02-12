@@ -43,10 +43,10 @@ export const UNIFIED_CACHE_CONFIGS = {
  */
 class UnifiedCacheManager {
   private static instance: UnifiedCacheManager;
-  private memoryCache = new Map<string, CacheEntry<any>>();
+  private memoryCache = new Map<string, CacheEntry<unknown>>();
   private persistentPrefix = 'unified_cache';
   private maxSize: number;
-  private requestMap = new Map<string, Promise<any>>();
+  private requestMap = new Map<string, Promise<unknown>>();
 
   constructor(maxSize: number = 1000) {
     this.maxSize = maxSize;
@@ -277,7 +277,7 @@ class UnifiedCacheManager {
     this.memoryCache.set(key, entry);
   }
 
-  private isExpired(entry: CacheEntry<any>): boolean {
+  private isExpired(entry: CacheEntry<unknown>): boolean {
     return Date.now() > entry.expiry;
   }
 

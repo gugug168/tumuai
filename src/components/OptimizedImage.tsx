@@ -130,8 +130,22 @@ function getErrorTypeFromEvent(event: React.SyntheticEvent<HTMLImageElement, Eve
   return '404';
 }
 
+function isHardBlockedUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const isUltralyticsBrokenFavicon =
+      (u.hostname === 'www.ultralytics.com' || u.hostname === 'ultralytics.com') &&
+      u.pathname === '/favicon.ico';
+
+    return isUltralyticsBrokenFavicon;
+  } catch {
+    return false;
+  }
+}
+
 function isKnownBrokenUrl(url: string): boolean {
   if (!isHttpUrl(url)) return false;
+  if (isHardBlockedUrl(url)) return true;
   const map = loadBrokenImgMap();
   const entry = map[url];
   if (!entry) return false;

@@ -48,8 +48,8 @@ interface VirtualScrollState {
  * - 性能监控集成
  */
 export function useToolData(performanceHooks?: {
-  recordApiCall: <T>(name: string, apiCall: () => Promise<T>, metadata?: any) => Promise<T>;
-  recordInteraction: (name: string, metadata?: any) => void;
+  recordApiCall: <T>(name: string, apiCall: () => Promise<T>, metadata?: Record<string, unknown>) => Promise<T>;
+  recordInteraction: (name: string, metadata?: Record<string, unknown>) => void;
 }) {
   // 工具数据状态
   const [state, setState] = useState<ToolDataState>({
@@ -273,7 +273,7 @@ export function useToolData(performanceHooks?: {
           loading: false,
           retryCount: 0
         }));
-      } catch (fallbackError) {
+      } catch {
         // 错误分类和用户友好的错误信息
         let errorMessage = '加载失败，请稍后重试';
 
@@ -298,7 +298,7 @@ export function useToolData(performanceHooks?: {
         }));
       }
     }
-  }, [updateState, recordApiCall]);
+  }, [updateState, recordApiCall, loadTotalToolsCount]);
 
   /**
    * 加载更多工具（用于虚拟滚动无限加载）
@@ -361,7 +361,13 @@ export function useToolData(performanceHooks?: {
         : await getCategories();
 
       if (categoriesData && Array.isArray(categoriesData) && categoriesData.length > 0) {
-        const categoryNames = categoriesData.map((cat: any) => cat.name).filter(Boolean);
+        const categoryNames = categoriesData
+          .map((cat: unknown) => {
+            if (!cat || typeof cat !== 'object') return null;
+            const name = (cat as { name?: unknown }).name;
+            return typeof name === 'string' ? name : null;
+          })
+          .filter((name): name is string => !!name);
         setCategories(categoryNames);
         console.log('✅ 分类数据加载成功:', categoryNames.length + '个分类');
       } else {
@@ -382,13 +388,14 @@ export function useToolData(performanceHooks?: {
     userId: string
   ) => {
     if (toolIds.length === 0) return;
+    void userId;
 
     try {
       // 使用批量查询替代循环单独查询
       const { batchCheckFavorites } = await import('../lib/community');
       const states = await batchCheckFavorites(toolIds);
       setFavoriteStates(states);
-    } catch (error) {
+    } catch {
       // 静默处理错误，设置所有工具为未收藏状态
       const result: Record<string, boolean> = {};
       toolIds.forEach(id => result[id] = false);

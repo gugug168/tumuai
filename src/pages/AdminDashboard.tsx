@@ -28,7 +28,6 @@ import {
   deleteTool,
   deleteCategory,
   toggleUserStatus,
-  updateUserRole,
   deleteUser,
   updateToolStatus,
   batchDeleteTools,
@@ -37,8 +36,7 @@ import {
   exportUsersToCSV,
   refreshToolLogo,
   refreshToolScreenshots,
-  batchRefreshToolLogos,
-  type AdminLog
+  batchRefreshToolLogos
 } from '../lib/admin';
 import type { ToolSubmission } from '../types';
 import ToolManagementModal from '../components/ToolManagementModal';
@@ -84,7 +82,6 @@ const AdminDashboard = () => {
   const SUBMISSIONS_PER_PAGE = 50;
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [loading, setLoading] = useState(false);
   const [authChecking, setAuthChecking] = useState(true); // 新增：权限检查状态
   const [isAuthorized, setIsAuthorized] = useState(false); // 新增：权限状态
   const [activeTab, setActiveTab] = useState('overview');
@@ -101,7 +98,6 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState<Record<string, unknown>[]>([]);
   const [tools, setTools] = useState<Tool[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [logs, setLogs] = useState<AdminLog[]>([]);  // 预留：管理员日志功能
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState('pending');
   const [submissionSearchTerm, setSubmissionSearchTerm] = useState('');
@@ -113,8 +109,6 @@ const AdminDashboard = () => {
   const [showToolModal, setShowToolModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showSubmissionModal, setShowSubmissionModal] = useState<ToolSubmission | null>(null);
-  const [editingUser, setEditingUser] = useState<Record<string, unknown> | null>(null);
-  const [showUserModal, setShowUserModal] = useState(false);
   // 批量选择状态
   const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
   const [selectedSubmissions, setSelectedSubmissions] = useState<Set<string>>(new Set());
@@ -219,6 +213,7 @@ const AdminDashboard = () => {
   // 按需加载统计信息（轻量级，总是加载）
   const loadStats = useCallback(async () => {
     try {
+      setError(null);
       setLoadingStates(prev => ({ ...prev, stats: true }));
       const accessToken = await getAccessToken();
       if (!accessToken) throw new Error('未登录');
@@ -236,6 +231,8 @@ const AdminDashboard = () => {
       setLoadedTabs(prev => new Set(prev).add('stats'));
     } catch (error) {
       console.error('加载统计失败:', error);
+      const message = error instanceof Error ? error.message : '加载统计失败';
+      setError(message);
     } finally {
       setLoadingStates(prev => ({ ...prev, stats: false }));
     }
@@ -244,6 +241,7 @@ const AdminDashboard = () => {
   // 按需加载提交列表
   const loadSubmissions = useCallback(async () => {
     try {
+      setError(null);
       setLoadingStates(prev => ({ ...prev, submissions: true }));
       const accessToken = await getAccessToken();
       if (!accessToken) throw new Error('未登录');
@@ -268,6 +266,8 @@ const AdminDashboard = () => {
       setLoadedTabs(prev => new Set(prev).add('submissions'));
     } catch (error) {
       console.error('加载提交失败:', error);
+      const message = error instanceof Error ? error.message : '加载提交失败';
+      setError(message);
     } finally {
       setLoadingStates(prev => ({ ...prev, submissions: false }));
     }
@@ -276,6 +276,7 @@ const AdminDashboard = () => {
   // 按需加载工具列表
   const loadTools = useCallback(async () => {
     try {
+      setError(null);
       setLoadingStates(prev => ({ ...prev, tools: true }));
       const accessToken = await getAccessToken();
       if (!accessToken) throw new Error('未登录');
@@ -291,6 +292,8 @@ const AdminDashboard = () => {
       setLoadedTabs(prev => new Set(prev).add('tools'));
     } catch (error) {
       console.error('加载工具失败:', error);
+      const message = error instanceof Error ? error.message : '加载工具失败';
+      setError(message);
     } finally {
       setLoadingStates(prev => ({ ...prev, tools: false }));
     }
@@ -299,6 +302,7 @@ const AdminDashboard = () => {
   // 按需加载分类列表
   const loadCategories = useCallback(async () => {
     try {
+      setError(null);
       setLoadingStates(prev => ({ ...prev, categories: true }));
       const accessToken = await getAccessToken();
       if (!accessToken) throw new Error('未登录');
@@ -314,6 +318,8 @@ const AdminDashboard = () => {
       setLoadedTabs(prev => new Set(prev).add('categories'));
     } catch (error) {
       console.error('加载分类失败:', error);
+      const message = error instanceof Error ? error.message : '加载分类失败';
+      setError(message);
     } finally {
       setLoadingStates(prev => ({ ...prev, categories: false }));
     }
@@ -322,6 +328,7 @@ const AdminDashboard = () => {
   // 按需加载用户列表（带分页）
   const loadUsers = useCallback(async (page = 1) => {
     try {
+      setError(null);
       setLoadingStates(prev => ({ ...prev, users: true }));
       const accessToken = await getAccessToken();
       if (!accessToken) throw new Error('未登录');
@@ -338,6 +345,8 @@ const AdminDashboard = () => {
       setLoadedTabs(prev => new Set(prev).add('users'));
     } catch (error) {
       console.error('加载用户失败:', error);
+      const message = error instanceof Error ? error.message : '加载用户失败';
+      setError(message);
     } finally {
       setLoadingStates(prev => ({ ...prev, users: false }));
     }
@@ -408,6 +417,15 @@ const AdminDashboard = () => {
     }
   }, [activeTab, loadStats, loadSubmissions, loadTools, loadCategories, loadUsers, userPage]);
 
+  const handleUserPageChange = useCallback((nextPage: number) => {
+    if (nextPage === userPage) return;
+    if (!Number.isFinite(nextPage) || nextPage < 1) return;
+    if (userPagination.totalPages && nextPage > userPagination.totalPages) return;
+
+    setUserPage(nextPage);
+    loadUsers(nextPage);
+  }, [loadUsers, userPage, userPagination.totalPages]);
+
   const handleReviewSubmission = async (submissionId: string, status: 'approved' | 'rejected', notes?: string) => {
     try {
       await reviewToolSubmission(submissionId, status, notes);
@@ -468,19 +486,6 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Toggle user status failed:', error);
       toast.error('操作失败', '请重试');
-    }
-  };
-
-  const handleUpdateUserRole = async (userId: string, role: string) => {
-    try {
-      await updateUserRole(userId, role);
-      // 增量更新用户角色
-      setUsers(prev => prev.map(u =>
-        u.id === userId ? { ...u, role } : u
-      ));
-    } catch (error) {
-      console.error('Update user role failed:', error);
-      toast.error('更新失败', '更新角色失败，请重试');
     }
   };
 
@@ -1314,12 +1319,12 @@ const AdminDashboard = () => {
                                   {tool.featured ? '精选' : '普通'}
                                 </span>
                                 {/* 工具状态下拉菜单 */}
-                                <select
-                                  value={tool.status || 'published'}
-                                  onChange={(e) => handleUpdateToolStatus(tool.id, e.target.value as any)}
-                                  className="text-xs border rounded px-1 py-0.5"
-                                  title="更改状态"
-                                >
+                                  <select
+                                    value={tool.status || 'published'}
+                                    onChange={(e) => handleUpdateToolStatus(tool.id, e.target.value as 'draft' | 'published' | 'archived')}
+                                    className="text-xs border rounded px-1 py-0.5"
+                                    title="更改状态"
+                                  >
                                   <option value="draft">草稿</option>
                                   <option value="published">发布</option>
                                   <option value="archived">下线</option>
@@ -1464,86 +1469,110 @@ const AdminDashboard = () => {
                 ) : users.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">暂无用户数据</p>
                 ) : (
-                  <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                    <table className="min-w-full divide-y divide-gray-300">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                            用户
-                          </th>
-                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                            角色
-                          </th>
-                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                            状态
-                          </th>
-                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                            注册时间
-                          </th>
-                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                            操作
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200 bg-white">
-                        {users.map((user) => (
-                          <tr key={user.id}>
-                            <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                              <div>
-                                <div className="font-medium">{user.email?.split('@')[0] || user.email}</div>
-                                <div className="text-gray-500 text-xs">{user.email}</div>
-                              </div>
-                            </td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                user.role === 'super_admin' ? 'bg-purple-100 text-purple-800' :
-                                user.role === 'admin' ? 'bg-blue-100 text-blue-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
-                                {user.role === 'super_admin' ? '超级管理员' :
-                                 user.role === 'admin' ? '管理员' : '用户'}
-                              </span>
-                            </td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                user.is_active !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                              }`}>
-                                {user.is_active !== false ? '正常' : '禁用'}
-                              </span>
-                            </td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                              {new Date(user.created_at).toLocaleDateString()}
-                            </td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm space-x-2">
-                              {user.is_active !== false ? (
-                                <button
-                                  onClick={() => handleToggleUserStatus(user.id, false)}
-                                  className="text-orange-600 hover:text-orange-900"
-                                  title="禁用用户"
-                                >
-                                  <Ban className="h-4 w-4" />
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => handleToggleUserStatus(user.id, true)}
-                                  className="text-green-600 hover:text-green-900"
-                                  title="启用用户"
-                                >
-                                  <Check className="h-4 w-4" />
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleDeleteUser(user.id)}
-                                className="text-red-600 hover:text-red-900"
-                                title="删除用户"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </td>
+                  <div className="space-y-4">
+                    <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                      <table className="min-w-full divide-y divide-gray-300">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
+                              用户
+                            </th>
+                            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                              角色
+                            </th>
+                            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                              状态
+                            </th>
+                            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                              注册时间
+                            </th>
+                            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                              操作
+                            </th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {users.map((user) => (
+                            <tr key={user.id}>
+                              <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                                <div>
+                                  <div className="font-medium">{user.email?.split('@')[0] || user.email}</div>
+                                  <div className="text-gray-500 text-xs">{user.email}</div>
+                                </div>
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-4 text-sm">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  user.role === 'super_admin' ? 'bg-purple-100 text-purple-800' :
+                                  user.role === 'admin' ? 'bg-blue-100 text-blue-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {user.role === 'super_admin' ? '超级管理员' :
+                                   user.role === 'admin' ? '管理员' : '用户'}
+                                </span>
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-4 text-sm">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  user.is_active !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {user.is_active !== false ? '正常' : '禁用'}
+                                </span>
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                {new Date(user.created_at).toLocaleDateString()}
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-4 text-sm space-x-2">
+                                {user.is_active !== false ? (
+                                  <button
+                                    onClick={() => handleToggleUserStatus(user.id, false)}
+                                    className="text-orange-600 hover:text-orange-900"
+                                    title="禁用用户"
+                                  >
+                                    <Ban className="h-4 w-4" />
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleToggleUserStatus(user.id, true)}
+                                    className="text-green-600 hover:text-green-900"
+                                    title="启用用户"
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteUser(user.id)}
+                                  className="text-red-600 hover:text-red-900"
+                                  title="删除用户"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm text-gray-600">
+                      <div>
+                        第 {userPagination.page} / {userPagination.totalPages} 页，共 {userPagination.total} 用户
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleUserPageChange(userPagination.page - 1)}
+                          disabled={userPagination.page <= 1 || loadingStates.users}
+                          className="px-3 py-1 rounded border bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        >
+                          上一页
+                        </button>
+                        <button
+                          onClick={() => handleUserPageChange(userPagination.page + 1)}
+                          disabled={userPagination.page >= userPagination.totalPages || loadingStates.users}
+                          className="px-3 py-1 rounded border bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        >
+                          下一页
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
