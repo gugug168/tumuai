@@ -429,6 +429,8 @@ export function isValidHighQualityLogoUrl(logoUrl?: string): boolean {
     /ibeam\.ai\/favicon\.ico/i,            // Beam AI - 504
     /ai-structure\.com\/favicon\.png/i,    // AIstructure-Copilot - 404
     /dxipdd\.com\/favicon\.ico/i,          // 笃行信道 - pending/timeout
+    /tuzhi\.ai\/favicon\.ico/i,            // 图智AI - 缓存 TTL=0，优化请求
+    /bangtu-ai\.com\/favicon\.ico/i,       // 帮图AI - 缓存 TTL=0，优化请求
   ];
 
   for (const pattern of quickDenyPatterns) {
@@ -441,7 +443,7 @@ export function isValidHighQualityLogoUrl(logoUrl?: string): boolean {
   try {
     const url = new URL(logoUrl);
 
-    // 黑名单域名（这些网站的 favicon 持续失败）
+    // 黑名单域名（这些网站的 favicon 持续失败或缓存策略不佳）
     const brokenFaviconHosts = [
       'www.ultralytics.com',
       'ultralytics.com',
@@ -452,7 +454,11 @@ export function isValidHighQualityLogoUrl(logoUrl?: string): boolean {
       'ai-structure.com',
       'www.ai-structure.com',
       'dxipdd.com',
-      'www.dxipdd.com'
+      'www.dxipdd.com',
+      'tuzhi.ai',                          // 缓存 TTL=0，每次请求都重新加载
+      'www.tuzhi.ai',
+      'bangtu-ai.com',                     // 缓存 TTL=0，每次请求都重新加载
+      'www.bangtu-ai.com'
     ];
 
     const isBrokenFavicon =

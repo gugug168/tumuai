@@ -130,13 +130,15 @@ function getErrorTypeFromEvent(event: React.SyntheticEvent<HTMLImageElement, Eve
   return '404';
 }
 
-// 已知失效的 favicon URL 黑名单（返回 404/504/timeout）
+// 已知失效的 favicon URL 黑名单（返回 404/504/timeout 或缓存策略不佳）
 const HARDBLOCK_PATTERNS = [
   /ultralytics\.com\/favicon\.ico/i,
   /evolvelab\.io\/favicon\.ico/i,        // Veras - 504
   /ibeam\.ai\/favicon\.ico/i,            // Beam AI - 504
   /ai-structure\.com\/favicon\.png/i,    // AIstructure-Copilot - 404
   /dxipdd\.com\/favicon\.ico/i,          // 笃行信道 - pending/timeout
+  /tuzhi\.ai\/favicon\.ico/i,            // 图智AI - 缓存 TTL=0，优化请求
+  /bangtu-ai\.com\/favicon\.ico/i,       // 帮图AI - 缓存 TTL=0，优化请求
 ];
 
 const HARDBLOCK_HOSTS = [
@@ -149,7 +151,11 @@ const HARDBLOCK_HOSTS = [
   'ai-structure.com',
   'www.ai-structure.com',
   'dxipdd.com',
-  'www.dxipdd.com'
+  'www.dxipdd.com',
+  'tuzhi.ai',                          // 缓存 TTL=0，每次请求都重新加载
+  'www.tuzhi.ai',
+  'bangtu-ai.com',                     // 缓存 TTL=0，每次请求都重新加载
+  'www.bangtu-ai.com'
 ];
 
 function isHardBlockedUrl(url: string): boolean {
