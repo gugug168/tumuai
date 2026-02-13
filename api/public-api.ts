@@ -422,7 +422,7 @@ async function handleSearchQuery(
   query = query.or(`name.ilike.%${searchQuery}%,tagline.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
 
   const validSortFields: SortField[] = ['upvotes', 'date_added', 'rating', 'views']
-  const sortField = validSortFields.includes(sortBy) ? sortBy : 'upvotes'
+  const sortField: SortField = validSortFields.includes(sortBy as SortField) ? sortBy as SortField : 'upvotes'
   query = query.order(sortField, { ascending: false })
   query = query.range(offset, offset + limit - 1)
 
