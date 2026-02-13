@@ -422,18 +422,44 @@ export function isValidHighQualityLogoUrl(logoUrl?: string): boolean {
   if (!logoUrl) return false;
 
   // Quick denylist (avoid noisy 404s and known-bad URLs even if parsing fails).
-  if (/ultralytics\.com\/favicon\.ico/i.test(logoUrl)) {
-    return false;
+  // 已知返回 404/504 的 favicon（会在控制台持续报错）
+  const quickDenyPatterns = [
+    /ultralytics\.com\/favicon\.ico/i,
+    /evolvelab\.io\/favicon\.ico/i,        // Veras - 504
+    /ibeam\.ai\/favicon\.ico/i,            // Beam AI - 504
+    /ai-structure\.com\/favicon\.png/i,    // AIstructure-Copilot - 404
+    /dxipdd\.com\/favicon\.ico/i,          // 笃行信道 - pending/timeout
+  ];
+
+  for (const pattern of quickDenyPatterns) {
+    if (pattern.test(logoUrl)) {
+      return false;
+    }
   }
 
-  // 已知站点返回 404 的无效 favicon（会在控制台持续报错）
+  // 已知站点返回 404/504 的无效 favicon（会在控制台持续报错）
   try {
     const url = new URL(logoUrl);
-    const isUltralyticsBrokenFavicon =
-      (url.hostname === 'www.ultralytics.com' || url.hostname === 'ultralytics.com') &&
-      url.pathname === '/favicon.ico';
 
-    if (isUltralyticsBrokenFavicon) {
+    // 黑名单域名（这些网站的 favicon 持续失败）
+    const brokenFaviconHosts = [
+      'www.ultralytics.com',
+      'ultralytics.com',
+      'www.evolvelab.io',
+      'evolvelab.io',
+      'ibeam.ai',
+      'www.ibeam.ai',
+      'ai-structure.com',
+      'www.ai-structure.com',
+      'dxipdd.com',
+      'www.dxipdd.com'
+    ];
+
+    const isBrokenFavicon =
+      brokenFaviconHosts.includes(url.hostname) &&
+      (url.pathname.includes('favicon') || url.pathname.endsWith('.ico') || url.pathname.endsWith('.png'));
+
+    if (isBrokenFavicon) {
       return false;
     }
   } catch {

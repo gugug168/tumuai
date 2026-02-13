@@ -149,6 +149,18 @@ class UnifiedCacheManager {
   }
 
   /**
+   * 检查是否是 AbortError（请求被取消）
+   */
+  private isAbortError(error: unknown): boolean {
+    if (error instanceof Error) {
+      return error.name === 'AbortError' ||
+             error.message.includes('aborted') ||
+             error.message.includes('abort');
+    }
+    return false;
+  }
+
+  /**
    * 执行请求并缓存结果
    */
   private async executeRequest<T>(
@@ -156,15 +168,27 @@ class UnifiedCacheManager {
     fetcher: (signal?: AbortSignal) => Promise<T>,
     options: CacheOptions
   ): Promise<T> {
-    console.log(`📦 缓存未命中: "${key}", 正在获取数据...`);
-    
+    // 生产环境不输出详细日志
+    if (import.meta.env.DEV) {
+      console.log(`📦 缓存未命中: "${key}", 正在获取数据...`);
+    }
+
     try {
       const data = await fetcher();
       await this.set(key, data, options);
-      console.log(`✅ 数据已缓存: "${key}"`);
+      if (import.meta.env.DEV) {
+        console.log(`✅ 数据已缓存: "${key}"`);
+      }
       return data;
     } catch (error) {
-      console.error(`❌ 获取数据失败: "${key}"`, error);
+      // AbortError 是正常的请求取消，不需要记录错误
+      if (this.isAbortError(error)) {
+        throw error;
+      }
+      // 只在开发环境显示详细错误
+      if (import.meta.env.DEV) {
+        console.error(`❌ 获取数据失败: "${key}"`, error);
+      }
       throw error;
     }
   }
@@ -179,12 +203,19 @@ class UnifiedCacheManager {
   ): void {
     setTimeout(async () => {
       try {
-        console.log(`🔄 后台刷新缓存: "${key}"`);
+        if (import.meta.env.DEV) {
+          console.log(`🔄 后台刷新缓存: "${key}"`);
+        }
         const data = await fetcher();
         await this.set(key, data, options);
-        console.log(`🔄 后台刷新完成: "${key}"`);
+        if (import.meta.env.DEV) {
+          console.log(`🔄 后台刷新完成: "${key}"`);
+        }
       } catch (error) {
-        console.warn(`⚠️ 后台刷新失败: "${key}"`, error);
+        // 后台刷新失败是静默的，不影响用户体验
+        if (import.meta.env.DEV && !this.isAbortError(error)) {
+          console.warn(`⚠️ 后台刷新失败: "${key}"`, error);
+        }
       }
     }, 0);
   }

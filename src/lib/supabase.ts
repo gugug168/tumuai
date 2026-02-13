@@ -170,6 +170,18 @@ function isApiBackedOff(): boolean {
 }
 
 /**
+ * 检查是否是 AbortError（请求被取消）
+ */
+function isAbortError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return error.name === 'AbortError' ||
+           error.message.includes('aborted') ||
+           error.message.includes('abort');
+  }
+  return false;
+}
+
+/**
  * 通过 Vercel API 代理获取工具列表
  * 优势：
  * - 服务端缓存（CDN级别）
@@ -211,6 +223,10 @@ export async function getToolsViaAPI(
       count: result.count
     }
   } catch (error) {
+    // AbortError 是正常的请求取消，不需要记录错误
+    if (isAbortError(error)) {
+      throw error;
+    }
     if (IS_DEV) {
       console.error('Error fetching tools via API:', error)
     }
@@ -350,6 +366,11 @@ export async function getToolsSmart(
       const sortBy = filters?.sortBy || 'upvotes'
       return await getToolsFiltered(filters, limit, offset, sortBy, includeCount)
     } catch (apiError) {
+      // AbortError 是正常的请求取消，不需要回退
+      if (isAbortError(apiError)) {
+        throw apiError;
+      }
+
       const status = typeof (apiError as ApiFetchError)?.status === 'number'
         ? (apiError as ApiFetchError).status
         : undefined
@@ -369,7 +390,7 @@ export async function getToolsSmart(
   }
 
   // API 优先策略：优先走 Vercel API（CDN 缓存命中很快），
-  // 但避免在后台“同时直连 Supabase”造成双倍请求/资源竞争。
+  // 但避免在后台"同时直连 Supabase"造成双倍请求/资源竞争。
   // 超时后再回退到本地缓存/直连。
   // Give the Vercel function a bit more room for cold starts; if this times out we fall back to
   // client-side Supabase reads (which can be slower/unreliable on some networks).
@@ -398,13 +419,23 @@ export async function getToolsSmart(
     console.log('✅ getToolsSmart: API 响应成功')
     return result
   } catch (error) {
+    // AbortError 是正常的请求取消（超时或组件卸载）
+    if (isAbortError(error)) {
+      // 直接回退到缓存，不标记 API 不可用
+      const [tools, count] = await Promise.all([
+        getToolsWithCache(limit, offset),
+        includeCount ? getToolsCountWithCache() : Promise.resolve(undefined)
+      ])
+      return { tools, count }
+    }
+
     const status = typeof (error as ApiFetchError)?.status === 'number'
       ? (error as ApiFetchError).status
       : undefined
     markApiDown(status)
 
     if (IS_DEV) {
-      console.warn('⚠️ getToolsSmart: API 请求失败或超时，使用本地缓存:', error)
+      console.warn('⚠️ getToolsSmart: API 请求失败，使用本地缓存:', error)
     }
 
     // 回退到本地缓存的直连方式
@@ -431,7 +462,8 @@ export async function getFeaturedTools() {
         .limit(8)
 
       if (error) {
-        console.error('Error fetching featured tools:', error)
+        // 只在开发环境显示详细错误
+        if (IS_DEV) console.error('Error fetching featured tools:', error)
         return []
       }
 
@@ -447,7 +479,7 @@ export async function getFeaturedTools() {
           .limit(8)
 
         if (fallback.error) {
-          console.error('Error fetching fallback tools:', fallback.error)
+          if (IS_DEV) console.error('Error fetching fallback tools:', fallback.error)
           return featured
         }
 
@@ -472,7 +504,7 @@ export async function getFeaturedTools() {
       return featuredTools.slice(0, LIMIT)
     }
 
-    // 如果 featured=true 数据不足（或为 0），用热门工具补齐，保证“编辑推荐”区域有内容。
+    // 如果 featured=true 数据不足（或为 0），用热门工具补齐，保证"编辑推荐"区域有内容。
     const fallbackResult = await getToolsViaAPI(LIMIT, 0, false, undefined, { sortBy: 'upvotes' })
     const fallbackTools = Array.isArray(fallbackResult.tools) ? fallbackResult.tools : []
 
@@ -484,7 +516,15 @@ export async function getFeaturedTools() {
 
     return merged
   } catch (error) {
-    console.error('Unexpected error fetching featured tools:', error)
+    // AbortError 是正常的请求取消，不需要记录错误
+    if (isAbortError(error)) {
+      return [];
+    }
+
+    // 只在开发环境显示详细错误，生产环境静默失败
+    if (IS_DEV) {
+      console.error('Unexpected error fetching featured tools:', error)
+    }
 
     // Last-resort fallback: fetch directly from Supabase so the homepage section isn't empty
     // when the Vercel `/api/*` layer is temporarily unavailable.
@@ -497,13 +537,13 @@ export async function getFeaturedTools() {
         .limit(8)
 
       if (fallbackError) {
-        console.error('Fallback featured tools query failed:', fallbackError)
+        if (IS_DEV) console.error('Fallback featured tools query failed:', fallbackError)
         return []
       }
 
       return (data || []) as Tool[]
     } catch (fallbackError) {
-      console.error('Fallback featured tools query failed:', fallbackError)
+      if (IS_DEV) console.error('Fallback featured tools query failed:', fallbackError)
       return []
     }
   }
@@ -521,7 +561,7 @@ export async function getLatestTools() {
         .limit(12)
 
       if (error) {
-        console.error('Error fetching latest tools:', error)
+        if (IS_DEV) console.error('Error fetching latest tools:', error)
         return []
       }
 
@@ -531,7 +571,14 @@ export async function getLatestTools() {
     const result = await getToolsViaAPI(12, 0, false, undefined, { sortBy: 'date_added' })
     return Array.isArray(result.tools) ? result.tools : []
   } catch (error) {
-    console.error('Unexpected error fetching latest tools:', error)
+    // AbortError 是正常的请求取消，不需要记录错误
+    if (isAbortError(error)) {
+      return [];
+    }
+
+    if (IS_DEV) {
+      console.error('Unexpected error fetching latest tools:', error)
+    }
 
     // Last-resort fallback for when `/api/*` is unavailable.
     try {
@@ -543,13 +590,13 @@ export async function getLatestTools() {
         .limit(12)
 
       if (fallbackError) {
-        console.error('Fallback latest tools query failed:', fallbackError)
+        if (IS_DEV) console.error('Fallback latest tools query failed:', fallbackError)
         return []
       }
 
       return (data || []) as Tool[]
     } catch (fallbackError) {
-      console.error('Fallback latest tools query failed:', fallbackError)
+      if (IS_DEV) console.error('Fallback latest tools query failed:', fallbackError)
       return []
     }
   }

@@ -130,18 +130,45 @@ function getErrorTypeFromEvent(event: React.SyntheticEvent<HTMLImageElement, Eve
   return '404';
 }
 
+// 已知失效的 favicon URL 黑名单（返回 404/504/timeout）
+const HARDBLOCK_PATTERNS = [
+  /ultralytics\.com\/favicon\.ico/i,
+  /evolvelab\.io\/favicon\.ico/i,        // Veras - 504
+  /ibeam\.ai\/favicon\.ico/i,            // Beam AI - 504
+  /ai-structure\.com\/favicon\.png/i,    // AIstructure-Copilot - 404
+  /dxipdd\.com\/favicon\.ico/i,          // 笃行信道 - pending/timeout
+];
+
+const HARDBLOCK_HOSTS = [
+  'www.ultralytics.com',
+  'ultralytics.com',
+  'www.evolvelab.io',
+  'evolvelab.io',
+  'ibeam.ai',
+  'www.ibeam.ai',
+  'ai-structure.com',
+  'www.ai-structure.com',
+  'dxipdd.com',
+  'www.dxipdd.com'
+];
+
 function isHardBlockedUrl(url: string): boolean {
   // Fast-path: cover edge cases where URL parsing fails or is avoided.
   // (e.g. protocol-relative URLs, odd encodings, etc.)
-  if (/ultralytics\.com\/favicon\.ico/i.test(url)) return true;
+  for (const pattern of HARDBLOCK_PATTERNS) {
+    if (pattern.test(url)) return true;
+  }
 
   try {
     const u = new URL(url);
-    const isUltralyticsBrokenFavicon =
-      (u.hostname === 'www.ultralytics.com' || u.hostname === 'ultralytics.com') &&
-      u.pathname === '/favicon.ico';
 
-    return isUltralyticsBrokenFavicon;
+    // 检查是否是黑名单域名的 favicon
+    if (HARDBLOCK_HOSTS.includes(u.hostname) &&
+        (u.pathname.includes('favicon') || u.pathname.endsWith('.ico') || u.pathname.endsWith('.png'))) {
+      return true;
+    }
+
+    return false;
   } catch {
     return false;
   }
