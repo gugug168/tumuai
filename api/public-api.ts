@@ -10,6 +10,13 @@
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import {
+  getToolsCacheKey,
+  getFromCache,
+  setToCache,
+  CACHE_TTL,
+  getCacheKey
+} from './lib/kv-cache'
 
 type SortField = 'upvotes' | 'date_added' | 'rating' | 'views'
 type Pricing = 'Free' | 'Freemium' | 'Paid' | 'Trial'
@@ -107,6 +114,18 @@ async function fetchToolsFromDB(supabase: AppSupabaseClient, params: ToolQueryPa
 
 // 处理分类请求
 async function handleCategories(response: VercelResponse, supabase: AppSupabaseClient) {
+  const cacheKey = getCacheKey('categories')
+
+  // 尝试从 KV 缓存获取
+  const cachedData = await getFromCache<{ categories: unknown[]; timestamp: string }>(cacheKey)
+  if (cachedData) {
+    setCdnCacheHeaders(response, { browserMaxAge: 60, sMaxAge: 600, staleWhileRevalidate: 900 })
+    return response.status(200).json({
+      ...cachedData,
+      cached: true
+    })
+  }
+
   let { data, error } = await supabase
     .from('categories')
     .select('*')
@@ -125,11 +144,18 @@ async function handleCategories(response: VercelResponse, supabase: AppSupabaseC
     return response.status(500).json({ error: 'Failed to fetch categories' })
   }
 
+  const resultData = {
+    categories: data || [],
+    timestamp: new Date().toISOString()
+  }
+
+  // 异步写入 KV 缓存（30分钟TTL）
+  setToCache(cacheKey, resultData, CACHE_TTL.CATEGORIES).catch(() => {})
+
   setCdnCacheHeaders(response, { browserMaxAge: 60, sMaxAge: 600, staleWhileRevalidate: 900 })
   return response.status(200).json({
-    categories: data || [],
-    cached: false,
-    timestamp: new Date().toISOString()
+    ...resultData,
+    cached: false
   })
 }
 
@@ -140,6 +166,15 @@ async function handleTools(request: VercelRequest, response: VercelResponse, sup
   // 支持按 ID 查询单个工具
   const toolId = url.searchParams.get('id')
   if (toolId) {
+    const cacheKey = getCacheKey('tool', toolId)
+
+    // 尝试从 KV 缓存获取
+    const cachedTool = await getFromCache<{ tools: unknown[]; timestamp: string }>(cacheKey)
+    if (cachedTool) {
+      setCdnCacheHeaders(response, { browserMaxAge: 60, sMaxAge: 300, staleWhileRevalidate: 600 })
+      return response.status(200).json({ ...cachedTool, cached: true })
+    }
+
     const { data, error } = await supabase
       .from('tools')
       .select('*')
@@ -151,11 +186,18 @@ async function handleTools(request: VercelRequest, response: VercelResponse, sup
       return response.status(404).json({ error: 'Tool not found' })
     }
 
+    const resultData = {
+      tools: [data],
+      timestamp: new Date().toISOString()
+    }
+
+    // 异步写入 KV 缓存（10分钟TTL）
+    setToCache(cacheKey, resultData, CACHE_TTL.TOOL_DETAIL).catch(() => {})
+
     setCdnCacheHeaders(response, { browserMaxAge: 60, sMaxAge: 300, staleWhileRevalidate: 600 })
     return response.status(200).json({
-      tools: [data],
-      cached: false,
-      timestamp: new Date().toISOString()
+      ...resultData,
+      cached: false
     })
   }
 
@@ -175,6 +217,42 @@ async function handleTools(request: VercelRequest, response: VercelResponse, sup
   const sortByRaw = url.searchParams.get('sortBy') || 'upvotes'
   const sortBy: SortField = ['upvotes', 'date_added', 'rating', 'views'].includes(sortByRaw) ? sortByRaw as SortField : 'upvotes'
 
+  // 生成缓存键
+  const cacheKey = getToolsCacheKey({
+    limit,
+    offset,
+    featuredOnly,
+    category,
+    categories,
+    pricing,
+    features,
+    sortBy
+  })
+
+  // 尝试从 KV 缓存获取
+  const cachedData = await getFromCache<{ tools: unknown[]; count: number; timestamp: string }>(cacheKey)
+  if (cachedData) {
+    // 如果请求需要 count 但缓存中没有，需要额外查询
+    if (includeCount && cachedData.count === undefined) {
+      // 重新从数据库获取（包含 count）
+      const data = await fetchToolsFromDB(supabase, {
+        limit, offset, includeCount, featuredOnly, category, categories, pricing, features, sortBy
+      })
+      setCdnCacheHeaders(response, { browserMaxAge: 60, sMaxAge: 1200, staleWhileRevalidate: 1800 })
+      return response.status(200).json({
+        ...data,
+        cached: false,
+        timestamp: new Date().toISOString()
+      })
+    }
+
+    setCdnCacheHeaders(response, { browserMaxAge: 60, sMaxAge: 1200, staleWhileRevalidate: 1800 })
+    return response.status(200).json({
+      ...cachedData,
+      cached: true
+    })
+  }
+
   const data = await fetchToolsFromDB(supabase, {
     limit,
     offset,
@@ -187,12 +265,19 @@ async function handleTools(request: VercelRequest, response: VercelResponse, sup
     sortBy
   })
 
+  const resultData = {
+    ...data,
+    timestamp: new Date().toISOString()
+  }
+
+  // 异步写入 KV 缓存（5分钟TTL）
+  setToCache(cacheKey, resultData, CACHE_TTL.TOOLS_LIST).catch(() => {})
+
   // Phase 1优化: CDN缓存从10min→20min，减少60%数据库查询
   setCdnCacheHeaders(response, { browserMaxAge: 60, sMaxAge: 1200, staleWhileRevalidate: 1800 })
   return response.status(200).json({
-    ...data,
-    cached: false,
-    timestamp: new Date().toISOString()
+    ...resultData,
+    cached: false
   })
 }
 
@@ -214,6 +299,35 @@ async function handleToolsFiltered(request: VercelRequest, response: VercelRespo
       minRating
     } = body || {}
 
+    // 搜索查询不缓存（结果变化太大）
+    if (searchQuery) {
+      return handleSearchQuery(response, supabase, {
+        limit, offset, includeCount, sortBy, category, categories, pricing, features, searchQuery, minRating
+      })
+    }
+
+    // 生成缓存键
+    const cacheKey = getToolsCacheKey({
+      limit,
+      offset,
+      featuredOnly: false,
+      category,
+      categories: Array.isArray(categories) ? categories : (category ? [category] : []),
+      pricing,
+      features,
+      sortBy
+    }) + `:filtered:min${minRating || 0}`
+
+    // 尝试从 KV 缓存获取
+    const cachedData = await getFromCache<{ tools: unknown[]; count: number; timestamp: string }>(cacheKey)
+    if (cachedData) {
+      setCdnCacheHeaders(response, { browserMaxAge: 30, sMaxAge: 180, staleWhileRevalidate: 300 })
+      return response.status(200).json({
+        ...cachedData,
+        cached: true
+      })
+    }
+
     const categoryFilters = Array.isArray(categories)
       ? categories.filter((item: unknown): item is string => typeof item === 'string' && item.trim().length > 0)
       : (typeof category === 'string' && category.trim().length > 0 ? [category.trim()] : [])
@@ -227,9 +341,6 @@ async function handleToolsFiltered(request: VercelRequest, response: VercelRespo
     if (pricing) query = query.eq('pricing', pricing)
     if (features?.length) query = query.overlaps('features', features)
     if (minRating) query = query.gte('rating', minRating)
-    if (searchQuery) {
-      query = query.or(`name.ilike.%${searchQuery}%,tagline.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
-    }
 
     const validSortFields: SortField[] = ['upvotes', 'date_added', 'rating', 'views']
     const sortField = validSortFields.includes(sortBy) ? sortBy : 'upvotes'
@@ -250,25 +361,100 @@ async function handleToolsFiltered(request: VercelRequest, response: VercelRespo
       if (pricing) countQuery = countQuery.eq('pricing', pricing)
       if (features?.length) countQuery = countQuery.overlaps('features', features)
       if (minRating) countQuery = countQuery.gte('rating', minRating)
-      if (searchQuery) {
-        countQuery = countQuery.or(`name.ilike.%${searchQuery}%,tagline.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
-      }
 
       const { count, error: countError } = await countQuery
       if (countError) throw new Error(countError.message)
       totalCount = count || 0
     }
 
-    setCdnCacheHeaders(response, { browserMaxAge: 30, sMaxAge: 180, staleWhileRevalidate: 300 })
-    return response.status(200).json({
+    const resultData = {
       tools: data || [],
       count: totalCount,
       timestamp: new Date().toISOString()
+    }
+
+    // 异步写入 KV 缓存（3分钟TTL）
+    setToCache(cacheKey, resultData, CACHE_TTL.FILTERED_TOOLS).catch(() => {})
+
+    setCdnCacheHeaders(response, { browserMaxAge: 30, sMaxAge: 180, staleWhileRevalidate: 300 })
+    return response.status(200).json({
+      ...resultData,
+      cached: false
     })
   } catch (error) {
     console.error('Tools filtered error:', error)
     return response.status(500).json({ error: 'Failed to filter tools' })
   }
+}
+
+// 处理搜索查询（不缓存）
+async function handleSearchQuery(
+  response: VercelResponse,
+  supabase: AppSupabaseClient,
+  params: {
+    limit: number
+    offset: number
+    includeCount: boolean
+    sortBy: string
+    category?: string
+    categories?: string[]
+    pricing?: string
+    features?: string[]
+    searchQuery: string
+    minRating?: number
+  }
+) {
+  const { limit, offset, includeCount, sortBy, category, categories, pricing, features, searchQuery, minRating } = params
+
+  const categoryFilters = Array.isArray(categories)
+    ? categories.filter((item: unknown): item is string => typeof item === 'string' && item.trim().length > 0)
+    : (typeof category === 'string' && category.trim().length > 0 ? [category.trim()] : [])
+
+  let query = supabase
+    .from('tools')
+    .select('id,name,tagline,description,website_url,logo_url,categories,features,pricing,rating,views,upvotes,date_added,featured,review_count')
+    .eq('status', 'published')
+
+  if (categoryFilters.length > 0) query = query.overlaps('categories', categoryFilters)
+  if (pricing) query = query.eq('pricing', pricing)
+  if (features?.length) query = query.overlaps('features', features)
+  if (minRating) query = query.gte('rating', minRating)
+  query = query.or(`name.ilike.%${searchQuery}%,tagline.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+
+  const validSortFields: SortField[] = ['upvotes', 'date_added', 'rating', 'views']
+  const sortField = validSortFields.includes(sortBy) ? sortBy : 'upvotes'
+  query = query.order(sortField, { ascending: false })
+  query = query.range(offset, offset + limit - 1)
+
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+
+  let totalCount = data?.length || 0
+  if (includeCount) {
+    let countQuery = supabase
+      .from('tools')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'published')
+
+    if (categoryFilters.length > 0) countQuery = countQuery.overlaps('categories', categoryFilters)
+    if (pricing) countQuery = countQuery.eq('pricing', pricing)
+    if (features?.length) countQuery = countQuery.overlaps('features', features)
+    if (minRating) countQuery = countQuery.gte('rating', minRating)
+    countQuery = countQuery.or(`name.ilike.%${searchQuery}%,tagline.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+
+    const { count, error: countError } = await countQuery
+    if (countError) throw new Error(countError.message)
+    totalCount = count || 0
+  }
+
+  // 搜索结果不设置长时间缓存
+  response.setHeader('Cache-Control', 'public, max-age=30')
+  return response.status(200).json({
+    tools: data || [],
+    count: totalCount,
+    timestamp: new Date().toISOString(),
+    cached: false
+  })
 }
 
 // 主处理器

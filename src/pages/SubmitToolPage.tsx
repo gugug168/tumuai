@@ -1050,16 +1050,23 @@ const SubmitToolPage = () => {
             <div className="pt-6 flex items-center justify-between">
               <div className="text-sm text-gray-500">
                 完成度: <span className="font-semibold text-blue-600">{Object.values(stepCompletion).filter(Boolean).length} / 5</span>
+                {Object.values(stepCompletion).filter(Boolean).length === 4 && (
+                  <span className="ml-2 text-green-600">✓ 可以提交</span>
+                )}
               </div>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-8 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:scale-105"
+                className="relative bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-8 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:scale-105 active:scale-100 overflow-hidden min-w-[140px]"
               >
                 {isSubmitting ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                    提交中...
+                    {/* 进度动画背景 */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-500 animate-pulse" />
+                    <div className="relative flex items-center">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      <span>提交中...</span>
+                    </div>
                   </>
                 ) : (
                   <>
@@ -1083,19 +1090,54 @@ const SubmitToolPage = () => {
         </div>
       </div>
 
-      {/* 成功庆祝动画 */}
+      {/* 成功庆祝动画 - 增强版 */}
       {showSuccess && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-in fade-in duration-300">
-          <div className="bg-white rounded-2xl p-8 max-w-md mx-4 text-center animate-in zoom-in duration-300">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
-              <Check className="w-10 h-10 text-green-600" />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          {/* 背景动画 */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {/* 彩带动画 */}
+            {[...Array(20)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-2 h-4 rounded-full opacity-70"
+                style={{
+                  backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'][i % 5],
+                  left: `${Math.random() * 100}%`,
+                  top: '-20px',
+                  animation: `confetti ${2 + Math.random()}s ease-out forwards`,
+                  animationDelay: `${Math.random() * 0.5}s`,
+                  transform: `rotate(${Math.random() * 360}deg)`
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="bg-white rounded-2xl p-8 max-w-md mx-4 text-center shadow-2xl transform animate-in zoom-in-95 duration-300">
+            {/* 成功图标动画 */}
+            <div className="relative w-20 h-20 mx-auto mb-4">
+              <div className="absolute inset-0 bg-green-100 rounded-full animate-ping opacity-75" />
+              <div className="relative w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
+                <Check className="w-10 h-10 text-green-600 animate-in zoom-in duration-200" />
+              </div>
             </div>
+
             <h2 className="text-2xl font-bold text-gray-900 mb-2">提交成功！</h2>
             <p className="text-gray-600 mb-4">
               工具提交成功！我们会在1-3个工作日内审核，审核结果将通过邮件通知您。
             </p>
+
+            {/* 进度条 */}
+            <div className="w-full bg-gray-200 rounded-full h-1.5 mb-4">
+              <div
+                className="bg-green-500 h-1.5 rounded-full transition-all duration-100 ease-linear"
+                style={{
+                  animation: 'shrink 3s linear forwards'
+                }}
+              />
+            </div>
+
             <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
               <span>正在自动关闭...</span>
             </div>
           </div>

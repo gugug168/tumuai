@@ -112,6 +112,18 @@
   }
 }
 
+/* 彩带动画 */
+@keyframes confetti {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
 /* 页面转场动画 */
 @keyframes fadeIn {
   from {
@@ -159,47 +171,86 @@
 }
 
 /* ============================================
- * 骨架屏 Shimmer 动画
+ * 骨架屏 Shimmer 动画 - 性能优化版
  * ============================================ */
 @keyframes shimmer {
   0% {
-    background-position: -1000px 0;
+    transform: translateX(-100%);
   }
   100% {
-    background-position: 1000px 0;
+    transform: translateX(100%);
   }
 }
 
 .animate-shimmer {
-  animation: shimmer 2s infinite linear;
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(
-    to right,
+    90deg,
     #f3f4f6 0%,
-    #e5e7eb 20%,
-    #f3f4f6 40%,
+    #e5e7eb 50%,
     #f3f4f6 100%
   );
-  background-size: 1000px 100%;
+  background-size: 200% 100%;
+}
+
+.animate-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.6) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.5s infinite ease-in-out;
 }
 
 /* ============================================
- * 骨架屏脉冲动画增强
+ * 骨架屏脉冲动画增强 - 更平滑版本
  * ============================================ */
 @keyframes skeletonPulse {
   0%, 100% {
-    opacity: 1;
+    opacity: 0.8;
   }
   50% {
-    opacity: 0.5;
+    opacity: 0.4;
   }
 }
 
 .skeleton-pulse {
-  animation: skeletonPulse 1.5s ease-in-out infinite;
+  animation: skeletonPulse 2s ease-in-out infinite;
+}
+
+/* 骨架屏卡片样式 */
+.skeleton-card {
+  background: linear-gradient(
+    135deg,
+    #f3f4f6 0%,
+    #e5e7eb 25%,
+    #f3f4f6 50%,
+    #e5e7eb 75%,
+    #f3f4f6 100%
+  );
+  background-size: 400% 400%;
+  animation: skeletonGradient 3s ease infinite;
+}
+
+@keyframes skeletonGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 /* ============================================
- * 渐进式加载动画
+ * 渐进式加载动画 - 增强版
  * ============================================ */
 @keyframes revealFromBottom {
   from {
@@ -229,6 +280,38 @@
 
 .reveal-top {
   animation: revealFromTop 0.5s ease-out forwards;
+}
+
+/* 图片加载完成淡入动画 */
+@keyframes imageReveal {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+.image-reveal {
+  animation: imageReveal 0.4s ease-out forwards;
+}
+
+/* 内容渐显动画 */
+@keyframes contentFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.content-fade-in {
+  animation: contentFadeIn 0.3s ease-out forwards;
 }
 
 /* ============================================

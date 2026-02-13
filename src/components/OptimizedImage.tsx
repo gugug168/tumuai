@@ -225,6 +225,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(initialBroken);
   const [isInView, setIsInView] = useState(!lazyLoad || priority);
+  const [showSkeleton, setShowSkeleton] = useState(true);
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -232,6 +233,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   useEffect(() => {
     setIsLoaded(false);
     setHasError(typeof window !== 'undefined' ? isKnownBrokenUrl(src) : false);
+    setShowSkeleton(true);
   }, [src]);
 
   // Intersection Observer for lazy loading
@@ -262,6 +264,8 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
   const handleLoad = () => {
     setIsLoaded(true);
+    // 延迟隐藏骨架屏，实现平滑过渡
+    setTimeout(() => setShowSkeleton(false), 100);
   };
 
   const handleError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
@@ -294,8 +298,8 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
             alt={alt}
             loading={priority ? 'eager' : 'lazy'}
             decoding="async"
-            className={`transition-opacity duration-300 ${
-              isLoaded && !hasError ? 'opacity-100' : 'opacity-0'
+            className={`transition-all duration-500 ease-out ${
+              isLoaded && !hasError ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
             }`}
             style={{
               objectFit,
@@ -324,8 +328,8 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
           alt={alt}
           loading={priority ? 'eager' : 'lazy'}
           decoding="async"
-          className={`transition-opacity duration-300 ${
-            isLoaded && !hasError ? 'opacity-100' : 'opacity-0'
+          className={`transition-all duration-500 ease-out ${
+            isLoaded && !hasError ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
           }`}
           style={{
             objectFit,
@@ -366,8 +370,8 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
       {isInView && !hasError && imageElement}
 
       {/* 优化的加载动画 - 只在加载中显示 */}
-      {isInView && !isLoaded && !hasError && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 animate-shimmer">
+      {isInView && showSkeleton && !isLoaded && !hasError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 transition-opacity duration-300">
           {/* 骨架屏波纹效果 */}
           <div className="absolute inset-0 overflow-hidden opacity-50">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-300 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
@@ -385,7 +389,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
       {/* 错误状态 / 兜底内容 */}
       {hasError && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 animate-in fade-in duration-300">
           {fallback || (
             <>
               <svg className="w-12 h-12 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
