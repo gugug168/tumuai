@@ -213,8 +213,9 @@ const AdminDashboard = () => {
 
   // 按需加载统计信息（轻量级，总是加载）
   const loadStats = useCallback(async () => {
-    // 防止重复加载
+    // 防止重复加载 - 立即标记
     if (loadedTabsRef.current.has('stats')) return;
+    loadedTabsRef.current = new Set(loadedTabsRef.current).add('stats');
 
     try {
       setError(null);
@@ -232,11 +233,12 @@ const AdminDashboard = () => {
       if (data.stats) {
         setStats(prevStats => ({ ...prevStats, ...data.stats }));
       }
-      loadedTabsRef.current = new Set(loadedTabsRef.current).add('stats');
     } catch (error) {
       console.error('加载统计失败:', error);
       const message = error instanceof Error ? error.message : '加载统计失败';
       setError(message);
+      // 加载失败时移除标记，允许重试
+      loadedTabsRef.current = new Set([...loadedTabsRef.current].filter(t => t !== 'stats'));
     } finally {
       setLoadingStates(prev => ({ ...prev, stats: false }));
     }
@@ -279,8 +281,9 @@ const AdminDashboard = () => {
 
   // 按需加载工具列表
   const loadTools = useCallback(async () => {
-    // 防止重复加载
+    // 防止重复加载 - 立即标记，避免异步期间重复调用
     if (loadedTabsRef.current.has('tools')) return;
+    loadedTabsRef.current = new Set(loadedTabsRef.current).add('tools');
 
     try {
       setError(null);
@@ -296,11 +299,12 @@ const AdminDashboard = () => {
 
       const data = await response.json();
       setTools(data.tools || []);
-      loadedTabsRef.current = new Set(loadedTabsRef.current).add('tools');
     } catch (error) {
       console.error('加载工具失败:', error);
       const message = error instanceof Error ? error.message : '加载工具失败';
       setError(message);
+      // 加载失败时移除标记，允许重试
+      loadedTabsRef.current = new Set([...loadedTabsRef.current].filter(t => t !== 'tools'));
     } finally {
       setLoadingStates(prev => ({ ...prev, tools: false }));
     }
@@ -308,8 +312,9 @@ const AdminDashboard = () => {
 
   // 按需加载分类列表
   const loadCategories = useCallback(async () => {
-    // 防止重复加载
+    // 防止重复加载 - 立即标记
     if (loadedTabsRef.current.has('categories')) return;
+    loadedTabsRef.current = new Set(loadedTabsRef.current).add('categories');
 
     try {
       setError(null);
@@ -325,11 +330,12 @@ const AdminDashboard = () => {
 
       const data = await response.json();
       setCategories(data.categories || []);
-      loadedTabsRef.current = new Set(loadedTabsRef.current).add('categories');
     } catch (error) {
       console.error('加载分类失败:', error);
       const message = error instanceof Error ? error.message : '加载分类失败';
       setError(message);
+      // 加载失败时移除标记，允许重试
+      loadedTabsRef.current = new Set([...loadedTabsRef.current].filter(t => t !== 'categories'));
     } finally {
       setLoadingStates(prev => ({ ...prev, categories: false }));
     }
@@ -337,8 +343,11 @@ const AdminDashboard = () => {
 
   // 按需加载用户列表（带分页）
   const loadUsers = useCallback(async (page = 1) => {
-    // 防止重复加载（只在第一页时检查）
+    // 防止重复加载（只在第一页时检查）- 立即标记
     if (page === 1 && loadedTabsRef.current.has('users')) return;
+    if (page === 1) {
+      loadedTabsRef.current = new Set(loadedTabsRef.current).add('users');
+    }
 
     try {
       setError(null);
@@ -355,11 +364,14 @@ const AdminDashboard = () => {
       const data = await response.json();
       setUsers(data.users || []);
       setUserPagination(data.pagination);
-      loadedTabsRef.current = new Set(loadedTabsRef.current).add('users');
     } catch (error) {
       console.error('加载用户失败:', error);
       const message = error instanceof Error ? error.message : '加载用户失败';
       setError(message);
+      // 加载失败时移除标记，允许重试
+      if (page === 1) {
+        loadedTabsRef.current = new Set([...loadedTabsRef.current].filter(t => t !== 'users'));
+      }
     } finally {
       setLoadingStates(prev => ({ ...prev, users: false }));
     }
