@@ -127,7 +127,7 @@ const AdminDashboard = () => {
     users: false
   });
   // 已加载的 tab 标记 - 使用 useRef 避免触发重渲染导致的无限循环
-  const loadedTabsRef = useRef<Set<string>>(new Set(['stats']));
+  const loadedTabsRef = useRef<Set<string>>(new Set());
   // 用户分页
   const [userPage, setUserPage] = useState(1);
   const [userPagination, setUserPagination] = useState({ page: 1, perPage: 20, total: 0, totalPages: 1 });
