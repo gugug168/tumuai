@@ -213,6 +213,9 @@ const AdminDashboard = () => {
 
   // 按需加载统计信息（轻量级，总是加载）
   const loadStats = useCallback(async () => {
+    // 防止重复加载
+    if (loadedTabsRef.current.has('stats')) return;
+
     try {
       setError(null);
       setLoadingStates(prev => ({ ...prev, stats: true }));
@@ -365,8 +368,10 @@ const AdminDashboard = () => {
   useEffect(() => {
     if (!isAuthorized) return;
 
-    // 统计信息总是加载
-    loadStats();
+    // 统计信息只加载一次
+    if (!loadedTabsRef.current.has('stats')) {
+      loadStats();
+    }
 
     // 根据当前 tab 加载对应数据
     if (activeTab === 'tools' && !loadedTabsRef.current.has('tools')) {

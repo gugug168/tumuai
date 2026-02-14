@@ -248,27 +248,49 @@ async function handleDatasets(request: VercelRequest, response: VercelResponse, 
   const data: Record<string, unknown> = {}
 
   try {
-    // 工具统计
-    if (sections.includes('all') || sections.includes('tools')) {
-      const [toolsCount, pendingCount, featuredCount] = await Promise.all([
+    // 统计信息
+    if (sections.includes('all') || sections.includes('stats')) {
+      const [toolsCount, pendingCount, featuredCount, usersCount, adminsCount, categoriesCount] = await Promise.all([
         supabase.from('tools').select('id', { count: 'exact', head: true }).eq('status', 'published'),
         supabase.from('tool_submissions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('tools').select('id', { count: 'exact', head: true }).eq('featured', true)
+        supabase.from('tools').select('id', { count: 'exact', head: true }).eq('featured', true),
+        supabase.auth.admin.listUsers({ page: 1, perPage: 1 }),
+        supabase.from('admin_users').select('id', { count: 'exact', head: true }),
+        supabase.from('categories').select('id', { count: 'exact', head: true })
       ])
-      data.tools = { total: toolsCount.count || 0, pending: pendingCount.count || 0, featured: featuredCount.count || 0 }
+      data.stats = {
+        totalTools: toolsCount.count || 0,
+        pendingSubmissions: pendingCount.count || 0,
+        featuredTools: featuredCount.count || 0,
+        totalUsers: ('total' in usersCount.data) ? usersCount.data.total || 0 : 0,
+        totalAdmins: adminsCount.count || 0,
+        totalCategories: categoriesCount.count || 0
+      }
     }
 
-    // 用户统计
+    // 工具列表
+    if (sections.includes('tools')) {
+      const { data: toolsList } = await supabase
+        .from('tools')
+        .select('id, name, tagline, description, website_url, logo_url, categories, features, pricing, featured, date_added, upvotes, views, rating, review_count, status')
+        .order('created_at', { ascending: false })
+      data.tools = toolsList || []
+    }
+
+    // 分类列表
+    if (sections.includes('categories')) {
+      const { data: categoriesList } = await supabase
+        .from('categories')
+        .select('id, name, slug, description, color, icon, parent_id, sort_order, is_active')
+        .order('sort_order', { ascending: true })
+      data.categories = categoriesList || []
+    }
+
+    // 用户统计（保留旧格式兼容）
     if (sections.includes('all') || sections.includes('users')) {
       const usersCount = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 })
       const adminsCount = await supabase.from('admin_users').select('id', { count: 'exact', head: true })
       data.users = { total: ('total' in usersCount.data) ? usersCount.data.total || 0 : 0, admins: adminsCount.count || 0 }
-    }
-
-    // 最近工具
-    if (sections.includes('all') || sections.includes('tools')) {
-      const { data: recentTools } = await supabase.from('tools').select('id,name,status,created_at').order('created_at', { ascending: false }).limit(limit)
-      data.recentTools = recentTools || []
     }
 
     return response.status(200).json(data)
