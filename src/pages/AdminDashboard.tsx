@@ -279,6 +279,9 @@ const AdminDashboard = () => {
 
   // 按需加载工具列表
   const loadTools = useCallback(async () => {
+    // 防止重复加载
+    if (loadedTabsRef.current.has('tools')) return;
+
     try {
       setError(null);
       setLoadingStates(prev => ({ ...prev, tools: true }));
@@ -305,6 +308,9 @@ const AdminDashboard = () => {
 
   // 按需加载分类列表
   const loadCategories = useCallback(async () => {
+    // 防止重复加载
+    if (loadedTabsRef.current.has('categories')) return;
+
     try {
       setError(null);
       setLoadingStates(prev => ({ ...prev, categories: true }));
@@ -331,6 +337,9 @@ const AdminDashboard = () => {
 
   // 按需加载用户列表（带分页）
   const loadUsers = useCallback(async (page = 1) => {
+    // 防止重复加载（只在第一页时检查）
+    if (page === 1 && loadedTabsRef.current.has('users')) return;
+
     try {
       setError(null);
       setLoadingStates(prev => ({ ...prev, users: true }));
