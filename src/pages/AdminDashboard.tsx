@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Users,
   BarChart3,
@@ -126,8 +126,8 @@ const AdminDashboard = () => {
     categories: false,
     users: false
   });
-  // 已加载的 tab 标记
-  const [loadedTabs, setLoadedTabs] = useState<Set<string>>(new Set(['stats']));
+  // 已加载的 tab 标记 - 使用 useRef 避免触发重渲染导致的无限循环
+  const loadedTabsRef = useRef<Set<string>>(new Set(['stats']));
   // 用户分页
   const [userPage, setUserPage] = useState(1);
   const [userPagination, setUserPagination] = useState({ page: 1, perPage: 20, total: 0, totalPages: 1 });
@@ -229,7 +229,7 @@ const AdminDashboard = () => {
       if (data.stats) {
         setStats(prevStats => ({ ...prevStats, ...data.stats }));
       }
-      setLoadedTabs(prev => new Set(prev).add('stats'));
+      loadedTabsRef.current = new Set(loadedTabsRef.current).add('stats');
     } catch (error) {
       console.error('加载统计失败:', error);
       const message = error instanceof Error ? error.message : '加载统计失败';
@@ -264,7 +264,7 @@ const AdminDashboard = () => {
       setSubmissions((data.submissions || []) as ToolSubmission[]);
       setSubmissionPagination(data.submissionsPagination || { page: submissionPage, perPage: SUBMISSIONS_PER_PAGE, total: (data.submissions || []).length, totalPages: 1 });
       setSelectedSubmissions(new Set());
-      setLoadedTabs(prev => new Set(prev).add('submissions'));
+      loadedTabsRef.current = new Set(loadedTabsRef.current).add('submissions');
     } catch (error) {
       console.error('加载提交失败:', error);
       const message = error instanceof Error ? error.message : '加载提交失败';
@@ -290,7 +290,7 @@ const AdminDashboard = () => {
 
       const data = await response.json();
       setTools(data.tools || []);
-      setLoadedTabs(prev => new Set(prev).add('tools'));
+      loadedTabsRef.current = new Set(loadedTabsRef.current).add('tools');
     } catch (error) {
       console.error('加载工具失败:', error);
       const message = error instanceof Error ? error.message : '加载工具失败';
@@ -316,7 +316,7 @@ const AdminDashboard = () => {
 
       const data = await response.json();
       setCategories(data.categories || []);
-      setLoadedTabs(prev => new Set(prev).add('categories'));
+      loadedTabsRef.current = new Set(loadedTabsRef.current).add('categories');
     } catch (error) {
       console.error('加载分类失败:', error);
       const message = error instanceof Error ? error.message : '加载分类失败';
@@ -343,7 +343,7 @@ const AdminDashboard = () => {
       const data = await response.json();
       setUsers(data.users || []);
       setUserPagination(data.pagination);
-      setLoadedTabs(prev => new Set(prev).add('users'));
+      loadedTabsRef.current = new Set(loadedTabsRef.current).add('users');
     } catch (error) {
       console.error('加载用户失败:', error);
       const message = error instanceof Error ? error.message : '加载用户失败';
@@ -369,14 +369,14 @@ const AdminDashboard = () => {
     loadStats();
 
     // 根据当前 tab 加载对应数据
-    if (activeTab === 'tools' && !loadedTabs.has('tools')) {
+    if (activeTab === 'tools' && !loadedTabsRef.current.has('tools')) {
       loadTools();
-    } else if (activeTab === 'categories' && !loadedTabs.has('categories')) {
+    } else if (activeTab === 'categories' && !loadedTabsRef.current.has('categories')) {
       loadCategories();
-    } else if (activeTab === 'users' && !loadedTabs.has('users')) {
+    } else if (activeTab === 'users' && !loadedTabsRef.current.has('users')) {
       loadUsers(1);
     }
-  }, [activeTab, isAuthorized, loadStats, loadTools, loadCategories, loadUsers, loadedTabs]);
+  }, [activeTab, isAuthorized, loadStats, loadTools, loadCategories, loadUsers]);
 
   // 提交搜索 - debounce
   useEffect(() => {
@@ -400,19 +400,19 @@ const AdminDashboard = () => {
         loadStats();
         break;
       case 'submissions':
-        setLoadedTabs(prev => { const next = new Set(prev); next.delete('submissions'); return next; });
+        loadedTabsRef.current.delete('submissions');
         loadSubmissions();
         break;
       case 'tools':
-        setLoadedTabs(prev => { const next = new Set(prev); next.delete('tools'); return next; });
+        loadedTabsRef.current.delete('tools');
         loadTools();
         break;
       case 'categories':
-        setLoadedTabs(prev => { const next = new Set(prev); next.delete('categories'); return next; });
+        loadedTabsRef.current.delete('categories');
         loadCategories();
         break;
       case 'users':
-        setLoadedTabs(prev => { const next = new Set(prev); next.delete('users'); return next; });
+        loadedTabsRef.current.delete('users');
         loadUsers(userPage);
         break;
     }

@@ -98,10 +98,12 @@ const AdminLoginPage = () => {
         )}
         <form onSubmit={handleSubmit} className="space-y-4" data-testid="admin-login-form">
           <div>
-            <label className="block text-sm text-gray-700 mb-2">账号</label>
+            <label htmlFor="admin-email" className="block text-sm text-gray-700 mb-2">账号</label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
+                id="admin-email"
+                name="email"
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -113,10 +115,12 @@ const AdminLoginPage = () => {
             </div>
           </div>
           <div>
-            <label className="block text-sm text-gray-700 mb-2">密码</label>
+            <label htmlFor="admin-password" className="block text-sm text-gray-700 mb-2">密码</label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
+                id="admin-password"
+                name="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
