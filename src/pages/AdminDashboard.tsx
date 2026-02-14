@@ -365,6 +365,7 @@ const AdminDashboard = () => {
   }
 
   // 监听 activeTab 变化，按需加载数据
+  // 注意：不将 loadXxx 函数放入依赖数组，避免因函数重新创建导致的无限循环
   useEffect(() => {
     if (!isAuthorized) return;
 
@@ -381,7 +382,8 @@ const AdminDashboard = () => {
     } else if (activeTab === 'users' && !loadedTabsRef.current.has('users')) {
       loadUsers(1);
     }
-  }, [activeTab, isAuthorized, loadStats, loadTools, loadCategories, loadUsers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, isAuthorized]);
 
   // 提交搜索 - debounce
   useEffect(() => {
