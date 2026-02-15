@@ -573,7 +573,7 @@ const SubmitToolPage = () => {
         {/* 步骤指示器 */}
         <div className="mb-8 hidden md:block">
           <div className="flex items-center justify-between">
-            {FORM_STEPS.map((step) => {
+            {FORM_STEPS.map((step, index) => {
               const IconComponent = step.icon;
               const isCompleted = stepCompletion[step.id];
               const isCurrent = currentStep === step.id;
