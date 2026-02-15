@@ -131,6 +131,9 @@ const AdminDashboard = () => {
   // 用户分页
   const [userPage, setUserPage] = useState(1);
   const [userPagination, setUserPagination] = useState({ page: 1, perPage: 20, total: 0, totalPages: 1 });
+  // 工具分页
+  const [toolsPage, setToolsPage] = useState(1);
+  const [toolsPagination, setToolsPagination] = useState({ page: 1, perPage: 20, total: 0, totalPages: 1 });
   const navigate = useNavigate();
 
   // URL 参数同步（tab + submissions 的状态/搜索/页码）
@@ -279,11 +282,13 @@ const AdminDashboard = () => {
     }
   }, [SUBMISSIONS_PER_PAGE, debouncedSubmissionSearchTerm, filterStatus, submissionPage]);
 
-  // 按需加载工具列表
-  const loadTools = useCallback(async () => {
-    // 防止重复加载 - 立即标记，避免异步期间重复调用
-    if (loadedTabsRef.current.has('tools')) return;
-    loadedTabsRef.current = new Set(loadedTabsRef.current).add('tools');
+  // 按需加载工具列表（带分页）
+  const loadTools = useCallback(async (page = 1) => {
+    // 防止重复加载（只在第一页时检查）- 立即标记
+    if (page === 1 && loadedTabsRef.current.has('tools')) return;
+    if (page === 1) {
+      loadedTabsRef.current = new Set(loadedTabsRef.current).add('tools');
+    }
 
     try {
       setError(null);
@@ -291,20 +296,29 @@ const AdminDashboard = () => {
       const accessToken = await getAccessToken();
       if (!accessToken) throw new Error('未登录');
 
-      const response = await fetch('/api/admin-api?action=datasets&sections=tools', {
+      const response = await fetch(`/api/admin-api?action=datasets&sections=tools&page=${page}&perPage=20`, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });
 
       if (!response.ok) throw new Error('获取工具失败');
 
       const data = await response.json();
-      setTools(data.tools || []);
+      // 适配新的分页响应格式
+      if (data.tools && 'items' in data.tools) {
+        setTools(data.tools.items || []);
+        setToolsPagination(data.tools.pagination || { page: 1, perPage: 20, total: 0, totalPages: 1 });
+      } else {
+        // 兼容旧格式（如果有的话）
+        setTools(data.tools || []);
+      }
     } catch (error) {
       console.error('加载工具失败:', error);
       const message = error instanceof Error ? error.message : '加载工具失败';
       setError(message);
       // 加载失败时移除标记，允许重试
-      loadedTabsRef.current = new Set([...loadedTabsRef.current].filter(t => t !== 'tools'));
+      if (page === 1) {
+        loadedTabsRef.current = new Set([...loadedTabsRef.current].filter(t => t !== 'tools'));
+      }
     } finally {
       setLoadingStates(prev => ({ ...prev, tools: false }));
     }
@@ -397,7 +411,7 @@ const AdminDashboard = () => {
 
     // 根据当前 tab 加载对应数据
     if (activeTab === 'tools' && !loadedTabsRef.current.has('tools')) {
-      loadTools();
+      loadTools(1);
     } else if (activeTab === 'categories' && !loadedTabsRef.current.has('categories')) {
       loadCategories();
     } else if (activeTab === 'users' && !loadedTabsRef.current.has('users')) {
@@ -433,7 +447,7 @@ const AdminDashboard = () => {
         break;
       case 'tools':
         loadedTabsRef.current.delete('tools');
-        loadTools();
+        loadTools(1);
         break;
       case 'categories':
         loadedTabsRef.current.delete('categories');
@@ -454,6 +468,15 @@ const AdminDashboard = () => {
     setUserPage(nextPage);
     loadUsers(nextPage);
   }, [loadUsers, userPage, userPagination.totalPages]);
+
+  const handleToolsPageChange = useCallback((nextPage: number) => {
+    if (nextPage === toolsPage) return;
+    if (!Number.isFinite(nextPage) || nextPage < 1) return;
+    if (toolsPagination.totalPages && nextPage > toolsPagination.totalPages) return;
+
+    setToolsPage(nextPage);
+    loadTools(nextPage);
+  }, [loadTools, toolsPage, toolsPagination.totalPages]);
 
   const handleReviewSubmission = async (submissionId: string, status: 'approved' | 'rejected', notes?: string) => {
     try {
@@ -1405,6 +1428,31 @@ const AdminDashboard = () => {
                         ))}
                       </tbody>
                     </table>
+
+                    {/* 工具分页 */}
+                    {toolsPagination.totalPages > 1 && (
+                      <div className="flex items-center justify-between text-sm text-gray-600 mt-4 px-3 py-2">
+                        <div>
+                          第 {toolsPagination.page} / {toolsPagination.totalPages} 页，共 {toolsPagination.total} 个工具
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleToolsPageChange(toolsPagination.page - 1)}
+                            disabled={toolsPagination.page <= 1 || loadingStates.tools}
+                            className="px-3 py-1 rounded border bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                          >
+                            上一页
+                          </button>
+                          <button
+                            onClick={() => handleToolsPageChange(toolsPagination.page + 1)}
+                            disabled={toolsPagination.page >= toolsPagination.totalPages || loadingStates.tools}
+                            className="px-3 py-1 rounded border bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                          >
+                            下一页
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

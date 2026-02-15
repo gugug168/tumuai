@@ -268,13 +268,30 @@ async function handleDatasets(request: VercelRequest, response: VercelResponse, 
       }
     }
 
-    // 工具列表
+    // 工具列表（支持分页）
     if (sections.includes('tools')) {
+      const page = parseInt(url.searchParams.get('page') || '1')
+      const perPage = Math.min(parseInt(url.searchParams.get('perPage') || '20'), 50)
+
+      // 获取总数
+      const { count } = await supabase.from('tools').select('id', { count: 'exact', head: true })
+
+      // 获取分页数据（移除 description 大文本字段，优化响应速度）
       const { data: toolsList } = await supabase
         .from('tools')
-        .select('id, name, tagline, description, website_url, logo_url, categories, features, pricing, featured, date_added, upvotes, views, rating, review_count, status')
+        .select('id, name, tagline, website_url, logo_url, categories, pricing, featured, upvotes, views, status')
         .order('created_at', { ascending: false })
-      data.tools = toolsList || []
+        .range((page - 1) * perPage, page * perPage - 1)
+
+      data.tools = {
+        items: toolsList || [],
+        pagination: {
+          page,
+          perPage,
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / perPage)
+        }
+      }
     }
 
     // 分类列表
