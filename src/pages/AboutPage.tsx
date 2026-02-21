@@ -10,7 +10,6 @@ import {
   Globe,
   GitPullRequest,
   Lightbulb,
-  Mail,
   MessageSquare,
   PenTool,
   Sparkles,
@@ -538,7 +537,7 @@ const AboutPage = React.memo(() => {
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
               <h3 className="text-base font-semibold text-gray-900 mb-2">联系我们</h3>
               <p className="text-sm">
-                如需删除账户或数据导出，请邮件联系 <a className="text-blue-700 hover:underline" href="mailto:contact@tumuai.net">contact@tumuai.net</a>。
+                如需删除账户或数据导出，请通过微信 <span className="font-medium text-gray-900">fuyesq168</span> 联系我们。
               </p>
               <p className="text-xs text-gray-500 mt-2">提示：本页面为简版说明，后续会持续完善。</p>
             </div>
@@ -582,16 +581,13 @@ const AboutPage = React.memo(() => {
       <section id="contact" className="scroll-mt-24 py-16 bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">联系我们</h2>
-          <p className="text-lg text-gray-600 mb-8">有建议、合作或问题反馈？欢迎联系我们或在 GitHub 提交 Issue/PR。</p>
+          <p className="text-lg text-gray-600 mb-8">有建议、合作或问题反馈？欢迎微信联系或在 GitHub 提交 Issue/PR。</p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <a
-              href="mailto:contact@tumuai.net"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-white border border-gray-200 text-gray-700 hover:text-blue-700 hover:border-blue-200 transition-colors shadow-sm"
-            >
-              <Mail className="w-5 h-5" />
-              <span>contact@tumuai.net</span>
-            </a>
+            <div className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-white border border-gray-200 text-gray-700 shadow-sm">
+              <MessageSquare className="w-5 h-5" />
+              <span>微信：fuyesq168</span>
+            </div>
             <a
               href="https://github.com/gugug168/tumuai"
               target="_blank"

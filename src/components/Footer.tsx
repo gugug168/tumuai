@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Hammer, Mail, Github, BookOpen, ChevronUp } from 'lucide-react';
+import { Hammer, Github, BookOpen, ChevronUp } from 'lucide-react';
 
 const Footer = () => {
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -40,16 +40,10 @@ const Footer = () => {
               </p>
               {/* 联系方式 */}
               <div className="mb-4">
-                <p className="text-sm text-gray-500 mb-2">联系我们：</p>
-                <div className="space-y-2">
-                  <a href="mailto:contact@tumuai.net" className="flex items-center text-gray-400 hover:text-blue-400 transition-colors group">
-                    <Mail className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
-                    <span>contact@tumuai.net</span>
-                  </a>
-                  <div className="flex items-center text-gray-400">
-                    <span className="text-blue-400 mr-2">微信:</span>
-                    <span>fuyesq168</span>
-                  </div>
+                <p className="text-sm text-gray-500 mb-2">联系微信：</p>
+                <div className="flex items-center text-gray-400">
+                  <span className="text-blue-400 mr-2">微信:</span>
+                  <span>fuyesq168</span>
                 </div>
               </div>
               {/* 知识库链接 */}
@@ -61,6 +55,16 @@ const Footer = () => {
               >
                 <BookOpen className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
                 <span>访问知识库</span>
+                <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
+              </a>
+              <a
+                href="https://claudecode.tumuai.net/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center text-blue-400 hover:text-blue-300 transition-all duration-300 group"
+              >
+                <BookOpen className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+                <span>Claude Code 教程</span>
                 <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
               </a>
             </div>
@@ -107,27 +111,10 @@ const Footer = () => {
               <h4 className="text-lg font-semibold mb-4">支持与帮助</h4>
               <ul className="space-y-2">
                 <li>
-                  <a href="mailto:contact@tumuai.net" className="text-gray-400 hover:text-white transition-colors inline-flex items-center group">
-                    <span className="group-hover:translate-x-1 transition-transform duration-200">→</span>
-                    <span className="ml-2">联系我们</span>
-                  </a>
-                </li>
-                <li>
-                  <a href="mailto:contact@tumuai.net?subject=意见反馈" className="text-gray-400 hover:text-white transition-colors inline-flex items-center group">
-                    <span className="group-hover:translate-x-1 transition-transform duration-200">→</span>
-                    <span className="ml-2">意见反馈</span>
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://claudecode.tumuai.net/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-400 hover:text-white transition-colors inline-flex items-center group"
-                  >
-                    <span className="group-hover:translate-x-1 transition-transform duration-200">→</span>
-                    <span className="ml-2">Claude Code 教程</span>
-                  </a>
+                  <div className="text-gray-400 inline-flex items-center">
+                    <span>→</span>
+                    <span className="ml-2">微信：fuyesq168</span>
+                  </div>
                 </li>
                 <li>
                   <Link to="/about#privacy" className="text-gray-400 hover:text-white transition-colors inline-flex items-center group">

@@ -41,7 +41,6 @@ const Header = React.memo(() => {
     { path: '/', label: '首页' },
     { path: '/tools', label: '工具中心' },
     { path: '/about', label: '关于我们' },
-    { path: 'https://claudecode.tumuai.net/', label: 'Claude Code 教学', external: true },
   ];
 
   const handleAuthClick = (mode: 'login' | 'register') => {

@@ -1082,10 +1082,7 @@ const SubmitToolPage = () => {
         {/* Contact Information */}
         <div className="mt-8 text-center text-gray-600">
           <p>
-            有问题？联系我们：
-            <a href="mailto:submit@civilaihub.com" className="text-blue-600 hover:text-blue-700 ml-1">
-              submit@civilaihub.com
-            </a>
+            有问题？微信联系：<span className="font-medium text-gray-900">fuyesq168</span>
           </p>
         </div>
       </div>
