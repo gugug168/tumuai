@@ -55,6 +55,10 @@
       "destination": "/api/public-api?action=tools-filtered"
     },
     {
+      "source": "/api/cron/:path*",
+      "destination": "/api/cron/:path*"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api/:path*"
     },
@@ -87,7 +91,7 @@
       "destination": "/en/tools.html"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/:path((?!api/).*)",
       "destination": "/"
     }
   ],
