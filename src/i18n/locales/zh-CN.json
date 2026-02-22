@@ -1,0 +1,74 @@
+{
+  "app": {
+    "name": "TumuAI.net",
+    "tagline": "专业土木AI工具平台"
+  },
+  "nav": {
+    "home": "首页",
+    "tools": "工具中心",
+    "about": "关于我们",
+    "submit": "提交你的工具",
+    "profile": "用户中心",
+    "admin": "管理后台",
+    "login": "登录",
+    "register": "注册",
+    "logout": "登出",
+    "signingOut": "登出中...",
+    "language": "语言"
+  },
+  "common": {
+    "skipToMain": "跳转到主要内容",
+    "loadingPage": "页面加载中...",
+    "pleaseWait": "请稍候，正在为您准备内容...",
+    "reload": "重新加载",
+    "backToTop": "回到顶部"
+  },
+  "footer": {
+    "description": "专为土木人打造的AI工具导航平台，汇集最新最实用的专业工具，助力土木工程师提升工作效率。",
+    "wechat": "微信",
+    "wechatId": "fuyesq168",
+    "knowledgeBase": "访问知识库",
+    "claudeCodeTutorial": "Claude Code 教程",
+    "quickLinks": "快速导航",
+    "help": "支持与帮助",
+    "toolsCategories": "工具分类",
+    "latestTools": "最新工具",
+    "hotRecommendations": "热门推荐",
+    "userGuide": "使用指南",
+    "privacy": "隐私政策",
+    "terms": "服务条款",
+    "faq": "常见问题",
+    "copyright": "© 2026 TumuAI.net. 专业土木AI工具平台 保留所有权利。",
+    "motto": "献给每一位土木人 · 一起拥抱AI时代"
+  },
+  "meta": {
+    "defaultTitle": "TumuAI - 土木AI之家 | 专业的土木工程AI工具导航平台",
+    "defaultDescription": "为土木工程师提供最全面的AI工具和效率工具导航，涵盖结构设计、BIM建模、施工管理、造价估算等专业领域。",
+    "defaultKeywords": "土木工程,AI工具,结构设计,BIM建模,施工管理,工程造价,AI辅助设计,土木软件,工程软件导航"
+  }
+  ,
+  "hero": {
+    "subtitle": "专业土木AI工具平台",
+    "descLine1Prefix": "汇聚",
+    "descStructural": "结构设计",
+    "descBim": "BIM建模",
+    "descCalc": "工程计算",
+    "descLine2": "助力土木人提升设计效率，拥抱AI时代",
+    "badgeSelected": "精选专业工具",
+    "badgeSmart": "智能推荐",
+    "badgeUpdated": "持续更新",
+    "searchPlaceholder": "搜索结构设计、BIM建模、工程计算等专业工具...",
+    "searchAria": "搜索AI工具",
+    "searchButton": "搜索",
+    "statsTools": "专业工具",
+    "statsCategories": "工具分类",
+    "statsUpdated": "持续更新"
+  }
+  ,
+  "notFound": {
+    "title": "页面不存在",
+    "description": "你访问的地址可能已变更或被删除。你可以返回首页，或去工具库继续浏览。",
+    "backHome": "返回首页",
+    "browseTools": "浏览工具库"
+  }
+}

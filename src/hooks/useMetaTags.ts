@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Meta 标签配置接口
@@ -22,13 +23,15 @@ interface MetaTagConfig {
 /**
  * 默认配置
  */
-const DEFAULT_CONFIG: MetaTagConfig = {
-  title: 'TumuAI - 土木AI之家 | 专业的土木工程AI工具导航平台',
-  description: '为土木工程师提供最全面的AI工具和效率工具导航，涵盖结构设计、BIM建模、施工管理、造价估算等专业领域。',
-  keywords: '土木工程,AI工具,结构设计,BIM建模,施工管理,工程造价,AI辅助设计,土木软件,工程软件导航',
-  ogType: 'website',
-  twitterCard: 'summary_large_image'
-};
+function getDefaultConfig(t: (key: string) => string): MetaTagConfig {
+  return {
+    title: t('meta.defaultTitle'),
+    description: t('meta.defaultDescription'),
+    keywords: t('meta.defaultKeywords'),
+    ogType: 'website',
+    twitterCard: 'summary_large_image'
+  };
+}
 
 /**
  * useMetaTags Hook - 动态管理页面 Meta 标签
@@ -49,6 +52,7 @@ const DEFAULT_CONFIG: MetaTagConfig = {
  * ```
  */
 export function useMetaTags(config: MetaTagConfig = {}) {
+  const { t, i18n } = useTranslation();
   const {
     title,
     description,
@@ -66,7 +70,7 @@ export function useMetaTags(config: MetaTagConfig = {}) {
   } = config;
 
   const mergedConfig = useMemo(() => {
-    const next: MetaTagConfig = { ...DEFAULT_CONFIG };
+    const next: MetaTagConfig = { ...getDefaultConfig(t) };
 
     if (title !== undefined) next.title = title;
     if (description !== undefined) next.description = description;
@@ -84,6 +88,8 @@ export function useMetaTags(config: MetaTagConfig = {}) {
 
     return next;
   }, [
+    i18n.language,
+    t,
     title,
     description,
     keywords,

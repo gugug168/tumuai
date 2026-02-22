@@ -243,7 +243,6 @@ async function handleDatasets(request: VercelRequest, response: VercelResponse, 
   const supabase = createClient(supabaseUrl, serviceKey)
   const url = new URL(request.url || '', `http://${request.headers.host}`)
   const sections = url.searchParams.get('sections')?.split(',') || ['all']
-  const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 50)
 
   const data: Record<string, unknown> = {}
 

@@ -2,6 +2,7 @@ import type { Category, Tool, ToolSearchFilters } from '../types'
 import { supabase } from './supabase-client'
 import { CategoryManager } from './category-manager'
 import { unifiedCache } from './unified-cache-manager'
+import i18n from 'i18next'
 export { supabase } from './supabase-client'
 
 // 临时禁用RLS的客户端配置
@@ -169,6 +170,10 @@ function isApiBackedOff(): boolean {
   return Date.now() < apiDownUntil
 }
 
+function getApiLang(): string | undefined {
+  return i18n.language === 'en' ? 'en' : undefined
+}
+
 /**
  * 检查是否是 AbortError（请求被取消）
  */
@@ -199,6 +204,8 @@ export async function getToolsViaAPI(
     const url = new URL('/api/public-api?action=tools', window.location.origin)
     url.searchParams.set('limit', limit.toString())
     url.searchParams.set('offset', offset.toString())
+    const lang = getApiLang()
+    if (lang) url.searchParams.set('lang', lang)
     if (includeCount) {
       url.searchParams.set('includeCount', 'true')
     }
@@ -247,6 +254,8 @@ export async function getToolsFiltered(
 ): Promise<{ tools: Tool[]; count?: number }> {
   try {
     const url = new URL('/api/public-api?action=tools-filtered', window.location.origin)
+    const lang = getApiLang()
+    if (lang) url.searchParams.set('lang', lang)
     const requestBody = {
       limit,
       offset,
@@ -300,6 +309,8 @@ async function getToolByIdViaAPI(
 ): Promise<Tool | null> {
   const url = new URL('/api/public-api?action=tools', window.location.origin)
   url.searchParams.set('id', id)
+  const lang = getApiLang()
+  if (lang) url.searchParams.set('lang', lang)
 
   const response = await fetch(url.toString(), { signal })
 

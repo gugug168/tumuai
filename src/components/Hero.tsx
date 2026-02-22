@@ -5,6 +5,8 @@ import CountUpAnimation from './CountUpAnimation';
 import { getCategories, getToolsCount } from '../lib/supabase';
 import { useHomeData } from '../contexts/HomeDataContext';
 import { prefetchToolsData, prefetchToolsPage } from '../lib/route-prefetch';
+import { useTranslation } from 'react-i18next';
+import { useLocale } from '../contexts/LocaleContext';
 
 interface SiteStats {
   toolsCount: number;
@@ -13,6 +15,8 @@ interface SiteStats {
 
 const Hero = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const { locale } = useLocale();
   const homeData = useHomeData();
   const [searchQuery, setSearchQuery] = useState('');
   const [stats, setStats] = useState<SiteStats>({ toolsCount: 0, categoriesCount: 0 });
@@ -78,7 +82,8 @@ const Hero = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/tools?search=${encodeURIComponent(searchQuery.trim())}`);
+      const base = locale === 'en' ? '/en/tools' : '/tools';
+      navigate(`${base}?search=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
 
@@ -124,32 +129,31 @@ const Hero = () => {
               </span>
             </h1>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-gray-200 mb-6">
-              专业土木AI工具平台
+              {t('hero.subtitle')}
             </h2>
           </div>
           
           {/* 描述文本 */}
           <p className="text-lg md:text-xl mb-4 max-w-4xl mx-auto leading-relaxed text-gray-300">
-            汇聚
-            <span className="text-blue-400 font-semibold px-2 py-1 bg-blue-400/10 rounded-lg mx-1">结构设计</span>、
-            <span className="text-purple-400 font-semibold px-2 py-1 bg-purple-400/10 rounded-lg mx-1">BIM建模</span>、
-            <span className="text-pink-400 font-semibold px-2 py-1 bg-pink-400/10 rounded-lg mx-1">工程计算</span>
-            等专业工具
-            <br />助力土木人提升设计效率，拥抱AI时代
+            {t('hero.descLine1Prefix')}
+            <span className="text-blue-400 font-semibold px-2 py-1 bg-blue-400/10 rounded-lg mx-1">{t('hero.descStructural')}</span>、
+            <span className="text-purple-400 font-semibold px-2 py-1 bg-purple-400/10 rounded-lg mx-1">{t('hero.descBim')}</span>、
+            <span className="text-pink-400 font-semibold px-2 py-1 bg-pink-400/10 rounded-lg mx-1">{t('hero.descCalc')}</span>
+            <br />{t('hero.descLine2')}
           </p>
           
           <div className="flex items-center justify-center space-x-6 mb-8 text-sm text-gray-400">
             <div className="flex items-center">
               <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
-              精选专业工具
+              {t('hero.badgeSelected')}
             </div>
             <div className="flex items-center">
               <div className="w-2 h-2 bg-blue-400 rounded-full mr-2 animate-pulse"></div>
-              智能推荐
+              {t('hero.badgeSmart')}
             </div>
             <div className="flex items-center">
               <div className="w-2 h-2 bg-purple-400 rounded-full mr-2 animate-pulse"></div>
-              持续更新
+              {t('hero.badgeUpdated')}
             </div>
           </div>
           
@@ -169,15 +173,15 @@ const Hero = () => {
                     void prefetchToolsPage();
                     void prefetchToolsData();
                   }}
-                  placeholder="搜索结构设计、BIM建模、工程计算等专业工具..."
+                  placeholder={t('hero.searchPlaceholder')}
                   className="w-full pl-12 pr-32 py-4 text-lg border-0 rounded-xl focus:ring-2 focus:ring-purple-500 shadow-xl bg-white/95 backdrop-blur-sm text-gray-900 placeholder-gray-500 transition-all duration-300 hover:bg-white focus:bg-white"
-                  aria-label="搜索AI工具"
+                  aria-label={t('hero.searchAria')}
                 />
                 <button 
                   type="submit"
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2.5 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
                 >
-                  搜索
+                  {t('hero.searchButton')}
                 </button>
               </div>
             </form>
@@ -193,7 +197,7 @@ const Hero = () => {
                   <CountUpAnimation end={homeData ? homeData.toolsCount : stats.toolsCount} suffix="+" duration={1500} className="inline-block" />
                 )}
               </div>
-              <div className="text-xs mt-1">专业工具</div>
+              <div className="text-xs mt-1">{t('hero.statsTools')}</div>
             </div>
             <div className="w-px h-8 bg-gray-600"></div>
             <div className="text-center group cursor-default">
@@ -204,14 +208,14 @@ const Hero = () => {
                   <CountUpAnimation end={homeData ? homeData.categories.length : stats.categoriesCount} suffix="+" duration={1500} delay={200} className="inline-block" />
                 )}
               </div>
-              <div className="text-xs mt-1">工具分类</div>
+              <div className="text-xs mt-1">{t('hero.statsCategories')}</div>
             </div>
             <div className="w-px h-8 bg-gray-600"></div>
             <div className="text-center group cursor-default">
               <div className="text-2xl md:text-3xl font-bold text-pink-400 group-hover:text-pink-300 transition-colors">
                 <span className="inline-block animate-pulse">∞</span>
               </div>
-              <div className="text-xs mt-1">持续更新</div>
+              <div className="text-xs mt-1">{t('hero.statsUpdated')}</div>
             </div>
           </div>
         </div>

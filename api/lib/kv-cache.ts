@@ -34,6 +34,7 @@ export function getCacheKey(type: string, ...parts: (string | number)[]): string
 export function getToolsCacheKey(params: {
   limit?: number
   offset?: number
+  lang?: string
   featuredOnly?: boolean
   category?: string
   categories?: string[]
@@ -44,6 +45,7 @@ export function getToolsCacheKey(params: {
   const {
     limit = 12,
     offset = 0,
+    lang = '',
     featuredOnly = false,
     category = '',
     categories = [],
@@ -56,6 +58,7 @@ export function getToolsCacheKey(params: {
   const keyParts = [
     `l${limit}`,
     `o${offset}`,
+    lang ? `lang${lang}` : '',
     `f${featuredOnly ? 1 : 0}`,
     category ? `c${category}` : '',
     categories.length > 0 ? `cs${categories.sort().join(',')}` : '',

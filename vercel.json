@@ -71,6 +71,22 @@
       "destination": "/tools.html"
     },
     {
+      "source": "/en",
+      "destination": "/en/index.html"
+    },
+    {
+      "source": "/en/about",
+      "destination": "/en/about.html"
+    },
+    {
+      "source": "/en/submit",
+      "destination": "/en/submit.html"
+    },
+    {
+      "source": "/en/tools",
+      "destination": "/en/tools.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/"
     }
@@ -226,6 +242,10 @@
     {
       "path": "/api/refresh-stats",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/translate-tools",
+      "schedule": "0 */6 * * *"
     }
   ]
 }

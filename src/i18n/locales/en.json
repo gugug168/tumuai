@@ -1,0 +1,75 @@
+{
+  "app": {
+    "name": "TumuAI.net",
+    "tagline": "AI tools for civil engineers"
+  },
+  "nav": {
+    "home": "Home",
+    "tools": "Tools",
+    "about": "About",
+    "submit": "Submit a tool",
+    "profile": "Profile",
+    "admin": "Admin",
+    "login": "Log in",
+    "register": "Sign up",
+    "logout": "Log out",
+    "signingOut": "Signing out...",
+    "language": "Language"
+  },
+  "common": {
+    "skipToMain": "Skip to main content",
+    "loadingPage": "Loading...",
+    "pleaseWait": "Please wait while we get things ready...",
+    "reload": "Reload",
+    "backToTop": "Back to top"
+  },
+  "footer": {
+    "description": "A curated directory of AI and productivity tools for civil engineers — helping you work faster and smarter.",
+    "wechat": "WeChat",
+    "wechatId": "fuyesq168",
+    "knowledgeBase": "Knowledge Base",
+    "claudeCodeTutorial": "Claude Code tutorial",
+    "quickLinks": "Quick links",
+    "help": "Help",
+    "toolsCategories": "Categories",
+    "latestTools": "Latest tools",
+    "hotRecommendations": "Top picks",
+    "userGuide": "Guide",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "faq": "FAQ"
+    ,
+    "copyright": "© 2026 TumuAI.net. All rights reserved.",
+    "motto": "For every civil engineer · Embrace the AI era together"
+  },
+  "meta": {
+    "defaultTitle": "TumuAI - AI tools directory for civil engineers",
+    "defaultDescription": "Discover the best AI and productivity tools for civil engineering: structural design, BIM, construction management, cost estimation and more.",
+    "defaultKeywords": "civil engineering,AI tools,structural design,BIM,construction management,cost estimation,engineering tools directory"
+  }
+  ,
+  "hero": {
+    "subtitle": "AI tools for civil engineers",
+    "descLine1Prefix": "Curated tools for",
+    "descStructural": "Structural design",
+    "descBim": "BIM",
+    "descCalc": "Engineering calculations",
+    "descLine2": "Work smarter and embrace the AI era",
+    "badgeSelected": "Curated",
+    "badgeSmart": "Smart picks",
+    "badgeUpdated": "Always updated",
+    "searchPlaceholder": "Search tools for structural design, BIM, calculations...",
+    "searchAria": "Search tools",
+    "searchButton": "Search",
+    "statsTools": "Tools",
+    "statsCategories": "Categories",
+    "statsUpdated": "Updated"
+  }
+  ,
+  "notFound": {
+    "title": "Page not found",
+    "description": "The page you’re looking for may have moved or been removed. You can go back home or continue browsing tools.",
+    "backHome": "Go home",
+    "browseTools": "Browse tools"
+  }
+}

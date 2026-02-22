@@ -1,5 +1,6 @@
 import React from 'react'
 import { Loader2, RefreshCw } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface PageLoaderProps {
   message?: string
@@ -10,12 +11,14 @@ interface PageLoaderProps {
 }
 
 const PageLoader: React.FC<PageLoaderProps> = ({
-  message = '页面加载中...',
+  message,
   showRetry = false,
   onRetry,
   fullScreen = true,
   className = ''
 }) => {
+  const { t } = useTranslation()
+  const resolvedMessage = message ?? t('common.loadingPage')
   const containerClass = fullScreen 
     ? 'fixed inset-0 bg-white bg-opacity-95 flex items-center justify-center z-50' 
     : 'flex items-center justify-center py-12'
@@ -28,11 +31,11 @@ const PageLoader: React.FC<PageLoaderProps> = ({
         </div>
         
         <p className="text-gray-600 text-lg font-medium mb-2">
-          {message}
+          {resolvedMessage}
         </p>
         
         <div className="text-sm text-gray-400">
-          请稍候，正在为您准备内容...
+          {t('common.pleaseWait')}
         </div>
         
         {showRetry && onRetry && (
@@ -41,7 +44,7 @@ const PageLoader: React.FC<PageLoaderProps> = ({
             className="mt-6 inline-flex items-center px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
-            重新加载
+            {t('common.reload')}
           </button>
         )}
         

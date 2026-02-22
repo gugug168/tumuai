@@ -20,11 +20,13 @@ import {
 
 type SortField = 'upvotes' | 'date_added' | 'rating' | 'views'
 type Pricing = 'Free' | 'Freemium' | 'Paid' | 'Trial'
+type Lang = 'zh-CN' | 'en'
 
 interface ToolQueryParams {
   limit?: number
   offset?: number
   includeCount?: boolean
+  lang?: Lang
   featuredOnly?: boolean
   category?: string
   categories?: string[]
@@ -50,12 +52,81 @@ function setCdnCacheHeaders(response: VercelResponse, policy: CachePolicy) {
   response.setHeader('Cache-Control', value)
 }
 
+function normalizeLang(raw: string | null): Lang {
+  return raw === 'en' ? 'en' : 'zh-CN'
+}
+
+type ToolLike = Record<string, unknown> & {
+  id: string
+  tagline?: string | null
+  description?: string | null
+  updated_at?: string | null
+}
+
+interface ToolTranslationRow {
+  tool_id: string
+  lang: string
+  tagline: string | null
+  description: string | null
+  source_updated_at: string | null
+}
+
+async function fetchToolTranslations(
+  supabase: AppSupabaseClient,
+  toolIds: string[],
+  lang: Lang
+): Promise<Map<string, ToolTranslationRow> | null> {
+  if (lang !== 'en') return null
+  if (toolIds.length === 0) return new Map()
+
+  const { data, error } = await supabase
+    .from('tool_translations')
+    .select('tool_id,lang,tagline,description,source_updated_at')
+    .eq('lang', lang)
+    .in('tool_id', toolIds)
+
+  if (error) {
+    // Best-effort: table may not exist yet in some envs.
+    if ((error as { code?: string }).code === '42P01') return null
+    if (error.message && error.message.includes('tool_translations')) return null
+    throw new Error(error.message)
+  }
+
+  const rows = Array.isArray(data) ? (data as ToolTranslationRow[]) : []
+  const map = new Map<string, ToolTranslationRow>()
+  for (const row of rows) {
+    if (row && row.tool_id) map.set(row.tool_id, row)
+  }
+  return map
+}
+
+function applyTranslationsToTools(tools: ToolLike[], translations: Map<string, ToolTranslationRow> | null): ToolLike[] {
+  if (!translations || translations.size === 0) return tools
+
+  return tools.map((tool) => {
+    const row = translations.get(tool.id)
+    if (!row) return tool
+
+    // If the source tool has changed since the translation was generated, treat it as missing.
+    const sourceUpdatedAt = row.source_updated_at || null
+    const toolUpdatedAt = tool.updated_at || null
+    if (sourceUpdatedAt && toolUpdatedAt && sourceUpdatedAt !== toolUpdatedAt) return tool
+
+    return {
+      ...tool,
+      tagline: row.tagline ?? tool.tagline,
+      description: row.description ?? tool.description
+    }
+  })
+}
+
 // 从数据库获取工具
 async function fetchToolsFromDB(supabase: AppSupabaseClient, params: ToolQueryParams) {
   const {
     limit = 12,
     offset = 0,
     includeCount = false,
+    lang = 'zh-CN',
     featuredOnly,
     category,
     categories = [],
@@ -109,7 +180,14 @@ async function fetchToolsFromDB(supabase: AppSupabaseClient, params: ToolQueryPa
   const { data: tools, error } = await toolsQuery
   if (error) throw new Error(error.message)
 
-  return { tools: tools || [], count }
+  const toolList = (tools || []) as ToolLike[]
+  const translations = await fetchToolTranslations(
+    supabase,
+    toolList.map((t) => t.id).filter(Boolean),
+    lang
+  )
+
+  return { tools: applyTranslationsToTools(toolList, translations), count }
 }
 
 // 处理分类请求
@@ -162,11 +240,12 @@ async function handleCategories(response: VercelResponse, supabase: AppSupabaseC
 // 处理工具列表请求
 async function handleTools(request: VercelRequest, response: VercelResponse, supabase: AppSupabaseClient) {
   const url = new URL(request.url || '', `http://${request.headers.host}`)
+  const lang = normalizeLang(url.searchParams.get('lang'))
 
   // 支持按 ID 查询单个工具
   const toolId = url.searchParams.get('id')
   if (toolId) {
-    const cacheKey = getCacheKey('tool', toolId)
+    const cacheKey = lang === 'en' ? getCacheKey('tool', toolId, 'en') : getCacheKey('tool', toolId)
 
     // 尝试从 KV 缓存获取
     const cachedTool = await getFromCache<{ tools: unknown[]; timestamp: string }>(cacheKey)
@@ -186,8 +265,11 @@ async function handleTools(request: VercelRequest, response: VercelResponse, sup
       return response.status(404).json({ error: 'Tool not found' })
     }
 
+    const translations = await fetchToolTranslations(supabase, [toolId], lang)
+    const translated = applyTranslationsToTools([data as ToolLike], translations)
+
     const resultData = {
-      tools: [data],
+      tools: translated,
       timestamp: new Date().toISOString()
     }
 
@@ -221,6 +303,7 @@ async function handleTools(request: VercelRequest, response: VercelResponse, sup
   const cacheKey = getToolsCacheKey({
     limit,
     offset,
+    lang: lang === 'en' ? 'en' : '',
     featuredOnly,
     category,
     categories,
@@ -236,7 +319,7 @@ async function handleTools(request: VercelRequest, response: VercelResponse, sup
     if (includeCount && cachedData.count === undefined) {
       // 重新从数据库获取（包含 count）
       const data = await fetchToolsFromDB(supabase, {
-        limit, offset, includeCount, featuredOnly, category, categories, pricing, features, sortBy
+        limit, offset, includeCount, lang, featuredOnly, category, categories, pricing, features, sortBy
       })
       setCdnCacheHeaders(response, { browserMaxAge: 60, sMaxAge: 1200, staleWhileRevalidate: 1800 })
       return response.status(200).json({
@@ -257,6 +340,7 @@ async function handleTools(request: VercelRequest, response: VercelResponse, sup
     limit,
     offset,
     includeCount,
+    lang,
     featuredOnly,
     category,
     categories,
@@ -284,6 +368,8 @@ async function handleTools(request: VercelRequest, response: VercelResponse, sup
 // 处理工具筛选请求（POST）
 async function handleToolsFiltered(request: VercelRequest, response: VercelResponse, supabase: AppSupabaseClient) {
   try {
+    const url = new URL(request.url || '', `http://${request.headers.host}`)
+    const lang = normalizeLang(url.searchParams.get('lang'))
     const body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body
 
     const {
@@ -302,7 +388,7 @@ async function handleToolsFiltered(request: VercelRequest, response: VercelRespo
     // 搜索查询不缓存（结果变化太大）
     if (searchQuery) {
       return handleSearchQuery(response, supabase, {
-        limit, offset, includeCount, sortBy, category, categories, pricing, features, searchQuery, minRating
+        limit, offset, includeCount, sortBy, lang, category, categories, pricing, features, searchQuery, minRating
       })
     }
 
@@ -310,6 +396,7 @@ async function handleToolsFiltered(request: VercelRequest, response: VercelRespo
     const cacheKey = getToolsCacheKey({
       limit,
       offset,
+      lang: lang === 'en' ? 'en' : '',
       featuredOnly: false,
       category,
       categories: Array.isArray(categories) ? categories : (category ? [category] : []),
@@ -350,6 +437,13 @@ async function handleToolsFiltered(request: VercelRequest, response: VercelRespo
     const { data, error } = await query
     if (error) throw new Error(error.message)
 
+    const translations = await fetchToolTranslations(
+      supabase,
+      (data || []).map((t: { id?: unknown }) => String(t?.id || '')).filter(Boolean),
+      lang
+    )
+    const toolsWithTranslations = applyTranslationsToTools((data || []) as ToolLike[], translations)
+
     let totalCount = data?.length || 0
     if (includeCount) {
       let countQuery = supabase
@@ -368,7 +462,7 @@ async function handleToolsFiltered(request: VercelRequest, response: VercelRespo
     }
 
     const resultData = {
-      tools: data || [],
+      tools: toolsWithTranslations,
       count: totalCount,
       timestamp: new Date().toISOString()
     }
@@ -396,6 +490,7 @@ async function handleSearchQuery(
     offset: number
     includeCount: boolean
     sortBy: string
+    lang: Lang
     category?: string
     categories?: string[]
     pricing?: string
@@ -404,7 +499,7 @@ async function handleSearchQuery(
     minRating?: number
   }
 ) {
-  const { limit, offset, includeCount, sortBy, category, categories, pricing, features, searchQuery, minRating } = params
+  const { limit, offset, includeCount, sortBy, lang, category, categories, pricing, features, searchQuery, minRating } = params
 
   const categoryFilters = Array.isArray(categories)
     ? categories.filter((item: unknown): item is string => typeof item === 'string' && item.trim().length > 0)
@@ -429,6 +524,13 @@ async function handleSearchQuery(
   const { data, error } = await query
   if (error) throw new Error(error.message)
 
+  const translations = await fetchToolTranslations(
+    supabase,
+    (data || []).map((t: { id?: unknown }) => String(t?.id || '')).filter(Boolean),
+    lang
+  )
+  const toolsWithTranslations = applyTranslationsToTools((data || []) as ToolLike[], translations)
+
   let totalCount = data?.length || 0
   if (includeCount) {
     let countQuery = supabase
@@ -450,7 +552,7 @@ async function handleSearchQuery(
   // 搜索结果不设置长时间缓存
   response.setHeader('Cache-Control', 'public, max-age=30')
   return response.status(200).json({
-    tools: data || [],
+    tools: toolsWithTranslations,
     count: totalCount,
     timestamp: new Date().toISOString(),
     cached: false
