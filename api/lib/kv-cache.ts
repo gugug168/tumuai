@@ -19,7 +19,7 @@ export const CACHE_TTL = {
 } as const
 
 // 缓存键前缀
-const CACHE_PREFIX = 'tumuai:v1:'
+const CACHE_PREFIX = 'tumuai:v2:'
 
 /**
  * 生成缓存键
