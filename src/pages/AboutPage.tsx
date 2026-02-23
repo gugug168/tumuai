@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowRight,
   Award,
@@ -25,131 +26,133 @@ interface SiteStats {
   categoriesCount: number;
 }
 
-const values = [
-  {
-    icon: Target,
-    title: '专业专注',
-    description: '专注土木工程领域，按工作流与场景组织工具，减少信息噪音。'
-  },
-  {
-    icon: Users,
-    title: '服务工程师',
-    description: '从工程师真实需求出发，优先提升可用性、易用性和查找效率。'
-  },
-  {
-    icon: Award,
-    title: '质量优先',
-    description: '尽量保证信息清晰、链接可用、分类合理，并持续纠错更新。'
-  },
-  {
-    icon: Lightbulb,
-    title: '持续创新',
-    description: '关注 AI 新进展与新工具，把最新的有效工具及时带给你。'
-  }
-] as const;
-
-const teamMembers = [
-  {
-    name: '产品与运营',
-    role: '需求洞察 · 体验打磨',
-    description: '从一线工程师工作流出发，持续优化导航、搜索、筛选和提交体验。',
-    icon: Sparkles
-  },
-  {
-    name: '工程与数据',
-    role: '稳定性 · 数据质量',
-    description: '维护数据结构与分类体系，推动性能优化，让你更快找到更准的工具。',
-    icon: Code2
-  },
-  {
-    name: '内容与评测',
-    role: '工具评测 · 内容策划',
-    description: '关注行业新工具、新用法，输出更贴近工程场景的推荐与对比。',
-    icon: PenTool
-  }
-] as const;
-
 const AboutPage = React.memo(() => {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<SiteStats>({ toolsCount: 0, categoriesCount: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
+  // 动态生成 values 数组以支持翻译
+  const values = useMemo(() => [
+    {
+      icon: Target,
+      title: t('about.value1Title'),
+      description: t('about.value1Desc')
+    },
+    {
+      icon: Users,
+      title: t('about.value2Title'),
+      description: t('about.value2Desc')
+    },
+    {
+      icon: Award,
+      title: t('about.value3Title'),
+      description: t('about.value3Desc')
+    },
+    {
+      icon: Lightbulb,
+      title: t('about.value4Title'),
+      description: t('about.value4Desc')
+    }
+  ], [t]);
+
+  // 动态生成 teamMembers 数组以支持翻译
+  const teamMembers = useMemo(() => [
+    {
+      name: t('about.team1Name'),
+      role: t('about.team1Role'),
+      description: t('about.team1Desc'),
+      icon: Sparkles
+    },
+    {
+      name: t('about.team2Name'),
+      role: t('about.team2Role'),
+      description: t('about.team2Desc'),
+      icon: Code2
+    },
+    {
+      name: t('about.team3Name'),
+      role: t('about.team3Role'),
+      description: t('about.team3Desc'),
+      icon: PenTool
+    }
+  ], [t]);
+
   useMetaTags({
-    title: '关于我们 - TumuAI.net',
-    description:
-      '了解 TumuAI.net：面向土木工程师的 AI 工具导航与评测平台。我们持续收录、分类与更新优质工具，支持提交与共建。',
+    title: `${t('about.title')} - TumuAI.net`,
+    description: t('about.metaDesc'),
     canonical: 'https://www.tumuai.net/about',
-    ogTitle: '关于我们 - TumuAI.net',
-    ogDescription: '面向土木工程师的 AI 工具导航与评测平台：持续收录、分类与更新，支持提交与共建。'
+    ogTitle: `${t('about.title')} - TumuAI.net`,
+    ogDescription: t('about.metaDesc')
   });
 
   const workflowSteps = useMemo(
     () => [
       {
-        title: '提交工具',
-        description: '填写官网与简介，我们会自动辅助识别 Logo、分类与描述。',
+        title: t('about.workflow1Title'),
+        description: t('about.workflow1Desc'),
         href: '/submit'
       },
       {
-        title: '快速审核',
-        description: '进行可用性与信息完整度检查，尽量保证收录信息清晰可用。',
+        title: t('about.workflow2Title'),
+        description: t('about.workflow2Desc'),
         href: '/submit'
       },
       {
-        title: '发布收录',
-        description: '审核通过后进入“工具中心”，可分类浏览、搜索筛选与查看详情。',
+        title: t('about.workflow3Title'),
+        description: t('about.workflow3Desc'),
         href: '/tools'
       },
       {
-        title: '持续更新',
-        description: '基于反馈持续修正信息、补充标签与分类，保持工具库“活”的状态。',
+        title: t('about.workflow4Title'),
+        description: t('about.workflow4Desc'),
         href: '/tools'
       }
     ],
-    []
+    [t]
   );
 
   const reviewCriteria = useMemo(
     () => [
       {
-        title: '信息清晰',
-        points: ['名称/简介/网址可识别', '分类与定价信息尽量完整', 'Logo/素材不影响浏览体验']
+        title: t('about.criteria1Title'),
+        points: [t('about.criteria1p1'), t('about.criteria1p2'), t('about.criteria1p3')]
       },
       {
-        title: '工程相关',
-        points: ['面向结构/BIM/施工/造价/项目管理等场景', '能明显提升效率或质量', '贴近工程常见输入输出']
+        title: t('about.criteria2Title'),
+        points: [t('about.criteria2p1'), t('about.criteria2p2'), t('about.criteria2p3')]
       },
       {
-        title: '可用性',
-        points: ['页面可访问、功能可体验', '有持续维护迹象', '不收录明显失效或跳转异常的链接']
+        title: t('about.criteria3Title'),
+        points: [t('about.criteria3p1'), t('about.criteria3p2'), t('about.criteria3p3')]
       },
       {
-        title: '可更新',
-        points: ['支持后续补充资料与修正', '欢迎作者提供更准确素材', '对比信息会持续迭代']
+        title: t('about.criteria4Title'),
+        points: [t('about.criteria4p1'), t('about.criteria4p2'), t('about.criteria4p3')]
       }
     ],
-    []
+    [t]
   );
 
   const faqItems = useMemo(
     () => [
       {
-        q: '如何提交新工具？',
-        a: '点击“提交工具”，填入官网地址和简介即可。你也可以补充分类、功能标签与 Logo，我们会在审核时进一步完善信息。'
+        q: t('about.faq1Q'),
+        a: t('about.faq1A')
       },
       {
-        q: '为什么有些工具的 Logo 显示不出来？',
-        a: '部分网站会限制图标访问或路径会变化。我们会提供兜底图标，不影响使用；你也可以在提交时上传更稳定的 Logo。'
+        q: t('about.faq2Q'),
+        a: t('about.faq2A')
       },
       {
-        q: '发现工具信息有误/链接失效怎么办？',
-        a: '可以通过邮件或 GitHub 提交反馈，我们会持续修正与更新。'
+        q: t('about.faq3Q'),
+        a: t('about.faq3A')
       },
       {
-        q: '我可以参与共建吗？',
-        a: '当然可以：提交工具、反馈问题、补充分类与标签，或在 GitHub 提交 PR 都非常欢迎。'
+        q: t('about.faq4Q'),
+        a: t('about.faq4A')
       }
     ],
-    []
+    [t]
   );
 
   useEffect(() => {
@@ -210,14 +213,13 @@ const AboutPage = React.memo(() => {
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/70 border border-blue-100 text-blue-700 text-sm font-medium shadow-sm">
             <Sparkles className="w-4 h-4" />
-            <span>面向土木工程师的 AI 工具导航与评测</span>
+            <span>{t('about.badge')}</span>
           </div>
 
-          <h1 className="mt-6 text-4xl md:text-5xl font-bold text-gray-900">关于 TumuAI.net</h1>
+          <h1 className="mt-6 text-4xl md:text-5xl font-bold text-gray-900">{t('about.pageTitle')}</h1>
 
           <p className="mt-6 text-xl text-gray-700 leading-relaxed max-w-3xl mx-auto">
-            我们希望把分散在互联网各处的优质工具，整理成一个“好找、好用、可持续更新”的工具库。
-            让你把时间用在工程本身，而不是耗在搜索与筛选上。
+            {t('about.intro')}
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -225,26 +227,26 @@ const AboutPage = React.memo(() => {
               to="/tools"
               className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors shadow-sm"
             >
-              浏览工具中心
+              {t('about.browseTools')}
               <ArrowRight className="w-4 h-4 ml-2" />
             </Link>
             <Link
               to="/submit"
               className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 rounded-lg bg-white text-blue-700 font-medium border border-blue-200 hover:bg-blue-50 transition-colors"
             >
-              提交你的工具
+              {t('about.submitTool')}
             </Link>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm text-gray-600">
             {[
-              { href: '#mission', label: '使命' },
-              { href: '#workflow', label: '收录流程' },
-              { href: '#criteria', label: '筛选标准' },
-              { href: '#faq', label: 'FAQ' },
-              { href: '#privacy', label: '隐私' },
-              { href: '#terms', label: '条款' },
-              { href: '#contact', label: '联系' }
+              { href: '#mission', label: t('about.navMission') },
+              { href: '#workflow', label: t('about.navWorkflow') },
+              { href: '#criteria', label: t('about.navCriteria') },
+              { href: '#faq', label: t('about.navFaq') },
+              { href: '#privacy', label: t('about.navPrivacy') },
+              { href: '#terms', label: t('about.navTerms') },
+              { href: '#contact', label: t('about.navContact') }
             ].map((item) => (
               <a
                 key={item.href}
@@ -258,7 +260,7 @@ const AboutPage = React.memo(() => {
 
           <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-4 text-left max-w-4xl mx-auto">
             <div className="bg-white/70 border border-gray-100 rounded-xl p-4 shadow-sm">
-              <div className="text-xs text-gray-500">收录工具</div>
+              <div className="text-xs text-gray-500">{t('about.statsTools')}</div>
               <div className="mt-1 text-2xl font-bold text-gray-900">
                 {isLoading ? (
                   <span className="inline-block animate-pulse">...</span>
@@ -268,7 +270,7 @@ const AboutPage = React.memo(() => {
               </div>
             </div>
             <div className="bg-white/70 border border-gray-100 rounded-xl p-4 shadow-sm">
-              <div className="text-xs text-gray-500">工具分类</div>
+              <div className="text-xs text-gray-500">{t('about.statsCategories')}</div>
               <div className="mt-1 text-2xl font-bold text-gray-900">
                 {isLoading ? (
                   <span className="inline-block animate-pulse">...</span>
@@ -278,12 +280,12 @@ const AboutPage = React.memo(() => {
               </div>
             </div>
             <div className="bg-white/70 border border-gray-100 rounded-xl p-4 shadow-sm">
-              <div className="text-xs text-gray-500">更新状态</div>
-              <div className="mt-1 text-2xl font-bold text-gray-900">持续更新</div>
+              <div className="text-xs text-gray-500">{t('about.statsUpdate')}</div>
+              <div className="mt-1 text-2xl font-bold text-gray-900">{t('about.statsUpdateValue')}</div>
             </div>
             <div className="bg-white/70 border border-gray-100 rounded-xl p-4 shadow-sm">
-              <div className="text-xs text-gray-500">共建方式</div>
-              <div className="mt-1 text-2xl font-bold text-gray-900">提交 / 反馈 / PR</div>
+              <div className="text-xs text-gray-500">{t('about.statsContribute')}</div>
+              <div className="mt-1 text-2xl font-bold text-gray-900">{t('about.statsContributeValue')}</div>
             </div>
           </div>
         </div>
@@ -293,16 +295,16 @@ const AboutPage = React.memo(() => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">我们的使命</h2>
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">{t('about.missionTitle')}</h2>
               <p className="text-lg text-gray-700 leading-relaxed">
-                让每一位土木工程师都能更快找到并用上真正“能落地”的工具：不只收录，更重视分类、信息清晰与可持续更新。
+                {t('about.missionDesc')}
               </p>
 
               <div className="mt-6 space-y-3 text-gray-700">
                 {[
-                  '把工具按工程场景重新组织：结构、BIM、施工、造价、项目管理…',
-                  '减少信息噪音：提供更清晰的简介、标签与分类',
-                  '让共建更简单：支持提交工具、反馈修正、开源协作'
+                  t('about.missionPoint1'),
+                  t('about.missionPoint2'),
+                  t('about.missionPoint3')
                 ].map((text) => (
                   <div key={text} className="flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -336,19 +338,19 @@ const AboutPage = React.memo(() => {
       <section id="story" className="scroll-mt-24 py-16 bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">我们的故事</h2>
-            <p className="text-lg text-gray-600">从“找工具很费时间”开始</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">{t('about.storyTitle')}</h2>
+            <p className="text-lg text-gray-600">{t('about.storySubtitle')}</p>
           </div>
 
           <div className="space-y-6 text-gray-700 leading-relaxed text-lg">
             <p>
-              TumuAI.net 诞生于一个很现实的痛点：AI 工具越来越多，但工程师真正需要的那几个，往往被埋在搜索结果与信息噪音里。
+              {t('about.storyP1')}
             </p>
             <p>
-              我们想做的是一张更贴近工程场景的“工具地图”：把工具按专业领域和工作流整理好，让你用更少的时间找到更合适的工具。
+              {t('about.storyP2')}
             </p>
             <p>
-              这不是一次性的整理，而是持续的共建。工具会更新、网址会变化、功能会迭代，所以我们把“可持续更新”和“社区反馈”放在更高优先级。
+              {t('about.storyP3')}
             </p>
           </div>
         </div>
@@ -357,8 +359,8 @@ const AboutPage = React.memo(() => {
       <section id="workflow" className="scroll-mt-24 py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">工具收录流程</h2>
-            <p className="text-lg text-gray-600">让提交、审核与更新更顺畅</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">{t('about.workflowTitle')}</h2>
+            <p className="text-lg text-gray-600">{t('about.workflowSubtitle')}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -374,7 +376,7 @@ const AboutPage = React.memo(() => {
                 <p className="mt-2 text-gray-600 text-sm leading-relaxed">{step.description}</p>
                 <div className="mt-4">
                   <Link to={step.href} className="text-blue-700 hover:text-blue-800 font-medium text-sm inline-flex items-center">
-                    了解更多
+                    {t('about.learnMore')}
                     <ArrowRight className="w-4 h-4 ml-1" />
                   </Link>
                 </div>
@@ -387,8 +389,8 @@ const AboutPage = React.memo(() => {
       <section id="criteria" className="scroll-mt-24 py-16 bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">我们如何筛选工具</h2>
-            <p className="text-lg text-gray-600">目标是“信息靠谱、场景相关、可持续更新”</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">{t('about.criteriaTitle')}</h2>
+            <p className="text-lg text-gray-600">{t('about.criteriaSubtitle')}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -412,8 +414,8 @@ const AboutPage = React.memo(() => {
       <section id="team" className="scroll-mt-24 py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">我们是谁</h2>
-            <p className="text-lg text-gray-600">由工程师、开发者与内容编辑共同维护</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">{t('about.teamTitle')}</h2>
+            <p className="text-lg text-gray-600">{t('about.teamSubtitle')}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -448,7 +450,7 @@ const AboutPage = React.memo(() => {
                   <CountUpAnimation end={stats.toolsCount} suffix="+" duration={1800} />
                 )}
               </div>
-              <div className="text-blue-100">收录工具</div>
+              <div className="text-blue-100">{t('about.statsTools')}</div>
             </div>
             <div className="group cursor-default">
               <div className="text-4xl md:text-5xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">
@@ -458,19 +460,19 @@ const AboutPage = React.memo(() => {
                   <CountUpAnimation end={stats.categoriesCount} suffix="+" duration={1800} delay={150} />
                 )}
               </div>
-              <div className="text-blue-100">工具分类</div>
+              <div className="text-blue-100">{t('about.statsCategories')}</div>
             </div>
             <div className="group cursor-default">
               <div className="text-4xl md:text-5xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">
                 <span className="inline-block">∞</span>
               </div>
-              <div className="text-blue-100">持续更新</div>
+              <div className="text-blue-100">{t('about.statsUpdateValue')}</div>
             </div>
             <div className="group cursor-default">
               <div className="text-4xl md:text-5xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">
                 <CountUpAnimation end={100} suffix="%" duration={1800} delay={300} />
               </div>
-              <div className="text-blue-100">用心服务</div>
+              <div className="text-blue-100">{t('about.statsService')}</div>
             </div>
           </div>
         </div>
@@ -479,8 +481,8 @@ const AboutPage = React.memo(() => {
       <section id="faq" className="scroll-mt-24 py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">常见问题</h2>
-            <p className="text-lg text-gray-600">提交、收录与共建相关</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">{t('about.faqTitle')}</h2>
+            <p className="text-lg text-gray-600">{t('about.faqSubtitle')}</p>
           </div>
 
           <div className="space-y-4">
@@ -505,41 +507,41 @@ const AboutPage = React.memo(() => {
       <section id="privacy" className="scroll-mt-24 py-16 bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">隐私政策（简版）</h2>
-            <p className="text-lg text-gray-600">我们只收集提供服务所必需的信息，尽量少打扰。</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">{t('about.privacyTitle')}</h2>
+            <p className="text-lg text-gray-600">{t('about.privacySubtitle')}</p>
           </div>
 
           <div className="space-y-4 text-gray-700 leading-relaxed">
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="text-base font-semibold text-gray-900 mb-2">我们可能会收集什么</h3>
+              <h3 className="text-base font-semibold text-gray-900 mb-2">{t('about.privacyCollectTitle')}</h3>
               <ul className="list-disc pl-5 space-y-1 text-sm">
-                <li>账户信息：邮箱（用于登录/验证）、公开展示的昵称与头像（如你填写）。</li>
-                <li>使用数据：收藏、评论、提交工具等与你主动操作相关的数据。</li>
-                <li>基础日志：用于排查错误、保障服务稳定（不用于向第三方售卖）。</li>
+                <li>{t('about.privacyCollect1')}</li>
+                <li>{t('about.privacyCollect2')}</li>
+                <li>{t('about.privacyCollect3')}</li>
               </ul>
             </div>
 
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="text-base font-semibold text-gray-900 mb-2">我们如何使用这些信息</h3>
+              <h3 className="text-base font-semibold text-gray-900 mb-2">{t('about.privacyUseTitle')}</h3>
               <ul className="list-disc pl-5 space-y-1 text-sm">
-                <li>提供核心功能：登录、收藏、评论、提交与审核流程。</li>
-                <li>提升体验：优化搜索/筛选、修复错误、改进性能。</li>
+                <li>{t('about.privacyUse1')}</li>
+                <li>{t('about.privacyUse2')}</li>
               </ul>
             </div>
 
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="text-base font-semibold text-gray-900 mb-2">数据存储与第三方</h3>
+              <h3 className="text-base font-semibold text-gray-900 mb-2">{t('about.privacyStorageTitle')}</h3>
               <p className="text-sm">
-                我们使用第三方基础设施（例如数据库/对象存储）来托管必要数据。外链工具官网由其自身隐私政策与条款约束。
+                {t('about.privacyStorageDesc')}
               </p>
             </div>
 
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="text-base font-semibold text-gray-900 mb-2">联系我们</h3>
+              <h3 className="text-base font-semibold text-gray-900 mb-2">{t('about.contactUs')}</h3>
               <p className="text-sm">
-                如需删除账户或数据导出，请通过微信 <span className="font-medium text-gray-900">fuyesq168</span> 联系我们。
+                {t('about.privacyContactDesc')}
               </p>
-              <p className="text-xs text-gray-500 mt-2">提示：本页面为简版说明，后续会持续完善。</p>
+              <p className="text-xs text-gray-500 mt-2">{t('about.privacyNote')}</p>
             </div>
           </div>
         </div>
@@ -548,31 +550,31 @@ const AboutPage = React.memo(() => {
       <section id="terms" className="scroll-mt-24 py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">服务条款（简版）</h2>
-            <p className="text-lg text-gray-600">在使用前，建议快速浏览以下要点。</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">{t('about.termsTitle')}</h2>
+            <p className="text-lg text-gray-600">{t('about.termsSubtitle')}</p>
           </div>
 
           <div className="space-y-4 text-gray-700 leading-relaxed">
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="text-base font-semibold text-gray-900 mb-2">定位与免责声明</h3>
+              <h3 className="text-base font-semibold text-gray-900 mb-2">{t('about.termsDisclaimerTitle')}</h3>
               <ul className="list-disc pl-5 space-y-1 text-sm">
-                <li>TumuAI.net 提供工具导航与信息聚合，不对第三方工具的功能、合规性或可用性作出保证。</li>
-                <li>访问第三方网站/服务产生的风险与费用由用户自行承担。</li>
+                <li>{t('about.termsDisclaimer1')}</li>
+                <li>{t('about.termsDisclaimer2')}</li>
               </ul>
             </div>
 
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="text-base font-semibold text-gray-900 mb-2">用户共建与内容规范</h3>
+              <h3 className="text-base font-semibold text-gray-900 mb-2">{t('about.termsContentTitle')}</h3>
               <ul className="list-disc pl-5 space-y-1 text-sm">
-                <li>提交工具/评论请确保信息真实、合法、无侵权。</li>
-                <li>我们保留对提交内容进行编辑、下架、拒绝收录的权利（例如失效链接、明显误导、侵权或不适内容）。</li>
+                <li>{t('about.termsContent1')}</li>
+                <li>{t('about.termsContent2')}</li>
               </ul>
             </div>
 
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="text-base font-semibold text-gray-900 mb-2">条款更新</h3>
-              <p className="text-sm">我们可能会根据功能更新与合规要求调整条款，并在本页同步更新。</p>
-              <p className="text-xs text-gray-500 mt-2">提示：本页面为简版说明，后续会持续完善。</p>
+              <h3 className="text-base font-semibold text-gray-900 mb-2">{t('about.termsUpdateTitle')}</h3>
+              <p className="text-sm">{t('about.termsUpdateDesc')}</p>
+              <p className="text-xs text-gray-500 mt-2">{t('about.privacyNote')}</p>
             </div>
           </div>
         </div>
@@ -580,13 +582,13 @@ const AboutPage = React.memo(() => {
 
       <section id="contact" className="scroll-mt-24 py-16 bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">联系我们</h2>
-          <p className="text-lg text-gray-600 mb-8">有建议、合作或问题反馈？欢迎微信联系或在 GitHub 提交 Issue/PR。</p>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">{t('about.contactUs')}</h2>
+          <p className="text-lg text-gray-600 mb-8">{t('about.contactSubtitle')}</p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <div className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-white border border-gray-200 text-gray-700 shadow-sm">
               <MessageSquare className="w-5 h-5" />
-              <span>微信：fuyesq168</span>
+              <span>{t('about.wechat')}: fuyesq168</span>
             </div>
             <a
               href="https://github.com/gugug168/tumuai"
@@ -604,7 +606,7 @@ const AboutPage = React.memo(() => {
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-white border border-gray-200 text-gray-700 hover:text-blue-700 hover:border-blue-200 transition-colors shadow-sm"
             >
               <Globe className="w-5 h-5" />
-              <span>官网</span>
+              <span>{t('about.website')}</span>
             </a>
           </div>
 
@@ -612,25 +614,25 @@ const AboutPage = React.memo(() => {
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2 text-gray-900 font-semibold">
                 <Bug className="w-5 h-5 text-blue-700" />
-                反馈问题
+                {t('about.feedbackTitle')}
               </div>
               <p className="mt-2 text-gray-600 text-sm leading-relaxed">
-                发现链接失效、描述不准确、分类不合理？欢迎提交反馈，我们会持续修正。
+                {t('about.feedbackDesc')}
               </p>
             </div>
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2 text-gray-900 font-semibold">
                 <GitPullRequest className="w-5 h-5 text-blue-700" />
-                提交 PR
+                {t('about.prTitle')}
               </div>
-              <p className="mt-2 text-gray-600 text-sm leading-relaxed">你也可以在 GitHub 直接提交 PR，共建分类、文案与功能改进。</p>
+              <p className="mt-2 text-gray-600 text-sm leading-relaxed">{t('about.prDesc')}</p>
             </div>
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2 text-gray-900 font-semibold">
                 <MessageSquare className="w-5 h-5 text-blue-700" />
-                合作共创
+                {t('about.collabTitle')}
               </div>
-              <p className="mt-2 text-gray-600 text-sm leading-relaxed">若你是工具作者或团队，欢迎联系：我们可以一起完善介绍与案例展示。</p>
+              <p className="mt-2 text-gray-600 text-sm leading-relaxed">{t('about.collabDesc')}</p>
             </div>
           </div>
         </div>
