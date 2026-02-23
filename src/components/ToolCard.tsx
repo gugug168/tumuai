@@ -154,7 +154,7 @@ const ToolCard = React.memo(({
             )}
           </div>
           <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">
-            {tool.tagline || tool.description || '专业的土木工程工具'}
+            {tool.tagline || tool.description || t('toolCard.defaultTagline')}
           </p>
         </div>
 
@@ -166,7 +166,7 @@ const ToolCard = React.memo(({
               <span className="text-sm font-medium text-gray-700">
                 {tool.review_count && tool.review_count > 0
                   ? tool.rating?.toFixed(1) || '4.5'
-                  : '新工具'}
+                  : t('toolCard.newTool')}
               </span>
             </div>
             <span className="text-xs text-gray-500">{translatePricing(tool.pricing, lang)}</span>
@@ -187,7 +187,7 @@ const ToolCard = React.memo(({
               active:scale-90
               ${favoriteAnimating ? 'animate-heart-pop' : ''}
             `}
-            aria-label={isFavorited ? '取消收藏' : '添加收藏'}
+            aria-label={isFavorited ? t('common.unfavorite') : t('common.favorite')}
             aria-pressed={isFavorited}
             type="button"
           >
@@ -205,7 +205,7 @@ const ToolCard = React.memo(({
                      hover:bg-blue-700 active:bg-blue-800 active:scale-95
                      transition-all duration-200 inline-block"
           >
-            查看详情
+            {t('toolCard.viewDetails')}
           </Link>
         </div>
       </article>
@@ -264,7 +264,7 @@ const ToolCard = React.memo(({
               focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
               ${favoriteAnimating ? 'animate-heart-pop' : ''}
             `}
-            aria-label={isFavorited ? '取消收藏' : '添加收藏'}
+            aria-label={isFavorited ? t('common.unfavorite') : t('common.favorite')}
             aria-pressed={isFavorited}
             type="button"
           >
@@ -284,18 +284,18 @@ const ToolCard = React.memo(({
             <span className="text-xs font-medium text-gray-700">
               {tool.review_count && tool.review_count > 0
                 ? tool.rating?.toFixed(1) || '4.5'
-                : '新工具'}
+                : t('toolCard.newTool')}
             </span>
           </div>
         </div>
 
         <p className="text-gray-600 text-sm mb-3 leading-relaxed line-clamp-2">
-          {tool.tagline || tool.description || '专业的土木工程工具'}
+          {tool.tagline || tool.description || t('toolCard.defaultTagline')}
         </p>
 
         <div className="mb-3">
           <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-xs font-medium">
-            {translateCategory(tool.categories?.[0] || '', lang) || '未分类'}
+            {translateCategory(tool.categories?.[0] || '', lang) || t('common.uncategorized')}
           </span>
         </div>
 
@@ -345,7 +345,7 @@ const ToolCard = React.memo(({
             group-hover:shadow
           "
         >
-          查看详情
+          {t('toolCard.viewDetails')}
           <ChevronRight className="ml-1 w-4 h-4 group-hover:translate-x-0.5 transition-transform duration-200" />
         </Link>
       </div>

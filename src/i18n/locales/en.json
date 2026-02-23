@@ -21,7 +21,13 @@
     "loadingPage": "Loading...",
     "pleaseWait": "Please wait while we get things ready...",
     "reload": "Reload",
-    "backToTop": "Back to top"
+    "backToTop": "Back to top",
+    "newTool": "New",
+    "uncategorized": "Uncategorized",
+    "viewDetails": "View Details",
+    "favorite": "Favorite",
+    "unfavorite": "Unfavorite",
+    "free": "Free"
   },
   "footer": {
     "description": "A curated directory of AI and productivity tools for civil engineers — helping you work faster and smarter.",
@@ -37,8 +43,7 @@
     "userGuide": "Guide",
     "privacy": "Privacy",
     "terms": "Terms",
-    "faq": "FAQ"
-    ,
+    "faq": "FAQ",
     "copyright": "© 2026 TumuAI.net. All rights reserved.",
     "motto": "For every civil engineer · Embrace the AI era together"
   },
@@ -46,8 +51,7 @@
     "defaultTitle": "TumuAI - AI tools directory for civil engineers",
     "defaultDescription": "Discover the best AI and productivity tools for civil engineering: structural design, BIM, construction management, cost estimation and more.",
     "defaultKeywords": "civil engineering,AI tools,structural design,BIM,construction management,cost estimation,engineering tools directory"
-  }
-  ,
+  },
   "hero": {
     "subtitle": "AI tools for civil engineers",
     "descLine1Prefix": "Curated tools for",
@@ -64,12 +68,142 @@
     "statsTools": "Tools",
     "statsCategories": "Categories",
     "statsUpdated": "Updated"
-  }
-  ,
+  },
   "notFound": {
     "title": "Page not found",
-    "description": "The page you’re looking for may have moved or been removed. You can go back home or continue browsing tools.",
+    "description": "The page you're looking for may have moved or been removed. You can go back home or continue browsing tools.",
     "backHome": "Go home",
     "browseTools": "Browse tools"
+  },
+  "tools": {
+    "title": "AI Tools for Civil Engineers",
+    "subtitle": "Discover and explore professional tools",
+    "searchPlaceholder": "Search tools...",
+    "filterByCategory": "Filter by category",
+    "filterByPricing": "Pricing",
+    "filterByFeature": "Features",
+    "sortBy": "Sort by",
+    "sortViews": "Most viewed",
+    "sortUpvotes": "Most upvoted",
+    "sortNewest": "Newest",
+    "sortRating": "Highest rated",
+    "allCategories": "All Categories",
+    "allPricing": "All Pricing",
+    "noResults": "No tools found",
+    "noResultsHint": "Try adjusting your filters or search terms",
+    "loadMore": "Load more",
+    "resultsCount": "{{count}} tools found",
+    "gridView": "Grid view",
+    "listView": "List view",
+    "clearFilters": "Clear filters"
+  },
+  "toolCard": {
+    "defaultTagline": "Professional civil engineering tool",
+    "newTool": "New",
+    "viewDetails": "View Details",
+    "views": "views",
+    "reviews": "reviews"
+  },
+  "toolDetail": {
+    "visitWebsite": "Visit Website",
+    "pricing": "Pricing",
+    "toolTags": "Tags",
+    "toolInfo": "Information",
+    "mainCategory": "Main Category",
+    "otherCategories": "Other Categories",
+    "dateAdded": "Date Added",
+    "lastUpdated": "Last Updated",
+    "screenshots": "Screenshots",
+    "features": "Key Features",
+    "relatedTools": "Related Tools",
+    "relatedToolsHint": "Other quality tools in the same category",
+    "reviews": "Reviews",
+    "noReviews": "No reviews yet",
+    "writeReview": "Write a review",
+    "free": "Free",
+    "freemium": "Freemium",
+    "trial": "Trial",
+    "paid": "Paid",
+    "basicPlan": "Basic",
+    "contactUs": "Contact us",
+    "permanent": "Permanent",
+    "monthly": "Monthly",
+    "basicFeatures": "Basic features",
+    "standardSupport": "Standard support",
+    "copyLink": "Copy Link",
+    "noWebsite": "No website available",
+    "pageNav": "Page Navigation",
+    "about": "About",
+    "views": "Views",
+    "recommended": "Recommended"
+  },
+  "submit": {
+    "title": "Submit Your Tool",
+    "subtitle": "Share your AI tool with the civil engineering community",
+    "step1": "Basic Info",
+    "step2": "Details",
+    "step3": "Pricing",
+    "toolName": "Tool Name",
+    "toolNamePlaceholder": "Enter the tool name",
+    "websiteUrl": "Website URL",
+    "websiteUrlPlaceholder": "https://example.com",
+    "tagline": "Tagline",
+    "taglinePlaceholder": "Brief description (max 100 characters)",
+    "description": "Description",
+    "descriptionPlaceholder": "Detailed description of the tool...",
+    "categories": "Categories",
+    "selectCategories": "Select categories",
+    "features": "Features",
+    "featuresPlaceholder": "Enter features, press Enter to add",
+    "pricing": "Pricing Model",
+    "selectPricing": "Select pricing",
+    "logoUrl": "Logo URL",
+    "logoUrlPlaceholder": "https://example.com/logo.png",
+    "submit": "Submit Tool",
+    "submitting": "Submitting...",
+    "success": "Tool submitted successfully!",
+    "successMessage": "Your tool has been submitted for review. We'll notify you once it's approved.",
+    "error": "Submission failed",
+    "errorMessage": "Please try again later",
+    "validation": {
+      "nameRequired": "Tool name is required",
+      "urlRequired": "Website URL is required",
+      "urlInvalid": "Please enter a valid URL",
+      "taglineRequired": "Tagline is required",
+      "taglineTooLong": "Tagline must be 100 characters or less"
+    }
+  },
+  "about": {
+    "title": "About TumuAI",
+    "subtitle": "Your trusted AI tools directory for civil engineering",
+    "mission": "Our Mission",
+    "missionText": "To help civil engineers discover and adopt AI tools that improve productivity and design quality.",
+    "vision": "Our Vision",
+    "visionText": "To become the go-to platform for civil engineers seeking AI-powered solutions.",
+    "stats": {
+      "tools": "AI Tools",
+      "categories": "Categories",
+      "users": "Users",
+      "monthlyVisits": "Monthly Visits"
+    },
+    "contact": "Contact Us",
+    "email": "Email",
+    "wechat": "WeChat"
+  },
+  "profile": {
+    "title": "My Profile",
+    "favorites": "My Favorites",
+    "noFavorites": "No favorites yet",
+    "noFavoritesHint": "Browse tools and click the heart icon to save them here",
+    "browseTools": "Browse Tools",
+    "settings": "Settings",
+    "language": "Language",
+    "account": "Account"
+  },
+  "pricing": {
+    "free": "Free",
+    "freemium": "Freemium",
+    "paid": "Paid",
+    "trial": "Trial"
   }
 }

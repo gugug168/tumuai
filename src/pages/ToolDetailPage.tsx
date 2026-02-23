@@ -569,7 +569,7 @@ const ToolDetailPage = () => {
                   rel="noopener noreferrer"
                   className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center"
                 >
-                  访问官网
+                  {t('toolDetail.visitWebsite')}
                   <ExternalLink className="ml-2 w-4 h-4" />
                 </a>
               ) : (
@@ -578,7 +578,7 @@ const ToolDetailPage = () => {
                   disabled
                   className="bg-gray-200 text-gray-600 px-6 py-3 rounded-lg font-semibold flex items-center justify-center cursor-not-allowed"
                 >
-                  官网加载中...
+                  {t('common.loadingPage')}
                 </button>
               )}
               <div className="grid grid-cols-2 gap-3">
@@ -590,7 +590,7 @@ const ToolDetailPage = () => {
                     normalizedWebsiteUrl ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                   }`}
                 >
-                  复制链接
+                  {t('toolDetail.copyLink')}
                 </button>
                 <button
                   onClick={handleToggleFavorite}
@@ -604,7 +604,7 @@ const ToolDetailPage = () => {
                   <Heart
                     className={`mr-2 w-4 h-4 ${isFavoritedTool ? 'fill-current text-red-500' : ''}`}
                   />
-                  {loadingFavorite ? '处理中...' : isFavoritedTool ? '已收藏' : '收藏'}
+                  {loadingFavorite ? '...' : isFavoritedTool ? t('common.unfavorite') : t('common.favorite')}
                 </button>
               </div>
             </div>
@@ -797,7 +797,7 @@ const ToolDetailPage = () => {
                     rel="noopener noreferrer"
                     className="bg-blue-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center"
                   >
-                    访问官网
+                    {t('toolDetail.visitWebsite')}
                     <ExternalLink className="ml-2 w-4 h-4" />
                   </a>
                 ) : (
@@ -806,7 +806,7 @@ const ToolDetailPage = () => {
                     disabled
                     className="bg-gray-200 text-gray-600 px-4 py-3 rounded-lg font-semibold flex items-center justify-center cursor-not-allowed w-full"
                   >
-                    暂无官网链接
+                    {t('toolDetail.noWebsite')}
                   </button>
                 )}
 
@@ -821,7 +821,7 @@ const ToolDetailPage = () => {
                         : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                     }`}
                   >
-                    复制链接
+                    {t('toolDetail.copyLink')}
                   </button>
                   <button
                     onClick={handleToggleFavorite}
@@ -831,7 +831,7 @@ const ToolDetailPage = () => {
                     } ${loadingFavorite ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <Heart className={`mr-2 w-4 h-4 ${isFavoritedTool ? 'fill-current text-red-500' : ''}`} />
-                    {loadingFavorite ? '处理中...' : isFavoritedTool ? '已收藏' : '收藏'}
+                    {loadingFavorite ? '...' : isFavoritedTool ? t('common.unfavorite') : t('common.favorite')}
                   </button>
                 </div>
 
@@ -841,14 +841,14 @@ const ToolDetailPage = () => {
               </div>
 
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">页面导航</h3>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('toolDetail.pageNav')}</h3>
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { href: '#screenshots', label: '截图' },
-                    { href: '#tags', label: '功能' },
-                    { href: '#about', label: '介绍' },
-                    { href: '#pricing', label: '定价' },
-                    { href: '#reviews', label: '评价' }
+                    { href: '#screenshots', label: t('toolDetail.screenshots') },
+                    { href: '#tags', label: t('toolDetail.toolTags') },
+                    { href: '#about', label: t('toolDetail.about') },
+                    { href: '#pricing', label: t('toolDetail.pricing') },
+                    { href: '#reviews', label: t('toolDetail.reviews') }
                   ].map((item) => (
                     <a
                       key={item.href}
@@ -864,7 +864,7 @@ const ToolDetailPage = () => {
 
             {/* 定价信息 */}
             <div id="pricing" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 scroll-mt-24">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">定价方案</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-6">{t('toolDetail.pricing')}</h3>
               <div className="space-y-4">
                 {adaptedTool.pricing.map((plan, index) => (
                   <div
@@ -900,7 +900,7 @@ const ToolDetailPage = () => {
 
             {/* 工具标签 */}
             <div id="tags" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 scroll-mt-24">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">工具标签</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-4">{t('toolDetail.toolTags')}</h3>
               <div className="flex flex-wrap gap-2">
                 {/* 优先显示分类标签 */}
                 {tool.categories.map((category, index) => (
@@ -929,28 +929,28 @@ const ToolDetailPage = () => {
 
             {/* 工具信息 */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">工具信息</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-4">{t('toolDetail.toolInfo')}</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">主分类</span>
-                  <span className="font-medium text-gray-900">{translateCategory(tool.categories[0] || '', lang) || '未分类'}</span>
+                  <span className="text-gray-600">{t('toolDetail.mainCategory')}</span>
+                  <span className="font-medium text-gray-900">{translateCategory(tool.categories[0] || '', lang) || t('common.uncategorized')}</span>
                 </div>
                 {tool.categories.length > 1 && (
                   <div className="flex justify-between">
-                    <span className="text-gray-600">其他分类</span>
+                    <span className="text-gray-600">{t('toolDetail.otherCategories')}</span>
                     <span className="font-medium text-gray-900">{translateCategories(tool.categories.slice(1), lang).join(', ')}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-gray-600">收录时间</span>
+                  <span className="text-gray-600">{t('toolDetail.dateAdded')}</span>
                   <span className="font-medium text-gray-900">{adaptedTool.addedDate}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">最后更新</span>
+                  <span className="text-gray-600">{t('toolDetail.lastUpdated')}</span>
                   <span className="font-medium text-gray-900">{adaptedTool.lastUpdated}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">浏览量</span>
+                  <span className="text-gray-600">{t('toolDetail.views')}</span>
                   <span className="font-medium text-gray-900">{adaptedTool.views.toLocaleString()}</span>
                 </div>
               </div>
@@ -961,8 +961,8 @@ const ToolDetailPage = () => {
         {/* 相关工具推荐 */}
         <div className="mt-12">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">相关工具推荐</h2>
-            <p className="text-gray-600 mb-6">与当前工具同属"{adaptedTool.category}"分类的其他优质工具</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('toolDetail.relatedTools')}</h2>
+            <p className="text-gray-600 mb-6">{t('toolDetail.relatedToolsHint')}</p>
             
             {loadingRelated ? (
               <div className="flex justify-center items-center py-12">
