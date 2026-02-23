@@ -42,7 +42,7 @@ const Footer = () => {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold group-hover:text-blue-400 transition-colors">TumuAI.net</h3>
-                  <p className="text-sm text-gray-400">专业土木AI工具平台</p>
+                  <p className="text-sm text-gray-400">{t('app.tagline')}</p>
                 </div>
               </Link>
               <p className="text-gray-400 mb-6 max-w-md leading-relaxed">

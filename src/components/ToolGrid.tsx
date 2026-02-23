@@ -1,6 +1,7 @@
 import React, { useMemo, useCallback, useRef, useEffect } from 'react';
 import { Search, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
+import { useTranslation } from 'react-i18next';
 import ToolCard from './ToolCard';
 import type { Tool } from '../types';
 
@@ -50,7 +51,7 @@ interface ToolGridProps {
   enableVirtualScroll?: boolean; // 是否启用虚拟滚动
 }
 
-const ToolGrid = React.memo<ToolGridProps>(({ 
+const ToolGrid = React.memo<ToolGridProps>(({
   totalCount,
   allTools,
   loading = false,
@@ -70,6 +71,7 @@ const ToolGrid = React.memo<ToolGridProps>(({
   hasMore = false,
   enableVirtualScroll = false
 }) => {
+  const { t } = useTranslation();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const preloadTriggeredRef = useRef(false); // 使用 ref 避免重复触发
   const loadMoreTriggeredRef = useRef(false); // 无限滚动加载标记
@@ -171,13 +173,13 @@ const ToolGrid = React.memo<ToolGridProps>(({
     if (searchQuery) {
       return (
         <>
-          找到 {countText} 个包含 "<span className="font-semibold">{searchQuery}</span>" 的工具
+          {t('toolGrid.found')} {countText} {t('tools.resultsCount', { count: '' }).replace('{{count}}', '').trim()} "<span className="font-semibold">{searchQuery}</span>"
         </>
       );
     }
 
-    return <>找到 {countText} 个工具</>;
-  }, [totalCount, searchQuery]);
+    return <>{t('toolGrid.found')} {countText} {t('tools.resultsCount', { count: '' }).replace('{{count}}', '').trim()}</>;
+  }, [totalCount, searchQuery, t]);
 
   // 空状态
   if (displayTools.length === 0) {
@@ -187,7 +189,7 @@ const ToolGrid = React.memo<ToolGridProps>(({
           <div className="flex justify-center">
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
           </div>
-          <p className="mt-4 text-gray-600">正在加载工具…</p>
+          <p className="mt-4 text-gray-600">{t('toolGrid.loading')}</p>
         </div>
       );
     }
@@ -195,16 +197,16 @@ const ToolGrid = React.memo<ToolGridProps>(({
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
         <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">未找到匹配的工具</h3>
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('toolGrid.noResults')}</h3>
         <p className="text-gray-600 mb-6">
-          尝试调整筛选条件或搜索关键词
+          {t('toolGrid.noResultsHint')}
         </p>
         {onClearFilters && (
           <button
             onClick={onClearFilters}
             className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
           >
-            清除筛选条件
+            {t('toolGrid.clearFilters')}
           </button>
         )}
       </div>
@@ -221,7 +223,7 @@ const ToolGrid = React.memo<ToolGridProps>(({
             {resultsSummary}
             {totalCount > displayTools.length && (
               <span className="ml-2 text-gray-500">
-                (已加载 {displayTools.length} / {totalCount} 个)
+                ({t('toolGrid.loaded', { loaded: displayTools.length, total: totalCount })})
               </span>
             )}
           </p>
@@ -256,7 +258,7 @@ const ToolGrid = React.memo<ToolGridProps>(({
                 </div>
               ) : hasMore ? (
                 <div className="col-span-full py-4 text-center text-gray-500 text-sm">
-                  下拉加载更多
+                  {t('toolGrid.scrollLoadMore')}
                 </div>
               ) : null
             )
@@ -268,7 +270,7 @@ const ToolGrid = React.memo<ToolGridProps>(({
           <button
             onClick={scrollToTop}
             className="fixed bottom-8 right-8 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
-            aria-label="返回顶部"
+            aria-label={t('toolGrid.backToTop')}
           >
             <ChevronLeft className="w-5 h-5 transform rotate-90" />
           </button>
@@ -287,7 +289,7 @@ const ToolGrid = React.memo<ToolGridProps>(({
             {resultsSummary}
             {totalCount > displayTools.length && (
               <span className="ml-2 text-gray-500">
-                (已加载 {displayTools.length} / {totalCount} 个)
+                ({t('toolGrid.loaded', { loaded: displayTools.length, total: totalCount })})
               </span>
             )}
           </p>
@@ -319,7 +321,7 @@ const ToolGrid = React.memo<ToolGridProps>(({
                 </div>
               ) : hasMore ? (
                 <div className="py-4 text-center text-gray-500 text-sm">
-                  下拉加载更多
+                  {t('toolGrid.scrollLoadMore')}
                 </div>
               ) : null
             )
@@ -331,7 +333,7 @@ const ToolGrid = React.memo<ToolGridProps>(({
           <button
             onClick={scrollToTop}
             className="fixed bottom-8 right-8 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
-            aria-label="返回顶部"
+            aria-label={t('toolGrid.backToTop')}
           >
             <ChevronLeft className="w-5 h-5 transform rotate-90" />
           </button>
@@ -348,7 +350,7 @@ const ToolGrid = React.memo<ToolGridProps>(({
           {resultsSummary}
           {totalPages > 1 && (
             <span className="ml-2 text-gray-500">
-              (第 {currentPage}/{totalPages} 页)
+              ({t('toolGrid.page', { current: currentPage, total: totalPages })})
             </span>
           )}
         </p>
@@ -360,27 +362,26 @@ const ToolGrid = React.memo<ToolGridProps>(({
               onClick={handlePreviousPage}
               disabled={currentPage === 1}
               className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300 transition-all duration-200 shadow-sm hover:shadow"
-              aria-label="上一页"
+              aria-label={t('toolGrid.previousPage')}
             >
               <ChevronLeft className="w-4 h-4 mr-1" />
-              上一页
+              {t('toolGrid.previousPage')}
             </button>
 
             {/* 页码显示 */}
             <div className="flex items-center px-4 py-2 bg-blue-50 rounded-lg font-medium text-blue-700">
-              <span className="text-sm">第</span>
-              <span className="mx-1 font-bold">{currentPage}</span>
-              <span className="text-sm">/ {totalPages}</span>
-              <span className="text-sm">页</span>
+              <span className="font-bold">{currentPage}</span>
+              <span className="mx-1">/</span>
+              <span>{totalPages}</span>
             </div>
 
             <button
               onClick={handleNextPage}
               disabled={currentPage === totalPages}
               className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300 transition-all duration-200 shadow-sm hover:shadow"
-              aria-label="下一页"
+              aria-label={t('toolGrid.nextPage')}
             >
-              下一页
+              {t('toolGrid.nextPage')}
               <ChevronRight className="w-4 h-4 ml-1" />
             </button>
           </div>
@@ -411,26 +412,25 @@ const ToolGrid = React.memo<ToolGridProps>(({
               onClick={handlePreviousPage}
               disabled={currentPage === 1}
               className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300 transition-all duration-200 shadow-sm hover:shadow"
-              aria-label="上一页"
+              aria-label={t('toolGrid.previousPage')}
             >
               <ChevronLeft className="w-4 h-4 mr-1" />
-              上一页
+              {t('toolGrid.previousPage')}
             </button>
 
             <div className="flex items-center px-4 py-2 bg-blue-50 rounded-lg font-medium text-blue-700">
-              <span className="text-sm">第</span>
-              <span className="mx-1 font-bold">{currentPage}</span>
-              <span className="text-sm">/ {totalPages}</span>
-              <span className="text-sm">页</span>
+              <span className="font-bold">{currentPage}</span>
+              <span className="mx-1">/</span>
+              <span>{totalPages}</span>
             </div>
 
             <button
               onClick={handleNextPage}
               disabled={currentPage === totalPages}
               className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300 transition-all duration-200 shadow-sm hover:shadow"
-              aria-label="下一页"
+              aria-label={t('toolGrid.nextPage')}
             >
-              下一页
+              {t('toolGrid.nextPage')}
               <ChevronRight className="w-4 h-4 ml-1" />
             </button>
           </div>

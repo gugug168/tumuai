@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import { FileText, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface ToolFormStepBasicInfoProps {
   formData: {
@@ -28,6 +29,8 @@ const ToolFormStepBasicInfo = React.memo<ToolFormStepBasicInfoProps>(({
   isCurrent,
   onChange
 }) => {
+  const { t } = useTranslation();
+
   const getInputClassName = useCallback((fieldName: string) => {
     const baseClass = "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ";
     const errorClass = errors[fieldName]
@@ -46,17 +49,17 @@ const ToolFormStepBasicInfo = React.memo<ToolFormStepBasicInfoProps>(({
         }`}>
           {isCompleted ? <Check className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
         </div>
-        <h3 className="text-lg font-semibold text-gray-900">基本信息</h3>
+        <h3 className="text-lg font-semibold text-gray-900">{t('submit.step2')}</h3>
         {isCompleted && (
           <span className="ml-auto text-sm text-green-600 flex items-center">
-            <Check className="w-4 h-4 mr-1" /> 已完成
+            <Check className="w-4 h-4 mr-1" /> {t('submit.completed')}
           </span>
         )}
       </div>
 
       <div className="max-w-md">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          工具名称 *
+          {t('submit.toolName')} *
         </label>
         <input
           type="text"
@@ -64,7 +67,7 @@ const ToolFormStepBasicInfo = React.memo<ToolFormStepBasicInfoProps>(({
           value={formData.toolName}
           onChange={onChange}
           className={getInputClassName('toolName')}
-          placeholder="例如：StructuralGPT"
+          placeholder={t('submit.toolNamePlaceholder')}
         />
         {errors.toolName && (
           <p className="mt-1 text-sm text-red-600">{errors.toolName}</p>
@@ -73,7 +76,7 @@ const ToolFormStepBasicInfo = React.memo<ToolFormStepBasicInfoProps>(({
 
       <div className="mt-6 max-w-md">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          一句话简介 * <span className="text-gray-500">(少于100字)</span>
+          {t('submit.tagline')} * <span className="text-gray-500">({t('submit.taglineLimit')})</span>
         </label>
         <input
           type="text"
@@ -82,7 +85,7 @@ const ToolFormStepBasicInfo = React.memo<ToolFormStepBasicInfoProps>(({
           onChange={onChange}
           maxLength={100}
           className={getInputClassName('shortDescription')}
-          placeholder="简洁描述工具的核心功能和价值"
+          placeholder={t('submit.taglinePlaceholder')}
         />
         <div className="flex justify-between mt-1">
           {errors.shortDescription ? (
@@ -96,7 +99,7 @@ const ToolFormStepBasicInfo = React.memo<ToolFormStepBasicInfoProps>(({
 
       <div className="mt-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          详细描述 (选填)
+          {t('submit.description')} ({t('submit.optional')})
         </label>
         <textarea
           name="detailedDescription"
@@ -104,7 +107,7 @@ const ToolFormStepBasicInfo = React.memo<ToolFormStepBasicInfoProps>(({
           onChange={onChange}
           rows={4}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-gray-400 transition-all duration-200 bg-white text-gray-900 placeholder-gray-500"
-          placeholder="详细描述工具的功能、特点、使用场景等..."
+          placeholder={t('submit.descriptionPlaceholder')}
         />
       </div>
     </div>

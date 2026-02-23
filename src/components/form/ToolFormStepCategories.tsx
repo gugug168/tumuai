@@ -1,5 +1,6 @@
 import React from 'react';
 import { Tag, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface ToolFormStepCategoriesProps {
   formData: {
@@ -32,6 +33,8 @@ const ToolFormStepCategories = React.memo<ToolFormStepCategoriesProps>(({
   onCategoryChange,
   onChange
 }) => {
+  const { t } = useTranslation();
+
   return (
     <div className={`p-8 border-b transition-all duration-300 ${
       isCurrent ? 'border-blue-200 bg-blue-50/30' : 'border-gray-200'
@@ -42,22 +45,22 @@ const ToolFormStepCategories = React.memo<ToolFormStepCategoriesProps>(({
         }`}>
           {isCompleted ? <Check className="w-4 h-4" /> : <Tag className="w-4 h-4" />}
         </div>
-        <h3 className="text-lg font-semibold text-gray-900">分类和功能</h3>
+        <h3 className="text-lg font-semibold text-gray-900">{t('submit.categoriesFeatures')}</h3>
         {isCompleted && (
           <span className="ml-auto text-sm text-green-600 flex items-center">
-            <Check className="w-4 h-4 mr-1" /> 已完成
+            <Check className="w-4 h-4 mr-1" /> {t('submit.completed')}
           </span>
         )}
       </div>
 
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-3">
-          选择分类 * <span className="text-gray-500">(可多选)</span>
+          {t('submit.selectCategories')} * <span className="text-gray-500">({t('submit.multiSelect')})</span>
         </label>
         {categoriesLoading ? (
           <div className="flex items-center justify-center py-8 text-gray-500">
             <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
-            加载分类数据中...
+            {t('submit.loadingCategories')}
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -79,14 +82,14 @@ const ToolFormStepCategories = React.memo<ToolFormStepCategoriesProps>(({
         )}
         {!categoriesLoading && availableCategories.length === 0 && (
           <p className="mt-2 text-sm text-amber-600">
-            暂时无法获取分类数据，请稍后重试
+            {t('submit.categoriesError')}
           </p>
         )}
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          主要功能 (选填)
+          {t('submit.mainFeatures')} ({t('submit.optional')})
         </label>
         <input
           type="text"
@@ -94,7 +97,7 @@ const ToolFormStepCategories = React.memo<ToolFormStepCategoriesProps>(({
           value={formData.mainFeatures}
           onChange={onChange}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-gray-400 transition-all duration-200 bg-white text-gray-900 placeholder-gray-500"
-          placeholder="用逗号分隔，例如：AI优化, 参数化设计, 成本估算"
+          placeholder={t('submit.featuresPlaceholder')}
         />
       </div>
     </div>

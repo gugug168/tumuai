@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { X, Mail, Lock, User } from 'lucide-react'
 import { signIn, signUp } from '../lib/auth'
 import { useToast, createToastHelpers } from './Toast'
+import { useTranslation } from 'react-i18next'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -12,6 +13,7 @@ interface AuthModalProps {
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'login' }) => {
   const { showToast } = useToast()
   const toast = createToastHelpers(showToast)
+  const { t } = useTranslation()
   const [mode, setMode] = useState<'login' | 'register'>(initialMode)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -46,7 +48,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
         onClose()
       } else {
         if (formData.password !== formData.confirmPassword) {
-          setError('密码确认不匹配')
+          setError(t('auth.passwordMismatch'))
           return
         }
 
@@ -55,11 +57,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
           full_name: formData.full_name
         })
 
-        toast.success('注册成功', '请查看邮箱验证链接')
+        toast.success(t('auth.registerSuccess'), t('auth.checkEmail'))
         onClose()
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '操作失败，请重试')
+      setError(err instanceof Error ? err.message : t('auth.operationFailed'))
     } finally {
       setLoading(false)
     }
@@ -72,7 +74,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900">
-              {mode === 'login' ? '登录' : '注册'}
+              {mode === 'login' ? t('auth.login') : t('auth.register')}
             </h2>
             <button
               onClick={onClose}
@@ -94,7 +96,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
             {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                邮箱地址
+                {t('auth.email')}
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -106,7 +108,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
                   required
                   autoComplete="email"
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-                  placeholder="请输入邮箱地址"
+                  placeholder={t('auth.emailPlaceholder')}
                 />
               </div>
             </div>
@@ -116,7 +118,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
               <>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    用户名
+                    {t('auth.username')}
                   </label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -126,14 +128,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
                       value={formData.username}
                       onChange={handleInputChange}
                       className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-                      placeholder="请输入用户名"
+                      placeholder={t('auth.usernamePlaceholder')}
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    真实姓名
+                    {t('auth.fullName')}
                   </label>
                   <input
                     type="text"
@@ -141,14 +143,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
                     value={formData.full_name}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-                    placeholder="请输入真实姓名"
+                    placeholder={t('auth.fullNamePlaceholder')}
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      公司
+                      {t('auth.company')}
                     </label>
                     <input
                       type="text"
@@ -156,12 +158,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
                       value={formData.company}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-                      placeholder="公司名称"
+                      placeholder={t('auth.companyPlaceholder')}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      职位
+                      {t('auth.position')}
                     </label>
                     <input
                       type="text"
@@ -169,7 +171,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
                       value={formData.position}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-                      placeholder="职位"
+                      placeholder={t('auth.positionPlaceholder')}
                     />
                   </div>
                 </div>
@@ -179,7 +181,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
             {/* Password */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                密码
+                {t('auth.password')}
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -191,7 +193,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
                   required
                   autoComplete="current-password"
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-                  placeholder="请输入密码"
+                  placeholder={t('auth.passwordPlaceholder')}
                 />
               </div>
             </div>
@@ -200,7 +202,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
             {mode === 'register' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  确认密码
+                  {t('auth.confirmPassword')}
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -212,7 +214,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
                     required
                     autoComplete="new-password"
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-                    placeholder="请再次输入密码"
+                    placeholder={t('auth.confirmPasswordPlaceholder')}
                   />
                 </div>
               </div>
@@ -227,10 +229,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
               {loading ? (
                 <div className="flex items-center justify-center">
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  {mode === 'login' ? '登录中...' : '注册中...'}
+                  {mode === 'login' ? t('auth.loggingIn') : t('auth.registering')}
                 </div>
               ) : (
-                mode === 'login' ? '登录' : '注册'
+                mode === 'login' ? t('auth.login') : t('auth.register')
               )}
             </button>
           </form>
@@ -238,12 +240,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
           {/* Switch Mode */}
           <div className="mt-6 text-center">
             <p className="text-gray-600">
-              {mode === 'login' ? '还没有账号？' : '已有账号？'}
+              {mode === 'login' ? t('auth.noAccount') : t('auth.hasAccount')}
               <button
                 onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
                 className="text-blue-600 hover:text-blue-700 font-medium ml-1"
               >
-                {mode === 'login' ? '立即注册' : '立即登录'}
+                {mode === 'login' ? t('auth.signupNow') : t('auth.loginNow')}
               </button>
             </p>
           </div>

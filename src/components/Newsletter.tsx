@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Mail, Send, CheckCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const Newsletter = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -11,7 +13,7 @@ const Newsletter = () => {
     if (!email) return;
 
     setIsLoading(true);
-    
+
     // 模拟API调用
     setTimeout(() => {
       setIsSubscribed(true);
@@ -29,10 +31,10 @@ const Newsletter = () => {
               <CheckCircle className="w-16 h-16 text-green-500" />
             </div>
             <h3 className="text-2xl font-bold text-gray-900 mb-2">
-              订阅成功！
+              {t('newsletter.successTitle')}
             </h3>
             <p className="text-gray-600">
-              感谢您的订阅！我们会每周为您推送最新的土木工程AI工具和行业资讯。
+              {t('newsletter.successMessage')}
             </p>
           </div>
         </div>
@@ -49,13 +51,12 @@ const Newsletter = () => {
               <Mail className="w-8 h-8 text-blue-600" />
             </div>
           </div>
-          
+
           <h3 className="text-2xl font-bold text-gray-900 mb-4">
-            获取每周精选工具推荐
+            {t('newsletter.title')}
           </h3>
           <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
-            订阅我们的周刊，第一时间了解最新的土木工程AI工具、行业趋势和实用技巧。
-            每周精选5-10个优质工具，助力您的专业发展。
+            {t('newsletter.description')}
           </p>
 
           <form onSubmit={handleSubmit} className="max-w-md mx-auto">
@@ -65,7 +66,7 @@ const Newsletter = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="请输入您的邮箱地址"
+                  placeholder={t('newsletter.emailPlaceholder')}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-gray-900 placeholder-gray-500"
                 />
@@ -79,7 +80,7 @@ const Newsletter = () => {
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
-                    订阅
+                    {t('newsletter.subscribe')}
                     <Send className="ml-2 w-4 h-4" />
                   </>
                 )}
@@ -88,22 +89,22 @@ const Newsletter = () => {
           </form>
 
           <p className="text-xs text-gray-500 mt-4">
-            我们承诺不会向第三方分享您的邮箱地址，您可以随时取消订阅。
+            {t('newsletter.privacyNote')}
           </p>
 
           {/* 订阅统计 */}
           <div className="flex items-center justify-center space-x-8 mt-8 pt-6 border-t border-gray-200">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">5,000+</div>
-              <div className="text-sm text-gray-500">订阅用户</div>
+              <div className="text-sm text-gray-500">{t('newsletter.statsSubscribers')}</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">98%</div>
-              <div className="text-sm text-gray-500">满意度</div>
+              <div className="text-sm text-gray-500">{t('newsletter.statsSatisfaction')}</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">每周</div>
-              <div className="text-sm text-gray-500">更新频率</div>
+              <div className="text-2xl font-bold text-purple-600">{t('newsletter.statsFrequency')}</div>
+              <div className="text-sm text-gray-500">{t('newsletter.statsFrequencyLabel')}</div>
             </div>
           </div>
         </div>
