@@ -1,10 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Star, ChevronRight, Heart, Eye } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
 import ToolFallbackIcon from './ToolFallbackIcon';
 import { getBestDisplayLogoUrl } from '../lib/logoUtils';
 import { prefetchToolDetailPage } from '../lib/route-prefetch';
+import { translateCategory, translateFeature, translatePricing } from '../lib/translations';
 import type { Tool } from '../types';
 
 interface ToolCardProps {
@@ -33,6 +35,8 @@ const ToolCard = React.memo(({
   className = ''
 }: ToolCardProps) => {
   const navigate = useNavigate();
+  const { i18n, t } = useTranslation();
+  const lang = i18n.language;
   const [favoriteAnimating, setFavoriteAnimating] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const favoriteButtonRef = useRef<HTMLButtonElement>(null);
@@ -145,7 +149,7 @@ const ToolCard = React.memo(({
             </h3>
             {tool.categories && tool.categories[0] && (
               <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
-                {tool.categories[0]}
+                {translateCategory(tool.categories[0], lang)}
               </span>
             )}
           </div>
@@ -165,7 +169,7 @@ const ToolCard = React.memo(({
                   : '新工具'}
               </span>
             </div>
-            <span className="text-xs text-gray-500">{tool.pricing || '免费'}</span>
+            <span className="text-xs text-gray-500">{translatePricing(tool.pricing, lang)}</span>
           </div>
 
           {/* 收藏按钮 - 增强版 */}
@@ -291,7 +295,7 @@ const ToolCard = React.memo(({
 
         <div className="mb-3">
           <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-xs font-medium">
-            {tool.categories?.[0] || '未分类'}
+            {translateCategory(tool.categories?.[0] || '', lang) || '未分类'}
           </span>
         </div>
 
@@ -302,7 +306,7 @@ const ToolCard = React.memo(({
               key={index}
               className="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-xs transition-colors hover:bg-gray-200"
             >
-              {feature}
+              {translateFeature(feature, lang)}
             </span>
           ))}
         </div>
@@ -320,7 +324,7 @@ const ToolCard = React.memo(({
             </div>
           </div>
           <span className="text-xs font-medium text-blue-600">
-            {tool.pricing || '免费'}
+            {translatePricing(tool.pricing, lang)}
           </span>
         </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ExternalLink,
   Heart,
@@ -21,6 +22,7 @@ import { useToast, createToastHelpers } from '../components/Toast';
 import ScreenshotGallery, { type GalleryImage } from '../components/ScreenshotGallery';
 import ScreenshotViewer from '../components/ScreenshotViewer';
 import { parseScreenshotRegion, getRegionOrder } from '../components/screenshot-utils';
+import { translateCategory, translateFeature, translatePricing, translateCategories, translateFeatures } from '../lib/translations';
 import type { Tool } from '../types/index';
 
 interface Review {
@@ -38,6 +40,8 @@ const ToolDetailPage = () => {
   const toolIdAsString = toolId || '';
   const { showToast } = useToast();
   const toast = createToastHelpers(showToast);
+  const { i18n, t } = useTranslation();
+  const lang = i18n.language;
   const [selectedImage, setSelectedImage] = useState(0);
   const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
   const [isFavoritedTool, setIsFavoritedTool] = useState(false);
@@ -276,12 +280,19 @@ const ToolDetailPage = () => {
 
   const pricingLabel = useMemo(() => {
     const pricing = tool?.pricing;
+    if (lang === 'en') {
+      if (pricing === 'Free') return 'Free';
+      if (pricing === 'Freemium') return 'Freemium';
+      if (pricing === 'Trial') return 'Trial';
+      if (pricing === 'Paid') return 'Paid';
+      return '';
+    }
     if (pricing === 'Free') return '免费';
     if (pricing === 'Freemium') return '免费增值';
     if (pricing === 'Trial') return '可试用';
     if (pricing === 'Paid') return '付费';
     return '';
-  }, [tool?.pricing]);
+  }, [tool?.pricing, lang]);
 
   const normalizedWebsiteUrl = useMemo(() => {
     const raw = adaptedTool?.website?.trim();
@@ -878,7 +889,7 @@ const ToolDetailPage = () => {
                       {plan.features.map((feature, featureIndex) => (
                         <li key={featureIndex} className="flex items-center space-x-2">
                           <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          <span>{feature}</span>
+                          <span>{translateFeature(feature, lang)}</span>
                         </li>
                       ))}
                     </ul>
@@ -898,7 +909,7 @@ const ToolDetailPage = () => {
                     className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium flex items-center"
                   >
                     <Tag className="w-3 h-3 mr-1" />
-                    {category}
+                    {translateCategory(category, lang)}
                   </span>
                 ))}
                 {/* 其他功能标签 */}
@@ -910,7 +921,7 @@ const ToolDetailPage = () => {
                     className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm flex items-center"
                   >
                     <Tag className="w-3 h-3 mr-1" />
-                    {feature}
+                    {translateFeature(feature, lang)}
                   </span>
                 ))}
               </div>
@@ -922,12 +933,12 @@ const ToolDetailPage = () => {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">主分类</span>
-                  <span className="font-medium text-gray-900">{tool.categories[0] || '未分类'}</span>
+                  <span className="font-medium text-gray-900">{translateCategory(tool.categories[0] || '', lang) || '未分类'}</span>
                 </div>
                 {tool.categories.length > 1 && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">其他分类</span>
-                    <span className="font-medium text-gray-900">{tool.categories.slice(1).join(', ')}</span>
+                    <span className="font-medium text-gray-900">{translateCategories(tool.categories.slice(1), lang).join(', ')}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
