@@ -79,7 +79,7 @@
     "title": "AI Tools for Civil Engineers",
     "subtitle": "Discover and explore professional tools",
     "searchPlaceholder": "Search tools...",
-    "filterByCategory": "Filter by category",
+    "filterByCategory": "Filter",
     "filterByPricing": "Pricing",
     "filterByFeature": "Features",
     "sortBy": "Sort by",
@@ -95,7 +95,8 @@
     "resultsCount": "{{count}} tools found",
     "gridView": "Grid view",
     "listView": "List view",
-    "clearFilters": "Clear filters"
+    "clearFilters": "Clear filters",
+    "applyFilters": "Apply"
   },
   "toolCard": {
     "defaultTagline": "Professional civil engineering tool",

@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Filter,
   Search,
@@ -81,6 +82,7 @@ const ToolFilters = React.memo<ToolFiltersProps>(({
   onClearFilters,
   isMobile = false
 }) => {
+  const { t } = useTranslation();
   // Phase 3优化: 筛选面板无障碍增强 - Escape 键关闭
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -131,7 +133,7 @@ const ToolFilters = React.memo<ToolFiltersProps>(({
             }`}
           >
             <Filter className="w-5 h-5" />
-            <span className="font-medium">筛选工具</span>
+            <span className="font-medium">{t('tools.filterByCategory')}</span>
             {activeFiltersCount > 0 && (
               <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
                 {activeFiltersCount}
@@ -152,9 +154,9 @@ const ToolFilters = React.memo<ToolFiltersProps>(({
               type="text"
               value={searchValue}
               onChange={handleSearchChange}
-              placeholder="搜索工具名称、功能、分类..."
+              placeholder={t('tools.searchPlaceholder')}
               className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-              aria-label="搜索AI工具"
+              aria-label={t('hero.searchAria')}
             />
             {/* 搜索框右侧操作区 */}
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center">
@@ -164,7 +166,7 @@ const ToolFilters = React.memo<ToolFiltersProps>(({
                   type="button"
                   onClick={() => onSearchChange('')}
                   className="text-gray-400 hover:text-gray-600 transition-colors p-0.5"
-                  aria-label="清除搜索"
+                  aria-label={t('tools.clearFilters')}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -187,7 +189,7 @@ const ToolFilters = React.memo<ToolFiltersProps>(({
             }`}
           >
             <Filter className="w-4 h-4" />
-            <span>筛选</span>
+            <span>{t('tools.filterByCategory')}</span>
             {activeFiltersCount > 0 && (
               <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
                 {activeFiltersCount}
@@ -241,7 +243,7 @@ const ToolFilters = React.memo<ToolFiltersProps>(({
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="筛选工具"
+            aria-label={t('tools.filterByCategory')}
             className={`${
               showFilters
                 ? 'md:mt-6 md:pt-6 md:border-t relative md:relative fixed md:bg-transparent bg-white z-50'
@@ -251,7 +253,7 @@ const ToolFilters = React.memo<ToolFiltersProps>(({
             } ${showFilters ? 'inset-y-0 left-0 w-full md:w-auto md:inset-auto' : ''}`}>
             {/* 移动端关闭按钮 */}
             <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">筛选条件</h3>
+              <h3 className="text-lg font-semibold text-gray-900">{t('tools.filterByCategory')}</h3>
               <button
                 onClick={onFiltersToggle}
                 className="p-2 hover:bg-gray-100 rounded-lg"
@@ -338,7 +340,7 @@ const ToolFilters = React.memo<ToolFiltersProps>(({
                     onClick={onClearFilters}
                     className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                   >
-                    清除所有筛选条件
+                    {t('tools.clearFilters')}
                   </button>
                 </div>
               )}
@@ -358,7 +360,7 @@ const ToolFilters = React.memo<ToolFiltersProps>(({
                 onClick={onFiltersToggle}
                 className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
               >
-                应用筛选
+                {t('tools.applyFilters')}
               </button>
             </div>
           </div>

@@ -79,7 +79,7 @@
     "title": "土木工程AI工具库",
     "subtitle": "发现和探索专业工具",
     "searchPlaceholder": "搜索工具...",
-    "filterByCategory": "按分类筛选",
+    "filterByCategory": "筛选",
     "filterByPricing": "定价",
     "filterByFeature": "功能特性",
     "sortBy": "排序方式",
@@ -95,7 +95,8 @@
     "resultsCount": "找到 {{count}} 个工具",
     "gridView": "网格视图",
     "listView": "列表视图",
-    "clearFilters": "清除筛选"
+    "clearFilters": "清除筛选",
+    "applyFilters": "应用筛选"
   },
   "toolCard": {
     "defaultTagline": "专业的土木工程工具",
