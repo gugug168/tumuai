@@ -153,6 +153,7 @@ const Header = React.memo(() => {
               )
             ))}
             
+            {/* Language Switcher - v2 */}
             <button
               type="button"
               onClick={toggleLocale}
