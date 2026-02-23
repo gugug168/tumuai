@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Upload, Tag, DollarSign, Image, FileText, AlertCircle, Sparkles, Check, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { uploadToolLogo, validateImageFile } from '../lib/storage';
@@ -10,32 +11,34 @@ import { useToast, createToastHelpers } from '../components/Toast';
 import { useMetaTags } from '../hooks/useMetaTags';
 import type { DuplicateCheckResult } from '../lib/duplicate-checker';
 
-// 表单步骤定义
-const FORM_STEPS = [
-  { id: 1, title: 'AI智能填入', icon: Sparkles },
-  { id: 2, title: '基本信息', icon: FileText },
-  { id: 3, title: '分类功能', icon: Tag },
-  { id: 4, title: '定价Logo', icon: DollarSign },
-  { id: 5, title: '提交审核', icon: Upload }
-];
-
-// AI智能填入类型定义（与SmartURLInput保持一致）
-interface AIAnalysisResult {
-  name: string;
-  tagline: string;
-  description: string;
-  features: string[];
-  pricing: 'Free' | 'Freemium' | 'Paid' | 'Trial';
-  categories: string[];
-  confidence: number;
-  reasoning: string;
-}
-
 const SubmitToolPage = () => {
+  const { t } = useTranslation();
+
+  // 表单步骤定义
+  const FORM_STEPS = [
+    { id: 1, title: t('submit.stepAI'), icon: Sparkles },
+    { id: 2, title: t('submit.step1'), icon: FileText },
+    { id: 3, title: t('submit.step2'), icon: Tag },
+    { id: 4, title: t('submit.step3'), icon: DollarSign },
+    { id: 5, title: t('submit.stepReview'), icon: Upload }
+  ];
+
+  // AI智能填入类型定义（与SmartURLInput保持一致）
+  interface AIAnalysisResult {
+    name: string;
+    tagline: string;
+    description: string;
+    features: string[];
+    pricing: 'Free' | 'Freemium' | 'Paid' | 'Trial';
+    categories: string[];
+    confidence: number;
+    reasoning: string;
+  }
+
   // Phase 1优化: 接入 useMetaTags hook
   useMetaTags({
-    title: '提交新工具 - TumuAI.net',
-    description: '发现优质的土木工程AI工具？与社区分享，帮助更多工程师提升工作效率。',
+    title: `${t('submit.title')} - TumuAI.net`,
+    description: t('submit.subtitle'),
     canonical: 'https://www.tumuai.net/submit'
   });
 
@@ -535,21 +538,21 @@ const SubmitToolPage = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">提交新工具</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">{t('submit.title')}</h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            发现了优秀的土木工程AI工具？与社区分享，帮助更多工程师提升工作效率
+            {t('submit.subtitle')}
           </p>
 
           {/* Phase 3优化: 草稿恢复提示 */}
           {showDraftNotice && (
             <div className="mt-4 max-w-xl mx-auto p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between text-sm">
-              <span className="text-blue-700">已恢复上次未完成的草稿</span>
+              <span className="text-blue-700">{t('submit.draftRestored')}</span>
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setShowDraftNotice(false)}
                   className="text-blue-600 hover:text-blue-800 font-medium"
                 >
-                  继续编辑
+                  {t('submit.continueEdit')}
                 </button>
                 <button
                   onClick={() => {
@@ -563,7 +566,7 @@ const SubmitToolPage = () => {
                   }}
                   className="text-gray-500 hover:text-gray-700"
                 >
-                  丢弃草稿
+                  {t('submit.discardDraft')}
                 </button>
               </div>
             </div>
@@ -650,7 +653,7 @@ const SubmitToolPage = () => {
             })}
           </div>
           <div className="text-center mt-2 text-sm text-gray-600">
-            步骤 {currentStep} / {FORM_STEPS.length}: {FORM_STEPS[currentStep - 1].title}
+            {t('submit.stepProgress', { current: currentStep, total: FORM_STEPS.length, title: FORM_STEPS[currentStep - 1].title })}
           </div>
         </div>
 
@@ -658,14 +661,14 @@ const SubmitToolPage = () => {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
           <h3 className="text-lg font-semibold text-blue-900 mb-3 flex items-center">
             <AlertCircle className="w-5 h-5 mr-2" />
-            提交指南
+            {t('submit.guidelines')}
           </h3>
           <ul className="text-blue-800 space-y-2 text-sm">
-            <li>• 确保工具与土木工程相关，能够提升工程师的工作效率</li>
-            <li>• 提供准确、详细的工具描述和功能介绍</li>
-            <li>• 工具必须是正常运行且可访问的</li>
-            <li>• 我们会在1-3个工作日内审核您的提交</li>
-            <li>• 审核通过后，工具将出现在我们的工具目录中</li>
+            <li>• {t('submit.guideline1')}</li>
+            <li>• {t('submit.guideline2')}</li>
+            <li>• {t('submit.guideline3')}</li>
+            <li>• {t('submit.guideline4')}</li>
+            <li>• {t('submit.guideline5')}</li>
           </ul>
         </div>
 
@@ -677,17 +680,17 @@ const SubmitToolPage = () => {
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">AI智能填入 (Beta)</h3>
-                <p className="text-sm text-gray-600">输入网址，让AI帮您自动填写工具信息</p>
+                <h3 className="text-lg font-semibold text-gray-900">{t('submit.aiFillTitle')}</h3>
+                <p className="text-sm text-gray-600">{t('submit.aiFillDesc')}</p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-2 text-xs text-gray-500">
               <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-              <span>实时重复检测</span>
+              <span>{t('submit.realtimeCheck')}</span>
             </div>
           </div>
-          
+
           {/* 智能URL输入框 */}
           <div className="space-y-4">
             <SmartURLInput
@@ -696,20 +699,20 @@ const SubmitToolPage = () => {
               onDuplicateChange={handleDuplicateChange}
               onAIFillComplete={handleAIFillComplete}
               enableAIFill={true}
-              placeholder="输入工具网站地址，如：https://chatgpt.com"
+              placeholder={t('submit.websiteUrlPlaceholder')}
               disabled={isSubmitting}
             />
-            
+
             <div className="text-xs text-gray-600 mt-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
               <div className="flex items-start space-x-2">
                 <Sparkles className="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="font-medium text-gray-800 mb-1">AI智能填入使用指南：</p>
+                  <p className="font-medium text-gray-800 mb-1">{t('submit.aiGuideTitle')}</p>
                   <ul className="space-y-1 text-gray-600">
-                    <li>• 输入有效URL后，系统将自动检测重复工具</li>
-                    <li>• 检测通过后，点击"AI智能填入"按钮启动分析</li>
-                    <li>• AI将自动抓取网站内容并生成工具信息</li>
-                    <li>• 请在生成后仔细检查并完善相关信息</li>
+                    <li>• {t('submit.aiGuide1')}</li>
+                    <li>• {t('submit.aiGuide2')}</li>
+                    <li>• {t('submit.aiGuide3')}</li>
+                    <li>• {t('submit.aiGuide4')}</li>
                   </ul>
                 </div>
               </div>
