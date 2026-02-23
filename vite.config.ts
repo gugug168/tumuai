@@ -42,11 +42,14 @@ export default defineConfig(({ mode }) => {
             return 'vendor-router';
           }
 
-          // 核心框架 - 最稳定的依赖
+          // 核心框架 + React 生态依赖（必须一起加载）
           if (
             id.includes('node_modules/react/') ||
             id.includes('node_modules/react-dom/') ||
-            id.includes('node_modules/scheduler/')
+            id.includes('node_modules/scheduler/') ||
+            id.includes('node_modules/react-i18next/') ||
+            id.includes('node_modules/i18next/') ||
+            id.includes('node_modules/use-subscription/')
           ) {
             return 'vendor-react';
           }
