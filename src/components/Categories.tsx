@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Building2, 
-  Calculator, 
-  Wrench, 
-  FileText, 
-  BarChart3, 
+import { useTranslation } from 'react-i18next';
+import {
+  Building2,
+  Calculator,
+  Wrench,
+  FileText,
+  BarChart3,
   Layers,
   Ruler,
   HardHat,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import { getCategories } from '../lib/supabase';
 import { apiRequestWithRetry } from '../lib/api';
+import { translateCategory } from '../lib/translations';
 
 // 图标映射
 const iconMap: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
@@ -63,6 +65,8 @@ const getColorClass = (hexColor: string) => {
 };
 
 const Categories = () => {
+  const { t, i18n } = useTranslation();
+  const currentLang = i18n.language;
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -91,7 +95,7 @@ const Categories = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-2 text-gray-600">加载分类中...</p>
+            <p className="mt-2 text-gray-600">{t('categories.loading')}</p>
           </div>
         </div>
       </section>
@@ -115,10 +119,10 @@ const Categories = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            按专业领域浏览工具
+            {t('categories.browseByField')}
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            我们将工具按照土木工程的不同专业领域进行分类，帮助您快速找到所需的专业工具
+            {t('categories.browseByFieldDesc')}
           </p>
         </div>
 
@@ -137,13 +141,13 @@ const Categories = () => {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                      {category.name}
+                      {translateCategory(category.name, currentLang)}
                     </h3>
-                    <span className="text-sm text-gray-500">查看工具</span>
+                    <span className="text-sm text-gray-500">{t('categories.viewTools')}</span>
                   </div>
                 </div>
                 <p className="text-gray-600 text-sm leading-relaxed">
-                  {category.description || '专业工具分类'}
+                  {t(`categories.descriptions.${category.name}`, category.description || t('categories.defaultDescription'))}
                 </p>
               </div>
             );

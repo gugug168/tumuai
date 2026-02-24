@@ -446,5 +446,25 @@
     "freemium": "Freemium",
     "paid": "Paid",
     "trial": "Trial"
+  },
+  "categories": {
+    "title": "Tool Categories",
+    "subtitle": "Browse by professional field to find the right tools quickly",
+    "browseByField": "Browse Tools by Field",
+    "browseByFieldDesc": "Tools organized by civil engineering disciplines to help you find what you need",
+    "viewTools": "View tools",
+    "loading": "Loading categories...",
+    "reload": "Reload",
+    "noData": "No category data available",
+    "defaultDescription": "Professional tool category",
+    "descriptions": {
+      "前期规划": "Project planning and feasibility analysis tools",
+      "勘察测量": "Survey, mapping and geological analysis tools",
+      "方案设计": "Architectural concept and scheme design tools",
+      "结构分析": "Structural calculation and analysis software",
+      "施工图深化": "Construction drawing and detailing tools",
+      "施工管理": "Construction site management and collaboration tools",
+      "运维监测": "Building operation and structural monitoring systems"
+    }
   }
 }

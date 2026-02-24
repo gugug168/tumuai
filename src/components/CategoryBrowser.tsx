@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Brain,
   Wrench,
@@ -26,6 +27,7 @@ import {
 import type { Category } from '../types';
 import { getCategories } from '../lib/supabase';
 import { useHomeData } from '../contexts/HomeDataContext';
+import { translateCategory } from '../lib/translations';
 
 // 图标映射
 const iconMap: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
@@ -89,6 +91,8 @@ const getGradientClass = (hexColor: string) => {
 // };
 
 const CategoryBrowser = React.memo(() => {
+  const { t, i18n } = useTranslation();
+  const currentLang = i18n.language;
   const homeData = useHomeData();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,7 +146,7 @@ const CategoryBrowser = React.memo(() => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <LoaderIcon className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-            <p className="text-gray-600">加载中...</p>
+            <p className="text-gray-600">{t('categories.loading')}</p>
           </div>
         </div>
       </section>
@@ -155,7 +159,7 @@ const CategoryBrowser = React.memo(() => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <p className="text-red-600 mb-4">{errorToRender}</p>
-            <button 
+            <button
               onClick={() => {
                 if (homeData) {
                   void homeData.refresh();
@@ -165,7 +169,7 @@ const CategoryBrowser = React.memo(() => {
               }}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
-              重新加载
+              {t('categories.reload')}
             </button>
           </div>
         </div>
@@ -178,9 +182,9 @@ const CategoryBrowser = React.memo(() => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            专业工具分类
+            {t('categories.title')}
           </h2>
-          <p className="text-gray-600">按专业领域精准分类，快速找到最适合的工具</p>
+          <p className="text-gray-600">{t('categories.subtitle')}</p>
         </div>
 
         {/* 分类展示 - 显示真实的分类数据 */}
@@ -188,7 +192,7 @@ const CategoryBrowser = React.memo(() => {
           {categoriesToRender.map((category) => {
             const IconComponent = iconMap[category.icon] || FileText;
             const gradientClass = getGradientClass(category.color);
-            
+
             return (
               <Link
                 key={category.id}
@@ -204,22 +208,22 @@ const CategoryBrowser = React.memo(() => {
                         </div>
                         <div className="ml-4">
                           <h3 className="text-lg font-semibold text-white">
-                            {category.name}
+                            {translateCategory(category.name, currentLang)}
                           </h3>
                         </div>
                       </div>
                       <ArrowRight className="w-5 h-5 text-white opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                     </div>
                   </div>
-                  
+
                   <div className="p-6">
                     <p className="text-gray-600 text-sm leading-relaxed mb-4">
-                      {category.description || '专业工具分类'}
+                      {t(`categories.descriptions.${category.name}`, category.description || t('categories.defaultDescription'))}
                     </p>
-                    
+
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-500">
-                        查看工具
+                        {t('categories.viewTools')}
                       </span>
                       <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
                     </div>
@@ -234,8 +238,8 @@ const CategoryBrowser = React.memo(() => {
         {categoriesToRender.length === 0 && !loadingToRender && (
           <div className="text-center py-12">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500 mb-4">暂无分类数据</p>
-            <button 
+            <p className="text-gray-500 mb-4">{t('categories.noData')}</p>
+            <button
               onClick={() => {
                 if (homeData) {
                   void homeData.refresh();
@@ -245,7 +249,7 @@ const CategoryBrowser = React.memo(() => {
               }}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
-              重新加载
+              {t('categories.reload')}
             </button>
           </div>
         )}
