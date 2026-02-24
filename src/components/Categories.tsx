@@ -22,6 +22,7 @@ import {
 import { getCategories } from '../lib/supabase';
 import { apiRequestWithRetry } from '../lib/api';
 import { translateCategory } from '../lib/translations';
+import { useLocale } from '../contexts/LocaleContext';
 
 // 图标映射
 const iconMap: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
@@ -66,7 +67,8 @@ const getColorClass = (hexColor: string) => {
 
 const Categories = () => {
   const { t, i18n } = useTranslation();
-  const currentLang = i18n.language;
+  const { locale } = useLocale();
+  const currentLang = locale;
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

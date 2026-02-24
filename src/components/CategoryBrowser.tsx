@@ -28,6 +28,7 @@ import type { Category } from '../types';
 import { getCategories } from '../lib/supabase';
 import { useHomeData } from '../contexts/HomeDataContext';
 import { translateCategory } from '../lib/translations';
+import { useLocale } from '../contexts/LocaleContext';
 
 // 图标映射
 const iconMap: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
@@ -92,7 +93,8 @@ const getGradientClass = (hexColor: string) => {
 
 const CategoryBrowser = React.memo(() => {
   const { t, i18n } = useTranslation();
-  const currentLang = i18n.language;
+  const { locale } = useLocale();
+  const currentLang = locale;
   const homeData = useHomeData();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
