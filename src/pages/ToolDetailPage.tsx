@@ -22,7 +22,8 @@ import { useToast, createToastHelpers } from '../components/Toast';
 import ScreenshotGallery, { type GalleryImage } from '../components/ScreenshotGallery';
 import ScreenshotViewer from '../components/ScreenshotViewer';
 import { parseScreenshotRegion, getRegionOrder } from '../components/screenshot-utils';
-import { translateCategory, translateFeature, translatePricing, translateCategories, translateFeatures } from '../lib/translations';
+import { translateCategory, translateFeature, translatePricing, translateCategories, translateFeatures, getToolDetailUIText } from '../lib/translations';
+import { useLocale } from '../contexts/LocaleContext';
 import type { Tool } from '../types/index';
 
 interface Review {
@@ -41,7 +42,8 @@ const ToolDetailPage = () => {
   const { showToast } = useToast();
   const toast = createToastHelpers(showToast);
   const { i18n, t } = useTranslation();
-  const lang = i18n.language;
+  const { locale } = useLocale();
+  const lang = locale;
   const [selectedImage, setSelectedImage] = useState(0);
   const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
   const [isFavoritedTool, setIsFavoritedTool] = useState(false);
@@ -388,7 +390,7 @@ const ToolDetailPage = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">加载工具详情中...</p>
+          <p className="text-gray-600">{getToolDetailUIText('loading', lang)}</p>
         </div>
       </div>
     );
@@ -398,12 +400,12 @@ const ToolDetailPage = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">工具未找到</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">{getToolDetailUIText('notFound', lang)}</h2>
           <p className="text-gray-600 mb-4">
-            {error || '抱歉，您访问的工具不存在或已被删除。'}
+            {error || getToolDetailUIText('notFoundHint', lang)}
           </p>
           <Link to="/tools" className="text-blue-600 hover:text-blue-700">
-            返回工具中心
+            {getToolDetailUIText('backToTools', lang)}
           </Link>
         </div>
       </div>
@@ -430,7 +432,7 @@ const ToolDetailPage = () => {
 
   const handleCopyWebsiteUrl = async () => {
     if (!normalizedWebsiteUrl) {
-      toast.error('复制失败', '未找到可复制的官网链接');
+      toast.error(getToolDetailUIText('copyFailed', lang), getToolDetailUIText('noWebsiteUrl', lang));
       return;
     }
 
@@ -449,10 +451,10 @@ const ToolDetailPage = () => {
         document.execCommand('copy');
         document.body.removeChild(textarea);
       }
-      toast.success('已复制链接', '可粘贴到浏览器或分享给他人');
+      toast.success(getToolDetailUIText('linkCopied', lang), getToolDetailUIText('pasteHint', lang));
     } catch (error) {
       console.error('复制官网链接失败:', error);
-      toast.error('复制失败', '请稍后重试');
+      toast.error(getToolDetailUIText('operationFailed', lang), getToolDetailUIText('retryLater', lang));
     }
   };
 
@@ -465,10 +467,10 @@ const ToolDetailPage = () => {
       });
       setNewReview({ rating: 5, comment: '' });
       await loadReviews();
-      toast.success('提交成功', '评论已发布');
+      toast.success(getToolDetailUIText('reviewSubmitted', lang), getToolDetailUIText('reviewSubmitHint', lang));
     } catch (error) {
       console.error('评论提交失败:', error);
-      toast.error('提交失败', '评论提交失败，请稍后重试');
+      toast.error(getToolDetailUIText('operationFailed', lang), getToolDetailUIText('reviewSubmitFailed', lang));
     }
   };
 
@@ -480,23 +482,23 @@ const ToolDetailPage = () => {
           <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
             <Link to="/" className="hover:text-gray-700 transition-colors flex items-center">
               <Home className="w-4 h-4 mr-1" />
-              首页
+              {getToolDetailUIText('home', lang)}
             </Link>
             <ChevronRight className="w-4 h-4" />
             <Link to="/tools" className="hover:text-gray-700 transition-colors">
-              工具中心
+              {getToolDetailUIText('toolsCenter', lang)}
             </Link>
             <ChevronRight className="w-4 h-4" />
             <span className="text-gray-900 font-medium">{adaptedTool.name}</span>
           </nav>
-          
+
           <div className="flex items-center justify-between">
             <Link
               to="/tools"
               className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              返回工具中心
+              {getToolDetailUIText('backToTools', lang)}
             </Link>
           </div>
         </div>
@@ -548,15 +550,15 @@ const ToolDetailPage = () => {
                       />
                     ))}
                   </div>
-                  <span className="ml-1">{adaptedTool.rating} ({adaptedTool.reviews} 评价)</span>
+                  <span className="ml-1">{adaptedTool.rating} ({adaptedTool.reviews} {getToolDetailUIText('reviews', lang)})</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Eye className="w-4 h-4" />
-                  <span>{adaptedTool.views.toLocaleString()} 次浏览</span>
+                  <span>{adaptedTool.views.toLocaleString()} {getToolDetailUIText('views', lang)}</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Calendar className="w-4 h-4" />
-                  <span>更新于 {adaptedTool.lastUpdated}</span>
+                  <span>{getToolDetailUIText('updatedOn', lang)} {adaptedTool.lastUpdated}</span>
                 </div>
               </div>
             </div>
@@ -617,7 +619,7 @@ const ToolDetailPage = () => {
             {/* 图片/视频画廊 */}
             <div id="screenshots" className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 scroll-mt-24">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">产品截图</h2>
+                <h2 className="text-2xl font-bold text-gray-900">{getToolDetailUIText('screenshots', lang)}</h2>
               </div>
               <ScreenshotGallery
                 images={adaptedTool.images}
@@ -631,7 +633,7 @@ const ToolDetailPage = () => {
 
             {/* 详细介绍 */}
             <div id="about" className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 scroll-mt-24">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">详细介绍</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">{getToolDetailUIText('about', lang)}</h2>
               <div className="prose prose-lg max-w-none text-gray-800 leading-relaxed">
                 {adaptedTool.detailedDescription.split('\n\n').map((paragraph, index) => (
                   <p key={index} className="mb-4 text-gray-800">
@@ -643,8 +645,8 @@ const ToolDetailPage = () => {
 
             {/* 用户评论区 */}
             <div id="reviews" className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 scroll-mt-24">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">用户评价</h2>
-              
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">{getToolDetailUIText('userReviews', lang)}</h2>
+
               {/* 评论统计 */}
               <div className="flex items-center space-x-6 mb-8 p-4 bg-gray-50 rounded-lg">
                 <div className="text-center">
@@ -661,13 +663,13 @@ const ToolDetailPage = () => {
                       />
                     ))}
                   </div>
-                  <div className="text-sm text-gray-500">{adaptedTool.reviews} 条评价</div>
+                  <div className="text-sm text-gray-500">{adaptedTool.reviews} {getToolDetailUIText('reviewCount', lang)}</div>
                 </div>
                 <div className="flex-1">
                   <div className="space-y-2">
                     {[5, 4, 3, 2, 1].map((rating) => (
                       <div key={rating} className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-600 w-8">{rating}星</span>
+                        <span className="text-sm text-gray-600 w-8">{rating}{getToolDetailUIText('star', lang)}</span>
                         <div className="flex-1 bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-yellow-400 h-2 rounded-full"
@@ -685,9 +687,9 @@ const ToolDetailPage = () => {
 
               {/* 发表评论 */}
               <form onSubmit={handleSubmitReview} className="mb-8 p-4 bg-gray-50 rounded-lg">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">发表评价</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">{getToolDetailUIText('writeReview', lang)}</h3>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">评分</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{getToolDetailUIText('rating', lang)}</label>
                   <div className="flex items-center space-x-1">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
@@ -708,14 +710,14 @@ const ToolDetailPage = () => {
                   </div>
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">评论内容</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('toolDetail.comment')}</label>
                   <textarea
                     name="comment"
                     value={newReview.comment}
                     onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
                     rows={4}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-                    placeholder="分享您使用这个工具的体验..."
+                    placeholder={getToolDetailUIText('commentPlaceholder', lang)}
                     required
                   />
                 </div>
@@ -723,15 +725,15 @@ const ToolDetailPage = () => {
                   type="submit"
                   className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
                 >
-                  提交评价
+                  {getToolDetailUIText('submitReview', lang)}
                 </button>
               </form>
 
               {/* 评论列表 */}
               {loadingReviews ? (
-                <div className="text-center py-8 text-gray-500">加载评论中...</div>
+                <div className="text-center py-8 text-gray-500">{getToolDetailUIText('loadingReviews', lang)}</div>
               ) : reviews.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">暂无评论，快来发表第一条评论吧！</div>
+                <div className="text-center py-8 text-gray-500">{getToolDetailUIText('noReviews', lang)}</div>
               ) : (
                 <div className="space-y-6">
                   {reviews.map((review) => (
@@ -745,13 +747,13 @@ const ToolDetailPage = () => {
                           background
                           fallback={
                             <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
-                              {(review.user_profiles?.full_name || review.user_profiles?.username || '用户').slice(0, 1)}
+                              {(review.user_profiles?.full_name || review.user_profiles?.username || getToolDetailUIText('user', lang)).slice(0, 1)}
                             </div>
                           }
                         />
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
-                            <h4 className="font-semibold text-gray-900">{review.user_profiles?.full_name || '匿名用户'}</h4>
+                            <h4 className="font-semibold text-gray-900">{review.user_profiles?.full_name || getToolDetailUIText('anonymousUser', lang)}</h4>
                             <div className="flex items-center space-x-1">
                               {[1, 2, 3, 4, 5].map((star) => (
                                 <Star
@@ -782,7 +784,7 @@ const ToolDetailPage = () => {
             <div className="hidden lg:block sticky top-24 space-y-4">
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-gray-900">开始使用</h3>
+                  <h3 className="text-lg font-bold text-gray-900">{getToolDetailUIText('getStarted', lang)}</h3>
                   {pricingLabel && (
                     <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">
                       {pricingLabel}
@@ -877,7 +879,7 @@ const ToolDetailPage = () => {
                       <h4 className="font-semibold text-gray-900">{plan.plan}</h4>
                       {index === 1 && (
                         <span className="bg-blue-600 text-white px-2 py-1 rounded-full text-xs">
-                          推荐
+                          {getToolDetailUIText('recommended', lang)}
                         </span>
                       )}
                     </div>
@@ -900,7 +902,7 @@ const ToolDetailPage = () => {
 
             {/* 工具标签 */}
             <div id="tags" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 scroll-mt-24">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">{t('toolDetail.toolTags')}</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-4">{getToolDetailUIText('toolTags', lang)}</h3>
               <div className="flex flex-wrap gap-2">
                 {/* 优先显示分类标签 */}
                 {tool.categories.map((category, index) => (
@@ -929,28 +931,28 @@ const ToolDetailPage = () => {
 
             {/* 工具信息 */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">{t('toolDetail.toolInfo')}</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-4">{getToolDetailUIText('toolInfo', lang)}</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">{t('toolDetail.mainCategory')}</span>
+                  <span className="text-gray-600">{getToolDetailUIText('mainCategory', lang)}</span>
                   <span className="font-medium text-gray-900">{translateCategory(tool.categories[0] || '', lang) || t('common.uncategorized')}</span>
                 </div>
                 {tool.categories.length > 1 && (
                   <div className="flex justify-between">
-                    <span className="text-gray-600">{t('toolDetail.otherCategories')}</span>
+                    <span className="text-gray-600">{getToolDetailUIText('otherCategories', lang)}</span>
                     <span className="font-medium text-gray-900">{translateCategories(tool.categories.slice(1), lang).join(', ')}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-gray-600">{t('toolDetail.dateAdded')}</span>
+                  <span className="text-gray-600">{getToolDetailUIText('dateAdded', lang)}</span>
                   <span className="font-medium text-gray-900">{adaptedTool.addedDate}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">{t('toolDetail.lastUpdated')}</span>
+                  <span className="text-gray-600">{getToolDetailUIText('lastUpdated', lang)}</span>
                   <span className="font-medium text-gray-900">{adaptedTool.lastUpdated}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">{t('toolDetail.views')}</span>
+                  <span className="text-gray-600">{getToolDetailUIText('viewCount', lang)}</span>
                   <span className="font-medium text-gray-900">{adaptedTool.views.toLocaleString()}</span>
                 </div>
               </div>
@@ -961,17 +963,17 @@ const ToolDetailPage = () => {
         {/* 相关工具推荐 */}
         <div className="mt-12">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('toolDetail.relatedTools')}</h2>
-            <p className="text-gray-600 mb-6">{t('toolDetail.relatedToolsHint')}</p>
-            
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">{getToolDetailUIText('relatedTools', lang)}</h2>
+            <p className="text-gray-600 mb-6">{getToolDetailUIText('relatedToolsHint', lang)}</p>
+
             {loadingRelated ? (
               <div className="flex justify-center items-center py-12">
                 <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <span className="ml-2 text-gray-600">加载相关工具中...</span>
+                <span className="ml-2 text-gray-600">{getToolDetailUIText('loadingRelated', lang)}</span>
               </div>
             ) : relatedTools.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
-                暂时没有找到相关工具
+                {getToolDetailUIText('noRelatedTools', lang)}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

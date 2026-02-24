@@ -357,3 +357,107 @@ export function getFeaturedToolsUIText(key: keyof typeof FEATURED_TOOLS_UI_TRANS
   if (!item) return '';
   return lang === 'en' ? item.en : item.zh;
 }
+
+// Tools Page UI 翻译
+export const TOOLS_PAGE_UI_TRANSLATIONS: Record<string, { zh: string; en: string }> = {
+  title: { zh: '工具中心', en: 'Tools' },
+  subtitle: { zh: '发现最适合土木工程师的AI工具和效率工具', en: 'Discover the best AI and productivity tools for civil engineers' },
+  offline: { zh: '网络离线', en: 'Offline' },
+  loading: { zh: '正在加载...', en: 'Loading...' },
+  retrying: { zh: '正在重试', en: 'Retrying' },
+  loadFailed: { zh: '加载失败', en: 'Load failed' },
+  checkNetwork: { zh: '检查网络', en: 'Check network' },
+  retryNow: { zh: '立即重试', en: 'Retry now' },
+  retry: { zh: '重试', en: 'Retry' },
+  autoRetryHint: { zh: '系统将在几秒后自动重试', en: 'Auto retry in a few seconds' },
+  sortMostPopular: { zh: '最受欢迎', en: 'Most popular' },
+  sortNewest: { zh: '最新收录', en: 'Newest' },
+  sortHighestRated: { zh: '评分最高', en: 'Highest rated' },
+  sortMostViewed: { zh: '浏览最多', en: 'Most viewed' },
+  performanceReport: { zh: '性能报告', en: 'Performance report' },
+};
+
+// Tool Detail Page UI 翻译
+export const TOOL_DETAIL_UI_TRANSLATIONS: Record<string, { zh: string; en: string }> = {
+  loading: { zh: '加载工具详情中...', en: 'Loading tool details...' },
+  notFound: { zh: '工具未找到', en: 'Tool not found' },
+  notFoundHint: { zh: '抱歉，您访问的工具不存在或已被删除。', en: 'Sorry, the tool you are looking for does not exist or has been deleted.' },
+  backToTools: { zh: '返回工具中心', en: 'Back to tools' },
+  home: { zh: '首页', en: 'Home' },
+  toolsCenter: { zh: '工具中心', en: 'Tools' },
+  reviews: { zh: '评价', en: 'reviews' },
+  views: { zh: '次浏览', en: 'views' },
+  updatedOn: { zh: '更新于', en: 'Updated on' },
+  screenshots: { zh: '产品截图', en: 'Screenshots' },
+  about: { zh: '详细介绍', en: 'About' },
+  userReviews: { zh: '用户评价', en: 'User Reviews' },
+  reviewCount: { zh: '条评价', en: 'reviews' },
+  writeReview: { zh: '发表评价', en: 'Write a review' },
+  rating: { zh: '评分', en: 'Rating' },
+  commentPlaceholder: { zh: '分享您使用这个工具的体验...', en: 'Share your experience with this tool...' },
+  submitReview: { zh: '提交评价', en: 'Submit review' },
+  loadingReviews: { zh: '加载评论中...', en: 'Loading reviews...' },
+  noReviews: { zh: '暂无评论，快来发表第一条评论吧！', en: 'No reviews yet. Be the first to write one!' },
+  getStarted: { zh: '开始使用', en: 'Get Started' },
+  recommended: { zh: '推荐', en: 'Recommended' },
+  relatedTools: { zh: '相关工具推荐', en: 'Related Tools' },
+  relatedToolsHint: { zh: '您可能还喜欢这些工具', en: 'You might also like these tools' },
+  loadingRelated: { zh: '加载相关工具中...', en: 'Loading related tools...' },
+  noRelatedTools: { zh: '暂时没有找到相关工具', en: 'No related tools found' },
+  copyFailed: { zh: '复制失败', en: 'Copy failed' },
+  noWebsiteUrl: { zh: '未找到可复制的官网链接', en: 'No website URL found' },
+  linkCopied: { zh: '已复制链接', en: 'Link copied' },
+  pasteHint: { zh: '可粘贴到浏览器或分享给他人', en: 'Paste in browser or share with others' },
+  operationFailed: { zh: '操作失败', en: 'Operation failed' },
+  retryLater: { zh: '请稍后重试', en: 'Please try again later' },
+  reviewSubmitted: { zh: '提交成功', en: 'Submitted' },
+  reviewSubmitHint: { zh: '评论已发布', en: 'Review published' },
+  reviewSubmitFailed: { zh: '评论提交失败，请稍后重试', en: 'Failed to submit review. Please try again later.' },
+  toolTags: { zh: '工具标签', en: 'Tool Tags' },
+  toolInfo: { zh: '工具信息', en: 'Tool Info' },
+  mainCategory: { zh: '主分类', en: 'Main Category' },
+  otherCategories: { zh: '其他分类', en: 'Other Categories' },
+  dateAdded: { zh: '收录日期', en: 'Date Added' },
+  lastUpdated: { zh: '最后更新', en: 'Last Updated' },
+  viewCount: { zh: '浏览次数', en: 'Views' },
+  pricing: { zh: '定价', en: 'Pricing' },
+  pageNav: { zh: '页面导航', en: 'Page Navigation' },
+  toolTagsNav: { zh: '工具标签', en: 'Tags' },
+  aboutNav: { zh: '详细介绍', en: 'About' },
+  pricingNav: { zh: '定价', en: 'Pricing' },
+  reviewsNav: { zh: '用户评价', en: 'Reviews' },
+  screenshotsNav: { zh: '产品截图', en: 'Screenshots' },
+  anonymousUser: { zh: '匿名用户', en: 'Anonymous' },
+  user: { zh: '用户', en: 'User' },
+  star: { zh: '星', en: 'star' },
+};
+
+// Tool Card UI 翻译
+export const TOOL_CARD_UI_TRANSLATIONS: Record<string, { zh: string; en: string }> = {
+  newTool: { zh: '新工具', en: 'New' },
+  defaultTagline: { zh: '专业的土木工程工具', en: 'Professional civil engineering tool' },
+  viewDetails: { zh: '查看详情', en: 'View details' },
+  viewTool: { zh: '查看工具：', en: 'View tool: ' },
+  uncategorized: { zh: '未分类', en: 'Uncategorized' },
+  favorite: { zh: '收藏', en: 'Favorite' },
+  unfavorite: { zh: '取消收藏', en: 'Unfavorite' },
+};
+
+// 获取工具页面 UI 翻译
+export function getToolsPageUIText(key: keyof typeof TOOLS_PAGE_UI_TRANSLATIONS, lang: string): string {
+  const item = TOOLS_PAGE_UI_TRANSLATIONS[key];
+  if (!item) return '';
+  return lang === 'en' ? item.en : item.zh;
+}
+
+export function getToolDetailUIText(key: keyof typeof TOOL_DETAIL_UI_TRANSLATIONS, lang: string): string {
+  const item = TOOL_DETAIL_UI_TRANSLATIONS[key];
+  if (!item) return '';
+  return lang === 'en' ? item.en : item.zh;
+}
+
+export function getToolCardUIText(key: keyof typeof TOOL_CARD_UI_TRANSLATIONS, lang: string): string {
+  const item = TOOL_CARD_UI_TRANSLATIONS[key];
+  if (!item) return '';
+  return lang === 'en' ? item.en : item.zh;
+}

@@ -6,7 +6,8 @@ import OptimizedImage from './OptimizedImage';
 import ToolFallbackIcon from './ToolFallbackIcon';
 import { getBestDisplayLogoUrl } from '../lib/logoUtils';
 import { prefetchToolDetailPage } from '../lib/route-prefetch';
-import { translateCategory, translateFeature, translatePricing } from '../lib/translations';
+import { translateCategory, translateFeature, translatePricing, getToolCardUIText } from '../lib/translations';
+import { useLocale } from '../contexts/LocaleContext';
 import type { Tool } from '../types';
 
 interface ToolCardProps {
@@ -35,8 +36,9 @@ const ToolCard = React.memo(({
   className = ''
 }: ToolCardProps) => {
   const navigate = useNavigate();
-  const { i18n, t } = useTranslation();
-  const lang = i18n.language;
+  const { t } = useTranslation();
+  const { locale } = useLocale();
+  const lang = locale;
   const [favoriteAnimating, setFavoriteAnimating] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const favoriteButtonRef = useRef<HTMLButtonElement>(null);
@@ -123,7 +125,7 @@ const ToolCard = React.memo(({
         onKeyDown={handleCardKeyDown}
         role="link"
         tabIndex={0}
-        aria-label={`查看工具：${tool.name}`}
+        aria-label={`${getToolCardUIText('viewTool', lang)}${tool.name}`}
       >
         {/* Tool Logo */}
         <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-100 p-2">
@@ -154,7 +156,7 @@ const ToolCard = React.memo(({
             )}
           </div>
           <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">
-            {tool.tagline || tool.description || t('toolCard.defaultTagline')}
+            {tool.tagline || tool.description || getToolCardUIText('defaultTagline', lang)}
           </p>
         </div>
 
@@ -166,7 +168,7 @@ const ToolCard = React.memo(({
               <span className="text-sm font-medium text-gray-700">
                 {tool.review_count && tool.review_count > 0
                   ? tool.rating?.toFixed(1) || '4.5'
-                  : t('toolCard.newTool')}
+                  : getToolCardUIText('newTool', lang)}
               </span>
             </div>
             <span className="text-xs text-gray-500">{translatePricing(tool.pricing, lang)}</span>
@@ -187,7 +189,7 @@ const ToolCard = React.memo(({
               active:scale-90
               ${favoriteAnimating ? 'animate-heart-pop' : ''}
             `}
-            aria-label={isFavorited ? t('common.unfavorite') : t('common.favorite')}
+            aria-label={isFavorited ? getToolCardUIText('unfavorite', lang) : getToolCardUIText('favorite', lang)}
             aria-pressed={isFavorited}
             type="button"
           >
@@ -205,7 +207,7 @@ const ToolCard = React.memo(({
                      hover:bg-blue-700 active:bg-blue-800 active:scale-95
                      transition-all duration-200 inline-block"
           >
-            {t('toolCard.viewDetails')}
+            {getToolCardUIText('viewDetails', lang)}
           </Link>
         </div>
       </article>
@@ -264,7 +266,7 @@ const ToolCard = React.memo(({
               focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
               ${favoriteAnimating ? 'animate-heart-pop' : ''}
             `}
-            aria-label={isFavorited ? t('common.unfavorite') : t('common.favorite')}
+            aria-label={isFavorited ? getToolCardUIText('unfavorite', lang) : getToolCardUIText('favorite', lang)}
             aria-pressed={isFavorited}
             type="button"
           >
@@ -295,7 +297,7 @@ const ToolCard = React.memo(({
 
         <div className="mb-3">
           <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-xs font-medium">
-            {translateCategory(tool.categories?.[0] || '', lang) || t('common.uncategorized')}
+            {translateCategory(tool.categories?.[0] || '', lang) || getToolCardUIText('uncategorized', lang)}
           </span>
         </div>
 
@@ -345,7 +347,7 @@ const ToolCard = React.memo(({
             group-hover:shadow
           "
         >
-          {t('toolCard.viewDetails')}
+          {getToolCardUIText('viewDetails', lang)}
           <ChevronRight className="ml-1 w-4 h-4 group-hover:translate-x-0.5 transition-transform duration-200" />
         </Link>
       </div>

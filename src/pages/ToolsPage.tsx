@@ -15,6 +15,8 @@ import { useToolFilters, filterTools } from '../hooks/useToolFilters';
 import { useToolData } from '../hooks/useToolData';
 import { usePerformance } from '../hooks/usePerformance';
 import { useMetaTags } from '../hooks/useMetaTags';
+import { useLocale } from '../contexts/LocaleContext';
+import { getToolsPageUIText } from '../lib/translations';
 import type { ToolSearchFilters } from '../types';
 
 const PRICING_VALUES = ['Free', 'Freemium', 'Paid', 'Trial'] as const;
@@ -54,6 +56,8 @@ const ToolsPage = React.memo(() => {
   const { showToast } = useToast();
   const toast = createToastHelpers(showToast);
   const searchId = useId();
+  const { locale } = useLocale();
+  const lang = locale;
 
   // 性能监控
   const { recordApiCall, recordInteraction, printReport } = usePerformance('ToolsPage');
@@ -252,16 +256,16 @@ const ToolsPage = React.memo(() => {
   // ========================================
 
   // 加载骨架屏
-  // 仅在“首次无数据”时显示全屏骨架屏，避免底部预加载/翻页时出现闪动。
+  // 仅在"首次无数据"时显示全屏骨架屏，避免底部预加载/翻页时出现闪动。
   if (loading && tools.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* 页面标题（先渲染结构，避免用户看到“空白骨架”） */}
+          {/* 页面标题（先渲染结构，避免用户看到"空白骨架"） */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">工具中心</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">{getToolsPageUIText('title', lang)}</h1>
             <p className="text-lg text-gray-600">
-              发现最适合土木工程师的AI工具和效率工具
+              {getToolsPageUIText('subtitle', lang)}
             </p>
           </div>
 
@@ -287,9 +291,9 @@ const ToolsPage = React.memo(() => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">工具中心</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">{getToolsPageUIText('title', lang)}</h1>
           <p className="text-lg text-gray-600">
-            发现最适合土木工程师的AI工具和效率工具
+            {getToolsPageUIText('subtitle', lang)}
           </p>
 
           {/* 错误提示 */}
@@ -316,9 +320,9 @@ const ToolsPage = React.memo(() => {
                     loading ? 'text-blue-700' :
                     retryCount > 0 ? 'text-orange-700' : 'text-red-700'
                   }`}>
-                    {isOffline ? '网络离线' :
-                     loading ? '正在加载...' :
-                     retryCount > 0 ? `正在重试 (第${retryCount}次)` : '加载失败'}
+                    {isOffline ? getToolsPageUIText('offline', lang) :
+                     loading ? getToolsPageUIText('loading', lang) :
+                     retryCount > 0 ? `${getToolsPageUIText('retrying', lang)} (${retryCount})` : getToolsPageUIText('loadFailed', lang)}
                   </div>
 
                   <div className={`text-sm mt-1 ${
@@ -333,7 +337,7 @@ const ToolsPage = React.memo(() => {
                   {retryCount > 0 && !loading && (
                     <div className="mt-2 text-xs text-orange-600 flex items-center space-x-1">
                       <Clock className="w-3 h-3" />
-                      <span>系统将在几秒后自动重试</span>
+                      <span>{getToolsPageUIText('autoRetryHint', lang)}</span>
                     </div>
                   )}
                 </div>
@@ -347,7 +351,7 @@ const ToolsPage = React.memo(() => {
                         className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors"
                       >
                         <Wifi className="w-3 h-3 mr-1" />
-                        检查网络
+                        {getToolsPageUIText('checkNetwork', lang)}
                       </button>
                     </div>
                   ) : !loading && (
@@ -357,7 +361,7 @@ const ToolsPage = React.memo(() => {
                       className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <RefreshCw className={`w-3 h-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
-                      {retryCount > 0 ? '立即重试' : '重试'}
+                      {retryCount > 0 ? getToolsPageUIText('retryNow', lang) : getToolsPageUIText('retry', lang)}
                     </button>
                   )}
                 </div>
@@ -382,10 +386,10 @@ const ToolsPage = React.memo(() => {
             sortBy={filters.sortBy}
             onSortChange={(value) => handleFilterChange('sortBy', value)}
             sortOptions={[
-              { value: 'upvotes', label: '最受欢迎' },
-              { value: 'date_added', label: '最新收录' },
-              { value: 'rating', label: '评分最高' },
-              { value: 'views', label: '浏览最多' }
+              { value: 'upvotes', label: getToolsPageUIText('sortMostPopular', lang) },
+              { value: 'date_added', label: getToolsPageUIText('sortNewest', lang) },
+              { value: 'rating', label: getToolsPageUIText('sortHighestRated', lang) },
+              { value: 'views', label: getToolsPageUIText('sortMostViewed', lang) }
             ]}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
@@ -426,7 +430,7 @@ const ToolsPage = React.memo(() => {
               onClick={() => printReport()}
               className="text-xs bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded text-gray-600"
             >
-              📊 性能报告
+              📊 {getToolsPageUIText('performanceReport', lang)}
             </button>
           </div>
         )}
