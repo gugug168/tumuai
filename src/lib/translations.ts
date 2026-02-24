@@ -270,3 +270,62 @@ export function translatePricing(pricing: string | undefined, lang: string): str
   if (lang !== 'en' || !pricing) return pricing || '';
   return PRICING_TRANSLATIONS[pricing] || pricing;
 }
+
+// Categories UI 翻译
+export const CATEGORIES_UI_TRANSLATIONS: Record<string, { zh: string; en: string }> = {
+  title: { zh: '专业工具分类', en: 'Tool Categories' },
+  subtitle: { zh: '按专业领域精准分类，快速找到最适合的工具', en: 'Browse by professional field to find the right tools quickly' },
+  browseByField: { zh: '按专业领域浏览工具', en: 'Browse Tools by Field' },
+  browseByFieldDesc: { zh: '我们将工具按照土木工程的不同专业领域进行分类，帮助您快速找到所需的专业工具', en: 'Tools organized by civil engineering disciplines to help you find what you need' },
+  viewTools: { zh: '查看工具', en: 'View tools' },
+  loading: { zh: '加载分类中...', en: 'Loading categories...' },
+  reload: { zh: '重新加载', en: 'Reload' },
+  noData: { zh: '暂无分类数据', en: 'No category data available' },
+  defaultDescription: { zh: '专业工具分类', en: 'Professional tool category' },
+};
+
+// 分类描述翻译
+export const CATEGORY_DESCRIPTION_TRANSLATIONS: Record<string, { zh: string; en: string }> = {
+  '前期规划': {
+    zh: '用地选址、交通预测、经济可行性等早期决策类 AI 工具。',
+    en: 'Project planning and feasibility analysis tools'
+  },
+  '勘察测量': {
+    zh: '无人机测绘、地质雷达、点云处理、地层生成等获取现场数据的 AI 工具。',
+    en: 'Survey, mapping and geological analysis tools'
+  },
+  '方案设计': {
+    zh: '建筑/桥梁/道路概念方案、草图生成与多目标比选的 AI 工具。',
+    en: 'Architectural concept and scheme design tools'
+  },
+  '结构分析': {
+    zh: '荷载计算、抗震性能评估、有限元快速建模与优化的 AI 工具。',
+    en: 'Structural calculation and analysis software'
+  },
+  '施工图深化': {
+    zh: 'BIM 自动出图、钢筋布置、节点详图与碰撞检查的 AI 工具。',
+    en: 'Construction drawing and detailing tools'
+  },
+  '施工管理': {
+    zh: '进度预测、安全监控、质量验收与资源调度的 AI 工具。',
+    en: 'Construction site management and collaboration tools'
+  },
+  '运维监测': {
+    zh: '结构健康监测、寿命预测、灾害预警与养护决策的 AI 工具。',
+    en: 'Building operation and structural monitoring systems'
+  },
+};
+
+// 获取 Categories UI 翻译
+export function getCategoriesUIText(key: keyof typeof CATEGORIES_UI_TRANSLATIONS, lang: string): string {
+  const item = CATEGORIES_UI_TRANSLATIONS[key];
+  if (!item) return '';
+  return lang === 'en' ? item.en : item.zh;
+}
+
+// 获取分类描述翻译
+export function getCategoryDescription(categoryName: string, lang: string): string {
+  const item = CATEGORY_DESCRIPTION_TRANSLATIONS[categoryName];
+  if (!item) return '';
+  return lang === 'en' ? item.en : item.zh;
+}

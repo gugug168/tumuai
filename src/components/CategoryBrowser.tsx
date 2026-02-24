@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import {
   Brain,
   Wrench,
@@ -27,7 +26,7 @@ import {
 import type { Category } from '../types';
 import { getCategories } from '../lib/supabase';
 import { useHomeData } from '../contexts/HomeDataContext';
-import { translateCategory } from '../lib/translations';
+import { translateCategory, getCategoriesUIText, getCategoryDescription } from '../lib/translations';
 import { useLocale } from '../contexts/LocaleContext';
 
 // 图标映射
@@ -92,7 +91,6 @@ const getGradientClass = (hexColor: string) => {
 // };
 
 const CategoryBrowser = React.memo(() => {
-  const { t, i18n } = useTranslation();
   const { locale } = useLocale();
   const currentLang = locale;
   const homeData = useHomeData();
@@ -148,7 +146,7 @@ const CategoryBrowser = React.memo(() => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <LoaderIcon className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-            <p className="text-gray-600">{t('categories.loading')}</p>
+            <p className="text-gray-600">{getCategoriesUIText('loading', currentLang)}</p>
           </div>
         </div>
       </section>
@@ -171,7 +169,7 @@ const CategoryBrowser = React.memo(() => {
               }}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
-              {t('categories.reload')}
+              {getCategoriesUIText('reload', currentLang)}
             </button>
           </div>
         </div>
@@ -184,9 +182,9 @@ const CategoryBrowser = React.memo(() => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            {t('categories.title')}
+            {getCategoriesUIText('title', currentLang)}
           </h2>
-          <p className="text-gray-600">{t('categories.subtitle')}</p>
+          <p className="text-gray-600">{getCategoriesUIText('subtitle', currentLang)}</p>
         </div>
 
         {/* 分类展示 - 显示真实的分类数据 */}
@@ -220,12 +218,12 @@ const CategoryBrowser = React.memo(() => {
 
                   <div className="p-6">
                     <p className="text-gray-600 text-sm leading-relaxed mb-4">
-                      {t(`categories.descriptions.${category.name}`, category.description || t('categories.defaultDescription'))}
+                      {getCategoryDescription(category.name, currentLang) || category.description || getCategoriesUIText('defaultDescription', currentLang)}
                     </p>
 
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-500">
-                        {t('categories.viewTools')}
+                        {getCategoriesUIText('viewTools', currentLang)}
                       </span>
                       <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
                     </div>
@@ -240,7 +238,7 @@ const CategoryBrowser = React.memo(() => {
         {categoriesToRender.length === 0 && !loadingToRender && (
           <div className="text-center py-12">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500 mb-4">{t('categories.noData')}</p>
+            <p className="text-gray-500 mb-4">{getCategoriesUIText('noData', currentLang)}</p>
             <button
               onClick={() => {
                 if (homeData) {
@@ -251,7 +249,7 @@ const CategoryBrowser = React.memo(() => {
               }}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
-              {t('categories.reload')}
+              {getCategoriesUIText('reload', currentLang)}
             </button>
           </div>
         )}
