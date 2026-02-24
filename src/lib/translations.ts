@@ -329,3 +329,31 @@ export function getCategoryDescription(categoryName: string, lang: string): stri
   if (!item) return '';
   return lang === 'en' ? item.en : item.zh;
 }
+
+// Featured Tools UI 翻译
+export const FEATURED_TOOLS_UI_TRANSLATIONS: Record<string, { zh: string; en: string }> = {
+  title: { zh: '编辑推荐 · 精选工具', en: "Editor's Picks" },
+  subtitle: { zh: '经过专业评测，为土木工程师精心挑选的优质工具', en: 'Curated tools reviewed and selected for civil engineers' },
+  newTool: { zh: '新工具', en: 'New' },
+  free: { zh: '免费', en: 'Free' },
+  view: { zh: '查看', en: 'View' },
+  loadFailed: { zh: '加载失败', en: 'Load failed' },
+  reload: { zh: '重新加载', en: 'Reload' },
+  noData: { zh: '暂无精选工具数据', en: 'No featured tools available' },
+  defaultTagline: { zh: '专业的土木工程工具', en: 'Professional civil engineering tool' },
+  loginRequired: { zh: '需要登录', en: 'Login required' },
+  loginToFavorite: { zh: '登录后即可收藏工具', en: 'Login to favorite tools' },
+  unfavorite: { zh: '已取消收藏', en: 'Removed from favorites' },
+  favorited: { zh: '已收藏', en: 'Added to favorites' },
+  operationFailed: { zh: '操作失败', en: 'Operation failed' },
+  retryLater: { zh: '请稍后重试', en: 'Please try again later' },
+  addFavorite: { zh: '添加收藏', en: 'Add to favorites' },
+  removeFavorite: { zh: '取消收藏', en: 'Remove from favorites' },
+};
+
+// 获取 Featured Tools UI 翻译
+export function getFeaturedToolsUIText(key: keyof typeof FEATURED_TOOLS_UI_TRANSLATIONS, lang: string): string {
+  const item = FEATURED_TOOLS_UI_TRANSLATIONS[key];
+  if (!item) return '';
+  return lang === 'en' ? item.en : item.zh;
+}

@@ -12,6 +12,8 @@ import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
 import { useToast, createToastHelpers } from './Toast';
 import { logger } from '../lib/logger';
+import { useLocale } from '../contexts/LocaleContext';
+import { translateCategory, translatePricing, getFeaturedToolsUIText } from '../lib/translations';
 import type { Tool } from '../types/index';
 
 // 已移除硬编码的featuredTools数组，现在使用动态数据
@@ -27,6 +29,8 @@ const FeaturedTools = React.memo(() => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [favoriteStates, setFavoriteStates] = useState<Record<string, boolean>>({});
   const [favoriteLoading, setFavoriteLoading] = useState<Record<string, boolean>>({});
+  const { locale } = useLocale();
+  const currentLang = locale;
 
   // 性能监控和缓存hooks
   const { fetchWithCache } = useUnifiedCache();
@@ -154,7 +158,7 @@ const FeaturedTools = React.memo(() => {
 
     if (!user) {
       setShowAuthModal(true);
-      toast.info('需要登录', '登录后即可收藏工具');
+      toast.info(getFeaturedToolsUIText('loginRequired', currentLang), getFeaturedToolsUIText('loginToFavorite', currentLang));
       return;
     }
 
@@ -169,15 +173,15 @@ const FeaturedTools = React.memo(() => {
       if (current) {
         await removeFromFavorites(tool.id);
         setFavoriteStates(prev => ({ ...prev, [tool.id]: false }));
-        toast.success('已取消收藏');
+        toast.success(getFeaturedToolsUIText('unfavorite', currentLang));
       } else {
         await addToFavorites(tool.id);
         setFavoriteStates(prev => ({ ...prev, [tool.id]: true }));
-        toast.success('已收藏');
+        toast.success(getFeaturedToolsUIText('favorited', currentLang));
       }
     } catch (e) {
       console.error('收藏操作失败:', e);
-      toast.error('操作失败', '请稍后重试');
+      toast.error(getFeaturedToolsUIText('operationFailed', currentLang), getFeaturedToolsUIText('retryLater', currentLang));
     } finally {
       setFavoriteLoading(prev => ({ ...prev, [tool.id]: false }));
     }
@@ -189,9 +193,9 @@ const FeaturedTools = React.memo(() => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              编辑推荐 · 精选工具
+              {getFeaturedToolsUIText('title', currentLang)}
             </h2>
-            <p className="text-gray-600">经过专业评测，为土木工程师精心挑选的优质工具</p>
+            <p className="text-gray-600">{getFeaturedToolsUIText('subtitle', currentLang)}</p>
           </div>
         </div>
 
@@ -218,15 +222,15 @@ const FeaturedTools = React.memo(() => {
         {/* 错误状态 */}
         {error && (
           <div className="text-center py-8">
-            <p className="text-red-600">加载失败: {error}</p>
-            <button 
+            <p className="text-red-600">{getFeaturedToolsUIText('loadFailed', currentLang)}: {error}</p>
+            <button
               onClick={() => {
                 recordInteraction('retry_featured_tools');
                 fetchFeaturedTools();
-              }} 
+              }}
               className="mt-2 text-blue-600 hover:underline"
             >
-              重新加载
+              {getFeaturedToolsUIText('reload', currentLang)}
             </button>
           </div>
         )}
@@ -236,7 +240,7 @@ const FeaturedTools = React.memo(() => {
           <div className="space-y-4">
             {tools.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-gray-600">暂无精选工具数据</p>
+                <p className="text-gray-600">{getFeaturedToolsUIText('noData', currentLang)}</p>
                 <button
                   onClick={() => {
                     recordInteraction('retry_featured_tools');
@@ -244,7 +248,7 @@ const FeaturedTools = React.memo(() => {
                   }}
                   className="mt-2 text-blue-600 hover:underline"
                 >
-                  重新加载
+                  {getFeaturedToolsUIText('reload', currentLang)}
                 </button>
               </div>
             ) : (
@@ -276,12 +280,12 @@ const FeaturedTools = React.memo(() => {
                   </h3>
                   {tool.categories && tool.categories[0] && (
                     <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
-                      {tool.categories[0]}
+                      {translateCategory(tool.categories[0], currentLang)}
                     </span>
                   )}
                 </div>
                 <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">
-                  {tool.tagline || tool.description || '专业的土木工程工具'}
+                  {tool.tagline || tool.description || getFeaturedToolsUIText('defaultTagline', currentLang)}
                 </p>
               </div>
 
@@ -293,12 +297,12 @@ const FeaturedTools = React.memo(() => {
                     <span className="text-sm font-medium text-gray-700">
                       {tool.review_count && tool.review_count > 0
                         ? tool.rating?.toFixed(1) || '4.5'
-                        : '新工具'}
+                        : getFeaturedToolsUIText('newTool', currentLang)}
                     </span>
                   </div>
-                  <span className="text-xs text-gray-500">{tool.pricing || '免费'}</span>
+                  <span className="text-xs text-gray-500">{translatePricing(tool.pricing, currentLang) || getFeaturedToolsUIText('free', currentLang)}</span>
                 </div>
-                <button 
+                <button
                   type="button"
                   disabled={!!favoriteLoading[tool.id]}
                   className={`p-2 transition-colors ${
@@ -311,7 +315,7 @@ const FeaturedTools = React.memo(() => {
                     e.stopPropagation();
                     void handleFavoriteToggle(tool);
                   }}
-                  aria-label={favoriteStates[tool.id] ? '取消收藏' : '添加收藏'}
+                  aria-label={favoriteStates[tool.id] ? getFeaturedToolsUIText('removeFavorite', currentLang) : getFeaturedToolsUIText('addFavorite', currentLang)}
                 >
                   <Heart className={`w-5 h-5 ${favoriteStates[tool.id] ? 'fill-current' : ''}`} />
                 </button>
@@ -321,7 +325,7 @@ const FeaturedTools = React.memo(() => {
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors inline-block"
                   onClick={() => recordInteraction('view_tool_detail', { toolId: tool.id, toolName: tool.name })}
                 >
-                  查看
+                  {getFeaturedToolsUIText('view', currentLang)}
                 </Link>
               </div>
             </div>
