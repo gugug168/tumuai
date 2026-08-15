@@ -1,4 +1,22 @@
-# Civil AI Hub
+<p align="center">
+  <img src="./assets/readme/hero.svg" width="100%" alt="Civil AI Hub：面向土木领域的 AI 工具目录与管理站点代码。">
+</p>
+
+Civil AI Hub 的站点源码。仓库含前端、部署、数据库与管理文档；开发前需配置环境变量，不能把示例或测试凭据当作生产事实。
+
+## 一眼看懂
+
+| 价值 | 真实证据 |
+| --- | --- |
+| 面向土木领域的 AI 工具目录与管理站点代码。 | 工具目录 · 前端站点 · Supabase 配置 |
+
+## 从这里开始
+
+```text
+npm install && npm run dev
+```
+
+## 完整说明
 
 Civil AI Hub是一个专注于Civil领域的人工智能工具平台，旨在帮助工程师、设计师和专业人士发现和分享最佳的人工智能解决方案。
 
