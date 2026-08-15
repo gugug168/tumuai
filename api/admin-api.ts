@@ -312,7 +312,8 @@ async function handleDatasets(request: VercelRequest, response: VercelResponse, 
 
       let countQuery = supabase.from('tool_submissions').select('id', { count: 'exact', head: true })
       let listQuery = supabase.from('tool_submissions')
-        .select('id, tool_name, tagline, description, website_url, logo_url, categories, features, pricing, submitter_email, submitter_name, status, admin_notes, created_at, updated_at, reviewed_by')
+        // 注意：表无 submitter_name 列（前端 TS 类型是期望形状，非真实 schema），select 多列会整条报错
+        .select('id, tool_name, tagline, description, website_url, logo_url, categories, features, pricing, submitter_email, status, admin_notes, reviewed_by, reviewed_at, created_at, updated_at')
       if (submissionStatus === 'all') {
         // 不过滤
       } else if (submissionStatus === 'unapproved') {
@@ -330,12 +331,15 @@ async function handleDatasets(request: VercelRequest, response: VercelResponse, 
         listQuery = listQuery.or(`tool_name.ilike.%${q}%,website_url.ilike.%${q}%`)
       }
 
-      const [{ count: subCount }, { data: submissionsList }] = await Promise.all([
+      const [{ count: subCount }, subListResult] = await Promise.all([
         countQuery,
         listQuery.order('created_at', { ascending: false }).range((subPage - 1) * subLimit, subPage * subLimit - 1)
       ])
+      if (subListResult.error) {
+        console.error('submissions list query failed:', subListResult.error.message)
+      }
 
-      data.submissions = submissionsList || []
+      data.submissions = subListResult.data || []
       data.submissionsPagination = {
         page: subPage,
         perPage: subLimit,
