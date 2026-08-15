@@ -152,7 +152,9 @@ async function fetchToolsFromDB(supabase: AppSupabaseClient, params: ToolQueryPa
   toolsQuery = toolsQuery.order(sortBy, { ascending: false, ...(sortBy === 'rating' ? { nullsFirst: false } : {}) })
   toolsQuery = toolsQuery.range(offset, offset + limit - 1)
 
-  let count = 0
+  // count 只在 includeCount=true 时才有意义；否则保持 undefined（JSON 序列化时省略字段），
+  // 避免前端把 0 当成有效总数覆盖真实值导致翻页条消失。
+  let count: number | undefined
   if (includeCount) {
     // 性能优化: 对于无筛选条件的查询，从物化视图获取总数 (极快)
     // 对于有筛选条件的查询，才使用原始 COUNT 查询
@@ -315,8 +317,8 @@ async function handleTools(request: VercelRequest, response: VercelResponse, sup
   // 尝试从 KV 缓存获取
   const cachedData = await getFromCache<{ tools: unknown[]; count: number; timestamp: string }>(cacheKey)
   if (cachedData) {
-    // 如果请求需要 count 但缓存中没有，需要额外查询
-    if (includeCount && cachedData.count === undefined) {
+    // 如果请求需要 count 但缓存中没有（含历史 count:0 毒缓存），需要额外查询
+    if (includeCount && !cachedData.count) {
       // 重新从数据库获取（包含 count）
       const data = await fetchToolsFromDB(supabase, {
         limit, offset, includeCount, lang, featuredOnly, category, categories, pricing, features, sortBy
@@ -444,7 +446,8 @@ async function handleToolsFiltered(request: VercelRequest, response: VercelRespo
     )
     const toolsWithTranslations = applyTranslationsToTools((data || []) as ToolLike[], translations)
 
-    let totalCount = data?.length || 0
+    // includeCount=false 时 count 保持 undefined（当页条数不是总数，冒充会让筛选翻页的页码算错）
+    let totalCount: number | undefined
     if (includeCount) {
       let countQuery = supabase
         .from('tools')

@@ -208,7 +208,7 @@ export function useToolData(performanceHooks?: {
         setState(prev => ({
           ...prev,
           tools: Array.isArray(result.tools) ? result.tools : [],
-          filteredToolsCount: typeof result.count === 'number' ? result.count : prev.filteredToolsCount,
+          filteredToolsCount: (typeof result.count === 'number' && result.count > 0) ? result.count : prev.filteredToolsCount,
           loading: false,
           retryCount: 0
         }));
@@ -228,7 +228,9 @@ export function useToolData(performanceHooks?: {
           : await getToolsSmart(limit, offset, shouldIncludeCount);
 
         const newTools = Array.isArray(result.tools) ? result.tools : [];
-        const totalCount = typeof result.count === 'number'
+        // count 为 0 视为无效（服务端不带 includeCount 时曾返回 count:0，
+        // 会把总数清零导致 totalPages=0、翻页条整个消失）
+        const totalCount = (typeof result.count === 'number' && result.count > 0)
           ? result.count
           : Math.max(stateRef.current.totalToolsCount, newTools.length);
 
