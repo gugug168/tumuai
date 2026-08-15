@@ -27,7 +27,8 @@ interface SiteStats {
 }
 
 const AboutPage = React.memo(() => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language?.startsWith('en');
   const [stats, setStats] = useState<SiteStats>({ toolsCount: 0, categoriesCount: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -80,7 +81,7 @@ const AboutPage = React.memo(() => {
   useMetaTags({
     title: `${t('about.title')} - TumuAI.net`,
     description: t('about.metaDesc'),
-    canonical: 'https://www.tumuai.net/about',
+    canonical: isEn ? 'https://www.tumuai.net/en/about' : 'https://www.tumuai.net/about',
     ogTitle: `${t('about.title')} - TumuAI.net`,
     ogDescription: t('about.metaDesc')
   });

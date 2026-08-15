@@ -45,10 +45,15 @@ function isSortValue(value: string): value is SortValue {
  */
 const ToolsPage = React.memo(() => {
   // Phase 1优化: 接入 useMetaTags hook
+  // canonical 必须跟随语言路径（/en/tools → /en/tools），否则英文页对搜索引擎自称是
+  // 中文页的重复内容，Google 会跳过收录英文版
+  const { locale } = useLocale();
+  const lang = locale;
+  const isEn = locale === 'en';
   useMetaTags({
-    title: '工具中心 - TumuAI.net',
-    description: '发现最适合土木工程师的AI工具和效率工具，涵盖结构设计、BIM建模、施工管理、造价估算等专业领域。',
-    canonical: 'https://www.tumuai.net/tools'
+    title: `${getToolsPageUIText('title', lang)} - TumuAI.net`,
+    description: getToolsPageUIText('metaDesc', lang),
+    canonical: isEn ? 'https://www.tumuai.net/en/tools' : 'https://www.tumuai.net/tools'
   });
 
   // Hooks
@@ -56,8 +61,6 @@ const ToolsPage = React.memo(() => {
   const { showToast } = useToast();
   const toast = createToastHelpers(showToast);
   const searchId = useId();
-  const { locale } = useLocale();
-  const lang = locale;
 
   // 性能监控
   const { recordApiCall, recordInteraction, printReport } = usePerformance('ToolsPage');

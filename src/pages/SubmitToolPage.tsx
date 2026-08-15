@@ -12,7 +12,8 @@ import { useMetaTags } from '../hooks/useMetaTags';
 import type { DuplicateCheckResult } from '../lib/duplicate-checker';
 
 const SubmitToolPage = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEn = i18n.language?.startsWith('en');
 
   // 表单步骤定义
   const FORM_STEPS = [
@@ -39,7 +40,7 @@ const SubmitToolPage = () => {
   useMetaTags({
     title: `${t('submit.title')} - TumuAI.net`,
     description: t('submit.subtitle'),
-    canonical: 'https://www.tumuai.net/submit'
+    canonical: isEn ? 'https://www.tumuai.net/en/submit' : 'https://www.tumuai.net/submit'
   });
 
   const { showToast } = useToast();

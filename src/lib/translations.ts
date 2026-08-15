@@ -362,6 +362,10 @@ export function getFeaturedToolsUIText(key: keyof typeof FEATURED_TOOLS_UI_TRANS
 export const TOOLS_PAGE_UI_TRANSLATIONS: Record<string, { zh: string; en: string }> = {
   title: { zh: '工具中心', en: 'Tools' },
   subtitle: { zh: '发现最适合土木工程师的AI工具和效率工具', en: 'Discover the best AI and productivity tools for civil engineers' },
+  metaDesc: {
+    zh: '发现最适合土木工程师的AI工具和效率工具，涵盖结构设计、BIM建模、施工管理、造价估算等专业领域。',
+    en: 'Discover the best AI and productivity tools for civil engineering: structural design, BIM, construction management, cost estimation and more.'
+  },
   offline: { zh: '网络离线', en: 'Offline' },
   loading: { zh: '正在加载...', en: 'Loading...' },
   retrying: { zh: '正在重试', en: 'Retrying' },
