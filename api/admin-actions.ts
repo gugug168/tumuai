@@ -45,7 +45,6 @@ interface ToolData {
   features?: string[]
   pricing?: string
   featured?: boolean
-  category_id?: string | null
 }
 
 function getBearerToken(request: VercelRequest): string {
@@ -145,25 +144,6 @@ export default async function handler(request: VercelRequest, response: VercelRe
       } catch (error) {
         console.error('Failed to log admin action:', error)
       }
-    }
-
-    // 将分类名称/混合输入解析为分类ID数组，并返回主分类ID
-    async function resolveCategoryIds(input: unknown): Promise<{ ids: string[]; primaryId: string | null }> {
-      const raw = Array.isArray(input) ? input.filter(Boolean) : []
-      if (raw.length === 0) return { ids: [], primaryId: null }
-      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-      const preUuids = raw.filter((v: unknown): v is string => typeof v === 'string' && uuidRe.test(v))
-      const names = raw.filter((v: unknown): v is string => typeof v === 'string' && !uuidRe.test(v))
-      let foundIds: string[] = [...preUuids]
-      if (names.length > 0) {
-        const { data: cats } = await supabase
-          .from('categories')
-          .select('id,name')
-          .in('name', names)
-        if (cats && cats.length) foundIds = foundIds.concat(cats.map(c => c.id))
-      }
-      const uniqueIds = Array.from(new Set(foundIds))
-      return { ids: uniqueIds, primaryId: uniqueIds[0] || null }
     }
 
     function normalizeScreenshotTarget(websiteUrl: string): string | null {
@@ -404,9 +384,8 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
           // 如果审核通过，创建工具
           if (status === 'approved') {
-            // category_id 外键用解析的 id；categories 数组保持中文名——与全站既有数据一致
-            // （前台 translateCategory/筛选 overlaps 都按名字匹配，存 uuid 会导致新工具分类显示成 id 且筛选漏出）
-            const { primaryId } = await resolveCategoryIds(submission.categories)
+            // categories 存中文名与全站一致；tools 表无 category_id 列（实测 schema），
+            // 之前的 insert 写了该列导致审核通过建工具必然整条报错（fallback 也带同样字段）
             const insertObj: Record<string, unknown> = {
               name: submission.tool_name,
               tagline: submission.tagline,
@@ -421,8 +400,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
               upvotes: 0,
               views: 0,
               rating: 0,
-              status: 'published',
-              category_id: submission.category_id || primaryId || null
+              status: 'published'
             }
 
             // 首次尝试插入（包含 categories）
@@ -491,7 +469,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
         }
 
         try {
-          const { primaryId } = await resolveCategoryIds(tool.categories || [])
+          // tools 表无 category_id 列（实测 schema），写入会整条报错——见 review_submission 同款修复
           const payload = {
             name: tool.name.trim(),
             tagline: (tool.tagline || '').trim(),
@@ -503,8 +481,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
             pricing: tool.pricing || 'Free',
             featured: Boolean(tool.featured),
             date_added: new Date().toISOString(),
-            status: 'published',
-            category_id: (tool as ToolData).category_id || primaryId || null
+            status: 'published'
           }
 
           // 首次插入，若失败则去掉 categories 再尝试
