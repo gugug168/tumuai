@@ -3,6 +3,7 @@ import Hero from '../components/Hero';
 import FeaturedTools from '../components/FeaturedTools';
 import CategoryBrowser from '../components/CategoryBrowser';
 import QuickFilters from '../components/QuickFilters';
+import LatestTools from '../components/LatestTools';
 import { HomeDataProvider } from '../contexts/HomeDataContext';
 import { prefetchToolDetailPage, prefetchToolsData, prefetchToolsPage } from '../lib/route-prefetch';
 
@@ -57,6 +58,7 @@ const HomePage = React.memo(() => {
         <Hero />
         <QuickFilters />
         <CategoryBrowser />
+        <LatestTools />
         <FeaturedTools />
       </div>
     </HomeDataProvider>

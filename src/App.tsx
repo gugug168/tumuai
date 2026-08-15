@@ -20,6 +20,7 @@ const ToolsPage = React.lazy(() => import('./pages/ToolsPage'));
 const SubmitToolPage = React.lazy(() => import('./pages/SubmitToolPage'));
 const ToolDetailPage = React.lazy(() => import('./pages/ToolDetailPage'));
 const AboutPage = React.lazy(() => import('./pages/AboutPage'));
+const RankingsPage = React.lazy(() => import('./pages/RankingsPage'));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const DiagnosticPage = React.lazy(() => import('./pages/DiagnosticPage'));
@@ -68,6 +69,11 @@ function App() {
                             <SubmitToolPage />
                           </PageTransition>
                         } />
+                        <Route path="/rankings" element={
+                          <PageTransition type="fade" duration={200}>
+                            <RankingsPage />
+                          </PageTransition>
+                        } />
                         <Route path="/about" element={
                           <PageTransition type="fade" duration={200}>
                             <AboutPage />
@@ -99,6 +105,11 @@ function App() {
                         <Route path="/en/submit" element={
                           <PageTransition type="fade" duration={200}>
                             <SubmitToolPage />
+                          </PageTransition>
+                        } />
+                        <Route path="/en/rankings" element={
+                          <PageTransition type="fade" duration={200}>
+                            <RankingsPage />
                           </PageTransition>
                         } />
                         <Route path="/en/about" element={

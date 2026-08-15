@@ -51,6 +51,7 @@ const Header = React.memo(() => {
   const navItems = [
     { path: '/', label: t('nav.home') },
     { path: '/tools', label: t('nav.tools') },
+    { path: '/rankings', label: t('nav.rankings') },
     { path: '/about', label: t('nav.about') },
   ];
 

@@ -67,6 +67,10 @@
       "destination": "/tools.html"
     },
     {
+      "source": "/rankings",
+      "destination": "/rankings.html"
+    },
+    {
       "source": "/en",
       "destination": "/en/index.html"
     },
@@ -81,6 +85,10 @@
     {
       "source": "/en/tools",
       "destination": "/en/tools.html"
+    },
+    {
+      "source": "/en/rankings",
+      "destination": "/en/rankings.html"
     }
   ],
   "headers": [

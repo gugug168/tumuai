@@ -482,3 +482,32 @@ export function formatRelativeDate(dateStr: string | undefined | null, lang: str
   const weeks = Math.floor(days / 7);
   return lang === 'en' ? `${weeks}w ago` : `${weeks}周前`;
 }
+
+// 榜单页 UI 文案
+export const RANKINGS_PAGE_UI_TRANSLATIONS: Record<string, { zh: string; en: string }> = {
+  title: { zh: '工具榜单', en: 'Tool Rankings' },
+  subtitle: { zh: '按热度、新近度和浏览量发现土木人最关注的 AI 工具', en: 'Discover the AI tools civil engineers care about most' },
+  metaDesc: {
+    zh: 'TumuAI 土木工程 AI 工具榜单：最热门工具排行、最新收录与本周新增，帮你快速找到值得用的 AI 工具。',
+    en: 'TumuAI rankings for civil engineering AI tools: most popular, recently added and new this week.'
+  },
+  hotTitle: { zh: '🔥 总热门榜', en: '🔥 Most Popular' },
+  hotDesc: { zh: '按社区热度排序，长期积累的口碑之选', en: 'Ranked by community popularity over time' },
+  newTitle: { zh: '🆕 最新收录', en: '🆕 Recently Added' },
+  newDesc: { zh: '最近收录进导航站的工具', en: 'Freshly curated into the directory' },
+  weekTitle: { zh: '⭐ 本周新增', en: '⭐ New This Week' },
+  weekDesc: { zh: '过去 7 天内新收录的工具', en: 'Tools added in the past 7 days' },
+  weekEmpty: { zh: '本周暂无新增，去工具中心看看全部工具', en: 'Nothing new this week yet — browse all tools' },
+  viewAllNew: { zh: '查看全部最新 →', en: 'View all latest →' },
+  metricUpvotes: { zh: '热度', en: 'Upvotes' },
+  metricViews: { zh: '浏览', en: 'Views' },
+  metricDate: { zh: '收录于', en: 'Added' },
+  loading: { zh: '加载中...', en: 'Loading...' },
+  loadFailed: { zh: '加载失败，请稍后重试', en: 'Failed to load, please retry' },
+};
+
+export function getRankingsPageUIText(key: keyof typeof RANKINGS_PAGE_UI_TRANSLATIONS, lang: string): string {
+  const item = RANKINGS_PAGE_UI_TRANSLATIONS[key];
+  if (!item) return '';
+  return lang === 'en' ? item.en : item.zh;
+}

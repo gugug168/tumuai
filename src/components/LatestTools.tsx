@@ -1,14 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, ExternalLink, Heart, Eye, Clock } from 'lucide-react';
+import { Star, ExternalLink, Eye, Clock } from 'lucide-react';
 import { getLatestTools } from '../lib/supabase';
 import { getBestDisplayLogoUrl } from '../lib/logoUtils';
+import { useLocale } from '../contexts/LocaleContext';
+import { translateCategory, translatePricing, formatRelativeDate } from '../lib/translations';
 import OptimizedImage from './OptimizedImage';
 import { SkeletonCard, SkeletonWrapper } from './SkeletonLoader';
 import type { Tool } from '../types';
 
+// 组件私有双语文案
+const LATEST_TOOLS_TEXT = {
+  weekTitle: { zh: '本周新增', en: 'New This Week' },
+  weekSubtitle: { zh: '过去 7 天新收录的优质工具，第一时间发现行业前沿', en: 'Quality tools added in the past 7 days' },
+  recentTitle: { zh: '最近收录', en: 'Recently Added' },
+  recentSubtitle: { zh: '最新加入网站的优质工具，第一时间发现行业前沿技术', en: 'The latest tools curated into the directory' },
+  newBadge: { zh: '新收录', en: 'New' },
+  uncategorized: { zh: '未分类', en: 'Uncategorized' },
+  viewDetails: { zh: '查看详情', en: 'View details' },
+  viewMore: { zh: '查看更多最新工具', en: 'View more latest tools' },
+  loadFailed: { zh: '加载失败', en: 'Load failed' },
+  retry: { zh: '重新加载', en: 'Retry' },
+};
+
 const LatestTools = () => {
-  const [latestTools, setLatestTools] = useState<Tool[]>([]);
+  const { locale } = useLocale();
+  const lang = locale;
+  const isEn = locale === 'en';
+  const txt = (key: keyof typeof LATEST_TOOLS_TEXT) => (isEn ? LATEST_TOOLS_TEXT[key].en : LATEST_TOOLS_TEXT[key].zh);
+
+  const [allLatest, setAllLatest] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,10 +105,10 @@ const LatestTools = () => {
       setLoading(true);
       setError(null);
       const data = await getLatestTools();
-      setLatestTools(Array.isArray(data) ? data : []);
+      setAllLatest(Array.isArray(data) ? data : []);
     } catch (err) {
       const error = err as Error;
-      setError(error?.message || '获取工具失败');
+      setError(error?.message || txt('loadFailed'));
       console.error('获取最新工具失败:', err);
     } finally {
       setLoading(false);
@@ -96,16 +117,25 @@ const LatestTools = () => {
 
   useEffect(() => {
     fetchLatestTools();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 本周新增（7 天内真实收录）；为空时降级显示最近 6 条，文案区分
+  const { latestTools, isWeekMode } = useMemo(() => {
+    const weekAgo = Date.now() - 7 * 86400000;
+    const thisWeek = allLatest.filter(t => t.date_added && new Date(t.date_added).getTime() >= weekAgo);
+    if (thisWeek.length > 0) return { latestTools: thisWeek, isWeekMode: true };
+    return { latestTools: allLatest.slice(0, 6), isWeekMode: false };
+  }, [allLatest]);
   return (
     <section className="py-16 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            最新收录
+            {isWeekMode ? txt('weekTitle') : txt('recentTitle')}
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            最新加入网站的优质工具，第一时间发现行业前沿技术
+            {isWeekMode ? txt('weekSubtitle') : txt('recentSubtitle')}
           </p>
         </div>
 
@@ -113,12 +143,12 @@ const LatestTools = () => {
         {error && (
           <div className="text-center py-12">
             <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
-              <p className="text-red-600 mb-4">加载失败: {error}</p>
-              <button 
+              <p className="text-red-600 mb-4">{txt('loadFailed')}: {error}</p>
+              <button
                 onClick={fetchLatestTools}
                 className="btn-primary px-6 py-2"
               >
-                重新加载
+                {txt('retry')}
               </button>
             </div>
           </div>
@@ -165,15 +195,10 @@ const LatestTools = () => {
                   lazyLoad={true}
                 />
                 <div className="absolute top-3 left-3">
-                  <span className="bg-green-600 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
+                  <span className="bg-blue-600 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
                     <Clock className="w-3 h-3 mr-1" />
-                    新收录
+                    {formatRelativeDate(tool.date_added, lang) || txt('newBadge')}
                   </span>
-                </div>
-                <div className="absolute top-3 right-3">
-                  <button className="bg-white/90 p-1.5 rounded-full hover:bg-white transition-colors">
-                    <Heart className="w-3 h-3 text-gray-600 hover:text-red-500" />
-                  </button>
                 </div>
               </div>
 
@@ -193,9 +218,9 @@ const LatestTools = () => {
                   {tool.tagline}
                 </p>
 
-                <div className="mb-3">
-                  <span className="tag-primary px-2 py-1 rounded-md text-xs font-medium">
-                    {tool.categories?.[0] || '未分类'}
+                <div className="mb-3 flex items-center gap-2 flex-wrap">
+                  <span className="tag-primary px-2 py-1 rounded-md text-xs font-semibold">
+                    {translateCategory(tool.categories?.[0] || '', lang) || txt('uncategorized')}
                   </span>
                 </div>
 
@@ -224,7 +249,7 @@ const LatestTools = () => {
                     </div>
                   </div>
                   <span className="text-xs font-medium text-accent-600">
-                    {tool.pricing || '免费'}
+                    {translatePricing(tool.pricing, lang)}
                   </span>
                 </div>
 
@@ -234,7 +259,7 @@ const LatestTools = () => {
                   state={{ tool }}
                   className="w-full btn-primary py-2 px-3 text-sm flex items-center justify-center"
                 >
-                  查看详情
+                  {txt('viewDetails')}
                   <ExternalLink className="ml-1 w-3 h-3" />
                 </Link>
               </div>
@@ -246,9 +271,9 @@ const LatestTools = () => {
         {/* 查看更多按钮 */}
         {!loading && !error && latestTools.length > 0 && (
           <div className="text-center mt-12">
-            <button className="btn-secondary px-8 py-3">
-              查看更多最新工具
-            </button>
+            <Link to="/tools?sortBy=date_added" className="btn-secondary px-8 py-3 inline-block">
+              {txt('viewMore')}
+            </Link>
           </div>
         )}
         </SkeletonWrapper>

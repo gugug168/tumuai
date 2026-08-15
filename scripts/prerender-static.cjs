@@ -454,10 +454,12 @@ function writeSitemapXml(toolUrls) {
   const staticUrls = [
     { loc: `${SITE_ORIGIN}/`, changefreq: 'daily', priority: '1.0' },
     { loc: `${SITE_ORIGIN}/tools`, changefreq: 'daily', priority: '0.9' },
+    { loc: `${SITE_ORIGIN}/rankings`, changefreq: 'weekly', priority: '0.8' },
     { loc: `${SITE_ORIGIN}/submit`, changefreq: 'weekly', priority: '0.7' },
     { loc: `${SITE_ORIGIN}/about`, changefreq: 'monthly', priority: '0.6' },
     { loc: `${SITE_ORIGIN}/en`, changefreq: 'daily', priority: '0.9' },
     { loc: `${SITE_ORIGIN}/en/tools`, changefreq: 'daily', priority: '0.85' },
+    { loc: `${SITE_ORIGIN}/en/rankings`, changefreq: 'weekly', priority: '0.75' },
     { loc: `${SITE_ORIGIN}/en/submit`, changefreq: 'weekly', priority: '0.65' },
     { loc: `${SITE_ORIGIN}/en/about`, changefreq: 'monthly', priority: '0.55' }
   ];
@@ -655,6 +657,43 @@ async function main() {
     toolsFallbackInnerEn
   );
   writeHtml(path.join('en', 'tools.html'), toolsHtmlEn);
+
+  // Rankings page (SEO 长尾流量入口：热门榜 + 最新/本周新增)
+  const buildRankingsFallback = (locale) => `
+    <div style="padding:2rem 0;text-align:center;">
+      <h2 style="font-size:1.5rem;font-weight:700;margin-bottom:0.5rem;">${locale === 'en' ? 'Tool Rankings' : '工具榜单'}</h2>
+      <p style="color:#6b7280;">${locale === 'en' ? 'Most popular, recently added and new this week.' : '总热门榜、最新收录与本周新增。'}</p>
+    </div>
+    ${publishedTools ? buildToolsListHtml(publishedTools, 20, locale) : ''}
+  `;
+  writeHtml('rankings.html', replaceFallback(
+    withPageMeta(baseHtml, {
+      title: '工具榜单 - TumuAI.net | 土木工程 AI 工具热门排行',
+      description: 'TumuAI 土木工程 AI 工具榜单：最热门工具排行、最新收录与本周新增，帮你快速找到值得用的 AI 工具。',
+      canonicalPath: '/rankings',
+      locale: 'zh-CN',
+      alternates: [
+        { hreflang: 'zh-CN', href: `${SITE_ORIGIN}/rankings` },
+        { hreflang: 'en', href: `${SITE_ORIGIN}/en/rankings` },
+        { hreflang: 'x-default', href: `${SITE_ORIGIN}/rankings` }
+      ]
+    }),
+    buildRankingsFallback('zh-CN')
+  ));
+  writeHtml(path.join('en', 'rankings.html'), replaceFallback(
+    withPageMeta(baseHtml, {
+      title: 'Tool Rankings - TumuAI.net | Best civil engineering AI tools',
+      description: 'TumuAI rankings for civil engineering AI tools: most popular, recently added and new this week.',
+      canonicalPath: '/en/rankings',
+      locale: 'en',
+      alternates: [
+        { hreflang: 'zh-CN', href: `${SITE_ORIGIN}/rankings` },
+        { hreflang: 'en', href: `${SITE_ORIGIN}/en/rankings` },
+        { hreflang: 'x-default', href: `${SITE_ORIGIN}/rankings` }
+      ]
+    }),
+    buildRankingsFallback('en')
+  ));
 
   // Tool detail snapshots + sitemap (best-effort).
   const toolUrlsForSitemap = [];
