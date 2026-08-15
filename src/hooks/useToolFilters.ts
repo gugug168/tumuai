@@ -105,6 +105,7 @@ export function useToolFilters() {
           } else {
             newParams.delete('search');
           }
+          newParams.delete('page'); // 筛选变化重置回第 1 页，清掉残留页码
 
           return newParams.toString() === params.toString() ? params : newParams;
         }, { replace: true });
@@ -118,6 +119,7 @@ export function useToolFilters() {
       // 同步到 URL（不做防抖）
       setSearchParams((params) => {
         const newParams = new URLSearchParams(params);
+        newParams.delete('page'); // 筛选变化重置回第 1 页
 
         const strValue = Array.isArray(value) ? value.join(',') : String(value || '');
         if (type === 'categories') {
@@ -163,6 +165,7 @@ export function useToolFilters() {
       if (nextCategories.length > 0) newParams.set('category', nextCategories.join(','));
       else newParams.delete('category');
       newParams.delete('categories');
+      newParams.delete('page'); // 筛选变化重置回第 1 页
       return newParams.toString() === params.toString() ? params : newParams;
     }, { replace: true });
   }, [setSearchParams, startTransition]);
@@ -185,6 +188,7 @@ export function useToolFilters() {
       const newParams = new URLSearchParams(params);
       if (nextFeatures.length > 0) newParams.set('features', nextFeatures.join(','));
       else newParams.delete('features');
+      newParams.delete('page'); // 筛选变化重置回第 1 页
       return newParams.toString() === params.toString() ? params : newParams;
     }, { replace: true });
   }, [setSearchParams, startTransition]);

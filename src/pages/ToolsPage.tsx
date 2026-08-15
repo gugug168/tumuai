@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useId, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useId, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { WifiOff, RefreshCw, AlertCircle, Wifi, Clock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast, createToastHelpers } from '../components/Toast';
@@ -109,6 +110,9 @@ const ToolsPage = React.memo(() => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  // 首次加载从 URL 读取页码（?page=N），之后由翻页/筛选交互驱动
+  const pageInitRef = useRef(false);
 
   // ========================================
   // 数据加载
@@ -144,10 +148,19 @@ const ToolsPage = React.memo(() => {
     return f;
   }, [needsServerFiltering, filters.search, filters.categories, filters.pricing, filters.features, filters.sortBy]);
 
-  // 筛选条件变化时重新加载数据（回到第 1 页）
+  // 筛选条件变化时重新加载数据（回到第 1 页）；首次挂载尊重 URL 的 ?page=N
   useEffect(() => {
-    setCurrentPage(1);
-    loadTools(false, 1, serverFilters);
+    let targetPage = 1;
+    if (!pageInitRef.current) {
+      pageInitRef.current = true;
+      const raw = parseInt(searchParams.get('page') || '1', 10);
+      if (Number.isFinite(raw) && raw > 1) targetPage = raw;
+    }
+    setCurrentPage(targetPage);
+    loadTools(false, targetPage, serverFilters);
+    // searchParams 故意不入依赖：仅首次读取；后续翻页由 handlePageChange 驱动，
+    // 筛选变化时 useToolFilters 已负责清掉 page 参数
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverFilters, loadTools, setCurrentPage]);
 
   // 用户变化时加载收藏状态
@@ -225,8 +238,15 @@ const ToolsPage = React.memo(() => {
   // 处理页码变化
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
+    // 页码同步到 URL：刷新/分享/后退不丢状态（第 1 页时不带参数保持 URL 干净）
+    setSearchParams((params) => {
+      const newParams = new URLSearchParams(params);
+      if (page > 1) newParams.set('page', String(page));
+      else newParams.delete('page');
+      return newParams.toString() === params.toString() ? params : newParams;
+    }, { replace: true });
     loadTools(false, page, serverFilters);
-  }, [setCurrentPage, loadTools, serverFilters]);
+  }, [setCurrentPage, setSearchParams, loadTools, serverFilters]);
 
   // 处理预加载下一页
   const handlePreloadNext = useCallback(() => {
@@ -402,6 +422,8 @@ const ToolsPage = React.memo(() => {
           />
 
         {/* Tools Grid */}
+        {/* sr-only h2：补齐标题大纲（h1 页面标题 → h2 列表 → h3 卡片），修 heading-order 跳级 */}
+        <h2 className="sr-only">{getToolsPageUIText('subtitle', lang)}</h2>
         <ToolGrid
             tools={tools}
             totalCount={displayCount}

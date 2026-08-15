@@ -82,15 +82,6 @@ const ToolCard = React.memo(({
     handleNavigateDetail();
   }, [handleNavigateDetail, shouldIgnoreCardInteraction]);
 
-  const handleCardKeyDown = React.useCallback((e: React.KeyboardEvent) => {
-    // Only trigger when the card itself is focused (not a child control).
-    if (e.currentTarget !== e.target) return;
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleNavigateDetail();
-    }
-  }, [handleNavigateDetail]);
-
   // 获取要显示的 logo URL（使用共享工具函数）
   const displayLogoUrl = React.useMemo(() => {
     return getBestDisplayLogoUrl(tool.logo_url, tool.name, tool.categories || []);
@@ -122,10 +113,6 @@ const ToolCard = React.memo(({
           ${className}
         `}
         onClick={handleCardClick}
-        onKeyDown={handleCardKeyDown}
-        role="link"
-        tabIndex={0}
-        aria-label={`${tool.name} — ${getToolCardUIText('viewTool', lang)}`}
       >
         {/* Tool Logo */}
         <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-100 p-2">
@@ -147,7 +134,15 @@ const ToolCard = React.memo(({
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2 mb-1">
             <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
-              {tool.name}
+              <Link
+                to={`/tools/${tool.id}`}
+                state={{ tool }}
+                onMouseEnter={handlePrefetchDetail}
+                onFocus={handlePrefetchDetail}
+                className="hover:text-blue-600 transition-colors"
+              >
+                {tool.name}
+              </Link>
             </h3>
             {tool.categories && tool.categories[0] && (
               <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
@@ -227,10 +222,6 @@ const ToolCard = React.memo(({
       ${className}
     `}
       onClick={handleCardClick}
-      onKeyDown={handleCardKeyDown}
-      role="link"
-      tabIndex={0}
-      aria-label={`${tool.name} — ${getToolCardUIText('viewTool', lang)}`}
     >
       {/* Tool Image */}
       <div className="relative w-full h-40 bg-gray-50 flex items-center justify-center p-10">
@@ -279,7 +270,15 @@ const ToolCard = React.memo(({
       <div className="p-4">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">
-            {tool.name}
+            <Link
+              to={`/tools/${tool.id}`}
+              state={{ tool }}
+              onMouseEnter={handlePrefetchDetail}
+              onFocus={handlePrefetchDetail}
+              className="hover:text-blue-600 transition-colors"
+            >
+              {tool.name}
+            </Link>
           </h3>
           <div className="flex items-center space-x-1">
             <Star className="w-3 h-3 text-yellow-400 fill-current" />

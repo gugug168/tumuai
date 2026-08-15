@@ -407,6 +407,8 @@ export async function getToolsSmart(
   // client-side Supabase reads (which can be slower/unreliable on some networks).
   // Phase 1优化: 缩短超时时间配合增强CDN缓存，目标API响应<500ms
   const API_TIMEOUT = IS_DEV ? 1000 : 1500
+  // 超时重试的宽限：冷启动/跨境慢链路下二次请求往往已热，能救回大部分「超时但可达」的场景
+  const API_RETRY_TIMEOUT = IS_DEV ? 2000 : 5000
 
   // If API is in backoff, skip the network request entirely.
   if (isApiBackedOff()) {
@@ -430,9 +432,19 @@ export async function getToolsSmart(
     console.log('✅ getToolsSmart: API 响应成功')
     return result
   } catch (error) {
-    // AbortError 是正常的请求取消（超时或组件卸载）
+    // AbortError 是超时：可能是 Vercel 冷启动。先给自家 API 一次长超时重试
+    // （对 supabase.co 直连不可达的网络，例如部分大陆访客，这一步是主要数据来源），
+    // 重试仍失败才回退到本地缓存/直连。5xx 等明确错误不重试。
     if (isAbortError(error)) {
-      // 直接回退到缓存，不标记 API 不可用
+      try {
+        const retryController = new AbortController()
+        const retryTimeoutId = setTimeout(() => retryController.abort(), API_RETRY_TIMEOUT)
+        const retried = await getToolsViaAPI(limit, offset, includeCount, retryController.signal)
+        clearTimeout(retryTimeoutId)
+        return retried
+      } catch {
+        // 重试也失败，继续走本地缓存/直连回退
+      }
       const [tools, count] = await Promise.all([
         getToolsWithCache(limit, offset),
         includeCount ? getToolsCountWithCache() : Promise.resolve(undefined)
