@@ -84,6 +84,7 @@ export function useToolData(performanceHooks?: {
   const userIdRef = useRef<string | null>(null);
   const preloadingPagesRef = useRef<Set<string>>(new Set());
   const countLoadingRef = useRef(false);
+  const countFetchedRef = useRef(false);
 
   const { recordApiCall, recordInteraction } = performanceHooks || {};
 
@@ -145,7 +146,9 @@ export function useToolData(performanceHooks?: {
 
   const loadTotalToolsCount = useCallback(async () => {
     if (countLoadingRef.current) return;
-    if (stateRef.current.totalToolsCount > 0) return;
+    // totalToolsCount 可能是「当页条数冒充的假总数」（直接进第 2+ 页时 Math.max 兜底
+    // 会把它设成 12），所以只在已确认拿到过真总数后才跳过
+    if (countFetchedRef.current && stateRef.current.totalToolsCount > 0) return;
 
     countLoadingRef.current = true;
     try {
@@ -154,6 +157,7 @@ export function useToolData(performanceHooks?: {
         : await getToolsSmart(1, 0, true);
 
       if (typeof result.count === 'number' && result.count > 0) {
+        countFetchedRef.current = true;
         setState(prev => ({
           ...prev,
           totalToolsCount: result.count || prev.totalToolsCount
@@ -252,11 +256,13 @@ export function useToolData(performanceHooks?: {
             hasMore: newTools.length < totalCount,
             currentPage: 1
           });
+        }
 
-          // Best-effort: fetch accurate total count after first render.
-          if (stateRef.current.totalToolsCount === 0) {
-            void loadTotalToolsCount();
-          }
+        // Best-effort: fetch accurate total count after first render.
+        // 不限 page===1：从 URL 直接进第 2+ 页时总数同样需要修正，
+        // 否则 totalToolsCount 停留在当页条数，翻页条会消失。
+        if (stateRef.current.totalToolsCount === 0) {
+          void loadTotalToolsCount();
         }
       }
     } catch (error) {
