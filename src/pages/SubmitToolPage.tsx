@@ -674,7 +674,7 @@ const SubmitToolPage = () => {
         </div>
 
         {/* AI智能填入区域 */}
-        <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-xl border border-blue-200 p-6 mb-8">
+        <div className="bg-gradient-to-r from-slate-50 via-blue-50 to-blue-50 rounded-xl border border-blue-200 p-6 mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -704,9 +704,9 @@ const SubmitToolPage = () => {
               disabled={isSubmitting}
             />
 
-            <div className="text-xs text-gray-600 mt-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
+            <div className="text-xs text-gray-600 mt-3 p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-100">
               <div className="flex items-start space-x-2">
-                <Sparkles className="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" />
+                <Sparkles className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="font-medium text-gray-800 mb-1">{t('submit.aiGuideTitle')}</p>
                   <ul className="space-y-1 text-gray-600">

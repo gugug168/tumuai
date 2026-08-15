@@ -4,12 +4,12 @@ import { Calendar, Sparkles, Heart, Users, Chrome, Smartphone } from 'lucide-rea
 import { prefetchToolsPage } from '../lib/route-prefetch';
 
 const quickFilters = [
-  { id: 'today', label: '最新', icon: Calendar, color: 'bg-purple-600' },
-  { id: 'latest', label: 'AI设计', icon: Sparkles, color: 'bg-blue-600' },
-  { id: 'favorites', label: '热门推荐', icon: Heart, color: 'bg-red-500' },
-  { id: 'popular', label: '常用工具', icon: Users, color: 'bg-green-600' },
-  { id: 'browser', label: '浏览器扩展', icon: Chrome, color: 'bg-yellow-600' },
-  { id: 'apps', label: '移动应用', icon: Smartphone, color: 'bg-indigo-600' }
+  { id: 'today', label: '最新', icon: Calendar, color: 'bg-blue-800' },
+  { id: 'latest', label: 'AI设计', icon: Sparkles, color: 'bg-blue-700' },
+  { id: 'favorites', label: '热门推荐', icon: Heart, color: 'bg-blue-600' },
+  { id: 'popular', label: '常用工具', icon: Users, color: 'bg-blue-500' },
+  { id: 'browser', label: '浏览器扩展', icon: Chrome, color: 'bg-cyan-700' },
+  { id: 'apps', label: '移动应用', icon: Smartphone, color: 'bg-sky-700' }
 ];
 
 const QuickFilters = () => {

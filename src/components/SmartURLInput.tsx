@@ -138,15 +138,15 @@ const AIAnalysisResultPanel: React.FC<{
   cost: number;
 }> = ({ data, cost }) => {
   return (
-    <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
       <div className="flex items-start space-x-3">
         <div className="flex-shrink-0">
-          <Sparkles className="w-5 h-5 text-purple-500 mt-0.5" />
+          <Sparkles className="w-5 h-5 text-blue-500 mt-0.5" />
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between mb-3">
-            <h4 className="text-sm font-semibold text-purple-800">
+            <h4 className="text-sm font-semibold text-blue-900">
               AI智能分析结果
             </h4>
             <div className="flex items-center space-x-2 text-xs">
@@ -213,7 +213,7 @@ const AIAnalysisResultPanel: React.FC<{
                   {data.features.map((feature, index) => (
                     <span
                       key={index}
-                      className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-purple-100 text-purple-800"
+                      className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-blue-100 text-blue-900"
                     >
                       {feature}
                     </span>
@@ -243,7 +243,7 @@ const AIAnalysisResultPanel: React.FC<{
 
             {/* AI推理过程 */}
             {data.reasoning && (
-              <div className="pt-3 border-t border-purple-200">
+              <div className="pt-3 border-t border-blue-200">
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   AI分析推理
                 </label>
@@ -254,8 +254,8 @@ const AIAnalysisResultPanel: React.FC<{
             )}
 
             {/* 操作提示 */}
-            <div className="pt-2 border-t border-purple-200">
-              <div className="flex items-center space-x-1 text-xs text-purple-600">
+            <div className="pt-2 border-t border-blue-200">
+              <div className="flex items-center space-x-1 text-xs text-blue-600">
                 <Info className="w-3 h-3" />
                 <span>AI已为您智能填入信息，请在表单中确认并完善细节</span>
               </div>
@@ -353,10 +353,10 @@ const SmartURLInput: React.FC<SmartURLInputProps> = ({
     const iconProps = { className: "w-5 h-5" };
 
     if (aiStatus === 'analyzing') {
-      return <Wand2 className="w-5 h-5 animate-pulse text-purple-500" />;
+      return <Wand2 className="w-5 h-5 animate-pulse text-blue-500" />;
     }
     if (aiStatus === 'complete') {
-      return <Sparkles {...iconProps} className="w-5 h-5 text-purple-500" />;
+      return <Sparkles {...iconProps} className="w-5 h-5 text-blue-500" />;
     }
 
     switch (checkStatus) {
@@ -386,7 +386,7 @@ const SmartURLInput: React.FC<SmartURLInputProps> = ({
     }
 
     if (aiStatus === 'analyzing' || aiStatus === 'complete') {
-      return `${baseStyle} border-purple-300 bg-purple-50 text-purple-900 focus:border-purple-500 focus:ring-purple-500`;
+      return `${baseStyle} border-blue-300 bg-blue-50 text-blue-950 focus:border-blue-500 focus:ring-blue-500`;
     }
 
     switch (checkStatus) {
@@ -435,7 +435,7 @@ const SmartURLInput: React.FC<SmartURLInputProps> = ({
    */
   const getStatusTextColor = () => {
     if (aiStatus === 'analyzing' || aiStatus === 'complete') {
-      return 'text-purple-600';
+      return 'text-blue-600';
     }
 
     switch (checkStatus) {
@@ -506,7 +506,7 @@ const SmartURLInput: React.FC<SmartURLInputProps> = ({
             <button
               onClick={handleAIAnalyze}
               disabled={disabled}
-              className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-100 border border-purple-200 rounded-md hover:bg-purple-200 hover:text-purple-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-md hover:bg-blue-200 hover:text-blue-900 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Sparkles className="w-3 h-3" />
               <span>AI智能填入</span>

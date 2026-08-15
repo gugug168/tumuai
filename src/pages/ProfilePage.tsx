@@ -186,7 +186,7 @@ const ProfilePage = () => {
                   <div className="text-sm text-gray-500">{t('profile.stats.reviews')}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">0</div>
+                  <div className="text-2xl font-bold text-blue-600">0</div>
                   <div className="text-sm text-gray-500">{t('profile.stats.views')}</div>
                 </div>
               </div>
