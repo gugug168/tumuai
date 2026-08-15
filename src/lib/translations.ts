@@ -437,7 +437,7 @@ export const TOOL_CARD_UI_TRANSLATIONS: Record<string, { zh: string; en: string 
   newTool: { zh: '新工具', en: 'New' },
   defaultTagline: { zh: '专业的土木工程工具', en: 'Professional civil engineering tool' },
   viewDetails: { zh: '查看详情', en: 'View details' },
-  viewTool: { zh: '查看工具：', en: 'View tool: ' },
+  viewTool: { zh: '查看工具', en: 'View tool' },
   uncategorized: { zh: '未分类', en: 'Uncategorized' },
   favorite: { zh: '收藏', en: 'Favorite' },
   unfavorite: { zh: '取消收藏', en: 'Unfavorite' },
