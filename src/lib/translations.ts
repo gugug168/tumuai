@@ -494,8 +494,8 @@ export const RANKINGS_PAGE_UI_TRANSLATIONS: Record<string, { zh: string; en: str
     zh: 'TumuAI 土木工程 AI 工具榜单：最热门工具排行、最新收录与本周新增，帮你快速找到值得用的 AI 工具。',
     en: 'TumuAI rankings for civil engineering AI tools: most popular, recently added and new this week.'
   },
-  hotTitle: { zh: '🔥 总热门榜', en: '🔥 Most Popular' },
-  hotDesc: { zh: '按社区热度排序，长期积累的口碑之选', en: 'Ranked by community popularity over time' },
+  hotTitle: { zh: '🔥 总热门榜', en: '🔥 Most Viewed' },
+  hotDesc: { zh: '按浏览量排序，土木人最常点开看的工具', en: 'Ranked by views — the tools civil engineers check out most' },
   newTitle: { zh: '🆕 最新收录', en: '🆕 Recently Added' },
   newDesc: { zh: '最近收录进导航站的工具', en: 'Freshly curated into the directory' },
   weekTitle: { zh: '⭐ 本周新增', en: '⭐ New This Week' },

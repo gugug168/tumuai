@@ -125,7 +125,8 @@ const RankingsPage = React.memo(() => {
     (async () => {
       try {
         const [hotResult, latestResult] = await Promise.all([
-          getToolsViaAPI(20, 0, false, undefined, { sortBy: 'upvotes' }),
+          // 诚实性：upvotes 全站为 0（无用户写入路径），热门榜按真实浏览量排序
+          getToolsViaAPI(20, 0, false, undefined, { sortBy: 'views' }),
           getToolsViaAPI(50, 0, false, undefined, { sortBy: 'date_added' }),
         ]);
         if (cancelled) return;
@@ -182,7 +183,7 @@ const RankingsPage = React.memo(() => {
           desc={getRankingsPageUIText('hotDesc', lang)}
           tools={hot}
           lang={lang}
-          metric="upvotes"
+          metric="views"
         />
 
         <RankingSection
