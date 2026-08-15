@@ -200,7 +200,9 @@
       "urlInvalid": "Please enter a valid URL",
       "taglineRequired": "Tagline is required",
       "taglineTooLong": "Tagline must be 100 characters or less"
-    }
+    },
+    "customFeaturesPlaceholder": "Comma-separated, e.g., AI optimization, parametric design, cost estimation",
+    "notifyEmailPlaceholder": "For review result notification"
   },
   "about": {
     "title": "About",

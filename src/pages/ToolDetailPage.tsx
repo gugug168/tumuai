@@ -352,10 +352,12 @@ const ToolDetailPage = () => {
       keywords: `${tool.name},${categoriesText},AI工具,土木工程`.replace(/,{2,}/g, ','),
       ogTitle: tool.name,
       ogDescription: tool.tagline || tool.description,
-      ogImage: safePrimaryLogoUrl || fallbackLogoDataUrl,
+      // og:image 必须是绝对 URL；data:URI 或相对路径社交平台爬虫不认，分享无卡片图。
+      // 有高质量 logo 用 logo，否则兜底到站内默认分享图。
+      ogImage: safePrimaryLogoUrl || new URL('/og-image.png', window.location.origin).href,
       twitterTitle: tool.name,
       twitterDescription: tool.tagline || tool.description,
-      twitterImage: safePrimaryLogoUrl || fallbackLogoDataUrl
+      twitterImage: safePrimaryLogoUrl || new URL('/og-image.png', window.location.origin).href
     };
   }, [tool, categoriesText, safePrimaryLogoUrl, fallbackLogoDataUrl]);
 

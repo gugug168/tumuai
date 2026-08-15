@@ -125,7 +125,7 @@ const ToolCard = React.memo(({
         onKeyDown={handleCardKeyDown}
         role="link"
         tabIndex={0}
-        aria-label={`${getToolCardUIText('viewTool', lang)}${tool.name}`}
+        aria-label={`${tool.name} — ${getToolCardUIText('viewTool', lang)}`}
       >
         {/* Tool Logo */}
         <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-100 p-2">
@@ -230,7 +230,7 @@ const ToolCard = React.memo(({
       onKeyDown={handleCardKeyDown}
       role="link"
       tabIndex={0}
-      aria-label={`查看工具：${tool.name}`}
+      aria-label={`${tool.name} — ${getToolCardUIText('viewTool', lang)}`}
     >
       {/* Tool Image */}
       <div className="relative w-full h-40 bg-gray-50 flex items-center justify-center p-10">

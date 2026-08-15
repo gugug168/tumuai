@@ -50,7 +50,7 @@ const Footer = () => {
               </p>
               {/* 联系方式 */}
               <div className="mb-4">
-                <p className="text-sm text-gray-500 mb-2">{t('footer.wechat')}：</p>
+                <p className="text-sm text-gray-400 mb-2">{t('footer.wechat')}：</p>
                 <div className="flex items-center text-gray-400">
                   <span className="text-blue-400 mr-2">{t('footer.wechat')}:</span>
                   <span>{t('footer.wechatId')}</span>
@@ -157,6 +157,7 @@ const Footer = () => {
                 href="https://github.com/gugug168/tumuai"
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="GitHub"
                 className="text-gray-400 hover:text-white transition-colors hover:scale-110 transform"
               >
                 <Github className="w-5 h-5" />

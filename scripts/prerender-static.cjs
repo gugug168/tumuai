@@ -526,6 +526,23 @@ async function main() {
   );
   writeHtml(path.join('en', 'index.html'), homeHtmlEn);
 
+  // Chinese home page (root /) — 与英文版对称的 hreflang，否则 Google 无法关联中英文页面
+  const homeHtmlZh = replaceFallback(
+    withPageMeta(baseHtml, {
+      title: 'TumuAI.net - 土木工程 AI 工具导航平台',
+      description: '发现并浏览土木工程领域的 AI 工具与效率工具：结构设计、BIM、施工管理、工程计算等。',
+      canonicalPath: '/',
+      locale: 'zh-CN',
+      alternates: [
+        { hreflang: 'zh-CN', href: `${SITE_ORIGIN}/` },
+        { hreflang: 'en', href: `${SITE_ORIGIN}/en` },
+        { hreflang: 'x-default', href: `${SITE_ORIGIN}/` }
+      ]
+    }),
+    buildHomeFallbackHtml('zh-CN')
+  );
+  writeHtml('index.html', homeHtmlZh);
+
   // Static pages (always generated)
   const aboutHtml = replaceFallback(
     withPageMeta(baseHtml, {

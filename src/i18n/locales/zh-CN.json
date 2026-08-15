@@ -200,7 +200,9 @@
       "urlInvalid": "请输入有效的网址",
       "taglineRequired": "请输入一句话介绍",
       "taglineTooLong": "一句话介绍不能超过100字"
-    }
+    },
+    "customFeaturesPlaceholder": "用逗号分隔，例如：AI优化, 参数化设计, 成本估算",
+    "notifyEmailPlaceholder": "用于通知审核结果"
   },
   "about": {
     "title": "关于我们",
