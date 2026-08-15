@@ -372,8 +372,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
         try {
           // 获取提交详情
-          const { data: submission, error: fetchErr } = await supabase
-            .from('tool_submissions')
+          const { data: submission, error: fetchErr } = await supabase            .from('tool_submissions')
             .select('*')
             .eq('id', submissionId)
             .maybeSingle()
@@ -405,14 +404,16 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
           // 如果审核通过，创建工具
           if (status === 'approved') {
-            const { ids: categoryIds, primaryId } = await resolveCategoryIds(submission.categories)
+            // category_id 外键用解析的 id；categories 数组保持中文名——与全站既有数据一致
+            // （前台 translateCategory/筛选 overlaps 都按名字匹配，存 uuid 会导致新工具分类显示成 id 且筛选漏出）
+            const { primaryId } = await resolveCategoryIds(submission.categories)
             const insertObj: Record<string, unknown> = {
               name: submission.tool_name,
               tagline: submission.tagline,
               description: submission.description || '',
               website_url: submission.website_url,
               logo_url: submission.logo_url || null,
-              categories: categoryIds,
+              categories: Array.isArray(submission.categories) ? submission.categories : [],
               features: Array.isArray(submission.features) ? submission.features : [],
               pricing: submission.pricing || 'Free',
               featured: false,
@@ -490,14 +491,14 @@ export default async function handler(request: VercelRequest, response: VercelRe
         }
 
         try {
-          const { ids: categoryIds, primaryId } = await resolveCategoryIds(tool.categories || [])
+          const { primaryId } = await resolveCategoryIds(tool.categories || [])
           const payload = {
             name: tool.name.trim(),
             tagline: (tool.tagline || '').trim(),
             description: (tool.description || '').trim(),
             website_url: tool.website_url.trim(),
             logo_url: tool.logo_url?.trim() || null,
-            categories: categoryIds,
+            categories: Array.isArray(tool.categories) ? tool.categories.filter(Boolean) : [],
             features: Array.isArray(tool.features) ? tool.features.filter(Boolean) : [],
             pricing: tool.pricing || 'Free',
             featured: Boolean(tool.featured),
