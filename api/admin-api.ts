@@ -302,6 +302,48 @@ async function handleDatasets(request: VercelRequest, response: VercelResponse, 
       data.categories = categoriesList || []
     }
 
+    // 工具提交列表（待审核队列）——前端 AdminDashboard loadSubmissions 依赖此 section
+    if (sections.includes('submissions')) {
+      const subPage = parseInt(url.searchParams.get('page') || '1')
+      const subLimit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 100)
+      // 状态映射：表里只有 pending/approved/rejected；unapproved≈pending、reviewed≈已处理（前端过滤器的历史兼容值）
+      const submissionStatus = url.searchParams.get('submissionStatus') || 'pending'
+      const q = (url.searchParams.get('q') || '').trim()
+
+      let countQuery = supabase.from('tool_submissions').select('id', { count: 'exact', head: true })
+      let listQuery = supabase.from('tool_submissions')
+        .select('id, tool_name, tagline, description, website_url, logo_url, categories, features, pricing, submitter_email, submitter_name, status, admin_notes, created_at, updated_at, reviewed_by')
+      if (submissionStatus === 'all') {
+        // 不过滤
+      } else if (submissionStatus === 'unapproved') {
+        countQuery = countQuery.eq('status', 'pending')
+        listQuery = listQuery.eq('status', 'pending')
+      } else if (submissionStatus === 'reviewed') {
+        countQuery = countQuery.neq('status', 'pending')
+        listQuery = listQuery.neq('status', 'pending')
+      } else if (['pending', 'approved', 'rejected'].includes(submissionStatus)) {
+        countQuery = countQuery.eq('status', submissionStatus)
+        listQuery = listQuery.eq('status', submissionStatus)
+      }
+      if (q) {
+        countQuery = countQuery.or(`tool_name.ilike.%${q}%,website_url.ilike.%${q}%`)
+        listQuery = listQuery.or(`tool_name.ilike.%${q}%,website_url.ilike.%${q}%`)
+      }
+
+      const [{ count: subCount }, { data: submissionsList }] = await Promise.all([
+        countQuery,
+        listQuery.order('created_at', { ascending: false }).range((subPage - 1) * subLimit, subPage * subLimit - 1)
+      ])
+
+      data.submissions = submissionsList || []
+      data.submissionsPagination = {
+        page: subPage,
+        perPage: subLimit,
+        total: subCount || 0,
+        totalPages: Math.max(1, Math.ceil((subCount || 0) / subLimit))
+      }
+    }
+
     // 用户统计（保留旧格式兼容）
     if (sections.includes('all') || sections.includes('users')) {
       const usersCount = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 })
