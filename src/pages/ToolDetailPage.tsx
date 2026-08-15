@@ -10,8 +10,7 @@ import {
   Calendar,
   Tag,
   Home,
-  ChevronRight,
-  Check
+  ChevronRight
 } from 'lucide-react';
 import { addToFavorites, removeFromFavorites, isFavorited, addToolReview, getToolReviews } from '../lib/community';
 import { getToolById, incrementToolViews, getRelatedTools } from '../lib/supabase';
@@ -264,14 +263,7 @@ const ToolDetailPage = () => {
     images: galleryImages,
     videoUrl: '',
     features: tool.features || [],
-    pricing: [
-      {
-        plan: tool.pricing === 'Free' ? '免费版' : tool.pricing === 'Freemium' ? '免费版' : '基础版',
-        price: tool.pricing === 'Free' ? '¥0' : '联系我们',
-        period: tool.pricing === 'Free' ? '永久' : '月',
-        features: ['基础功能', '标准支持']
-      }
-    ],
+    // 诚实性：不虚构价格数字与套餐内容，定价详情以官网为准（渲染处见 pricingLabel）
     rating: tool.rating || 0,
     reviews: tool.review_count || 0,
     views: tool.views || 0,
@@ -295,6 +287,19 @@ const ToolDetailPage = () => {
     if (pricing === 'Paid') return '付费';
     return '';
   }, [tool?.pricing, lang]);
+
+  // 评分分布：从真实已加载的评价计算（无评价时整个分布区不渲染，不再展示虚构的 70/20/5）
+  const ratingDistribution = useMemo(() => {
+    const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    for (const review of reviews) {
+      const r = Math.round(review.rating);
+      if (r >= 1 && r <= 5) counts[r]++;
+    }
+    const total = reviews.length;
+    return Object.fromEntries(
+      [5, 4, 3, 2, 1].map((star) => [star, total > 0 ? Math.round((counts[star] / total) * 100) : 0])
+    ) as Record<number, number>;
+  }, [reviews]);
 
   const normalizedWebsiteUrl = useMemo(() => {
     const raw = adaptedTool?.website?.trim();
@@ -652,13 +657,13 @@ const ToolDetailPage = () => {
               {/* 评论统计 */}
               <div className="flex items-center space-x-6 mb-8 p-4 bg-gray-50 rounded-lg">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-gray-900">{adaptedTool.rating}</div>
+                  <div className="text-3xl font-bold text-gray-900">{adaptedTool.reviews > 0 ? adaptedTool.rating : '--'}</div>
                   <div className="flex items-center justify-center space-x-1 mb-1">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Star
                         key={star}
                         className={`w-4 h-4 ${
-                          star <= Math.floor(adaptedTool.rating)
+                          adaptedTool.reviews > 0 && star <= Math.floor(adaptedTool.rating)
                             ? 'text-yellow-400 fill-current'
                             : 'text-gray-300'
                         }`}
@@ -667,6 +672,7 @@ const ToolDetailPage = () => {
                   </div>
                   <div className="text-sm text-gray-500">{adaptedTool.reviews} {getToolDetailUIText('reviewCount', lang)}</div>
                 </div>
+                {reviews.length > 0 && (
                 <div className="flex-1">
                   <div className="space-y-2">
                     {[5, 4, 3, 2, 1].map((rating) => (
@@ -675,16 +681,17 @@ const ToolDetailPage = () => {
                         <div className="flex-1 bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-yellow-400 h-2 rounded-full"
-                            style={{ width: `${rating === 5 ? 70 : rating === 4 ? 20 : 5}%` }}
+                            style={{ width: `${ratingDistribution[rating]}%` }}
                           />
                         </div>
                         <span className="text-sm text-gray-500 w-8">
-                          {rating === 5 ? '70%' : rating === 4 ? '20%' : '5%'}
+                          {ratingDistribution[rating]}%
                         </span>
                       </div>
                     ))}
                   </div>
                 </div>
+                )}
               </div>
 
               {/* 发表评论 */}
@@ -756,6 +763,11 @@ const ToolDetailPage = () => {
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
                             <h4 className="font-semibold text-gray-900">{review.user_profiles?.full_name || getToolDetailUIText('anonymousUser', lang)}</h4>
+                            {review.user_profiles?.is_webmaster && (
+                              <span className="bg-blue-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                {getToolDetailUIText('webmasterBadge', lang)}
+                              </span>
+                            )}
                             <div className="flex items-center space-x-1">
                               {[1, 2, 3, 4, 5].map((star) => (
                                 <Star
@@ -869,36 +881,19 @@ const ToolDetailPage = () => {
             {/* 定价信息 */}
             <div id="pricing" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 scroll-mt-24">
               <h3 className="text-xl font-bold text-gray-900 mb-6">{t('toolDetail.pricing')}</h3>
-              <div className="space-y-4">
-                {adaptedTool.pricing.map((plan, index) => (
-                  <div
-                    key={index}
-                    className={`border rounded-lg p-4 ${
-                      index === 1 ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-gray-900">{plan.plan}</h4>
-                      {index === 1 && (
-                        <span className="bg-blue-600 text-white px-2 py-1 rounded-full text-xs">
-                          {getToolDetailUIText('recommended', lang)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mb-3">
-                      <span className="text-2xl font-bold text-gray-900">{plan.price}</span>
-                      <span className="text-gray-500">/{plan.period}</span>
-                    </div>
-                    <ul className="space-y-2 text-sm text-gray-600">
-                      {plan.features.map((feature, featureIndex) => (
-                        <li key={featureIndex} className="flex items-center space-x-2">
-                          <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          <span>{translateFeature(feature, lang)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
+              <div className="border border-gray-200 rounded-lg p-4">
+                <div className="text-lg font-bold text-blue-700 mb-1">{pricingLabel}</div>
+                <p className="text-sm text-gray-500 mb-4">
+                  {getToolDetailUIText('pricingSeeOfficial', lang)}
+                </p>
+                <a
+                  href={adaptedTool.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
+                  {getToolDetailUIText('visitOfficial', lang)}
+                </a>
               </div>
             </div>
 

@@ -280,7 +280,8 @@ export async function getToolReviews(toolId: string) {
       user_profiles (
         username,
         full_name,
-        avatar_url
+        avatar_url,
+        is_webmaster
       )
     `)
     .eq('tool_id', toolId)

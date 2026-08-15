@@ -106,6 +106,7 @@ export interface ToolReview {
     username?: string
     full_name?: string
     avatar_url?: string
+    is_webmaster?: boolean
   }
 }
 
