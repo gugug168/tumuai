@@ -6,7 +6,15 @@ import OptimizedImage from './OptimizedImage';
 import ToolFallbackIcon from './ToolFallbackIcon';
 import { getBestDisplayLogoUrl } from '../lib/logoUtils';
 import { prefetchToolDetailPage } from '../lib/route-prefetch';
-import { translateCategory, translateFeature, translatePricing, getToolCardUIText } from '../lib/translations';
+import { translateCategory, translateFeature, translatePricing, getToolCardUIText, formatRelativeDate } from '../lib/translations';
+
+// 定价徽章按枚举着色：免费=绿、增值=蓝、付费=琥珀、试用=青（深色字浅底，对比安全）
+const PRICING_BADGE_CLASSES: Record<string, string> = {
+  Free: 'text-emerald-700',
+  Freemium: 'text-blue-700',
+  Paid: 'text-amber-700',
+  Trial: 'text-cyan-700',
+};
 import { useLocale } from '../contexts/LocaleContext';
 import type { Tool } from '../types';
 
@@ -133,7 +141,7 @@ const ToolCard = React.memo(({
         {/* Tool Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2 mb-1">
-            <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
+            <h3 className="text-xl font-bold tracking-tight text-gray-900 group-hover:text-blue-600 transition-colors truncate">
               <Link
                 to={`/tools/${tool.id}`}
                 state={{ tool }}
@@ -145,9 +153,12 @@ const ToolCard = React.memo(({
               </Link>
             </h3>
             {tool.categories && tool.categories[0] && (
-              <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
+              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-semibold">
                 {translateCategory(tool.categories[0], lang)}
               </span>
+            )}
+            {formatRelativeDate(tool.date_added, lang) && (
+              <span className="text-xs text-gray-400">{formatRelativeDate(tool.date_added, lang)}</span>
             )}
           </div>
           <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">
@@ -166,7 +177,7 @@ const ToolCard = React.memo(({
                   : getToolCardUIText('newTool', lang)}
               </span>
             </div>
-            <span className="text-xs text-gray-500">{translatePricing(tool.pricing, lang)}</span>
+            <span className={`text-xs font-semibold ${PRICING_BADGE_CLASSES[tool.pricing] || 'text-blue-600'}`}>{translatePricing(tool.pricing, lang)}</span>
           </div>
 
           {/* 收藏按钮 - 增强版 */}
@@ -269,7 +280,7 @@ const ToolCard = React.memo(({
       {/* Tool Content */}
       <div className="p-4">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">
+          <h3 className="text-xl font-bold tracking-tight text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">
             <Link
               to={`/tools/${tool.id}`}
               state={{ tool }}
@@ -285,7 +296,7 @@ const ToolCard = React.memo(({
             <span className="text-xs font-medium text-gray-700">
               {tool.review_count && tool.review_count > 0
                 ? tool.rating?.toFixed(1) || '4.5'
-                : t('toolCard.newTool')}
+                : getToolCardUIText('newTool', lang)}
             </span>
           </div>
         </div>
@@ -294,10 +305,13 @@ const ToolCard = React.memo(({
           {tool.tagline || tool.description || t('toolCard.defaultTagline')}
         </p>
 
-        <div className="mb-3">
-          <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-xs font-medium">
+        <div className="mb-3 flex items-center gap-2 flex-wrap">
+          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-xs font-semibold">
             {translateCategory(tool.categories?.[0] || '', lang) || getToolCardUIText('uncategorized', lang)}
           </span>
+          {formatRelativeDate(tool.date_added, lang) && (
+            <span className="text-xs text-gray-400">{formatRelativeDate(tool.date_added, lang)}</span>
+          )}
         </div>
 
         {/* Features as Tags */}
@@ -305,7 +319,7 @@ const ToolCard = React.memo(({
           {tool.features?.slice(0, 3).map((feature, index) => (
             <span
               key={index}
-              className="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-xs transition-colors hover:bg-gray-200"
+              className="bg-slate-100 text-slate-700 px-2 py-1 rounded-md text-xs font-medium transition-colors hover:bg-slate-200"
             >
               {translateFeature(feature, lang)}
             </span>
@@ -324,7 +338,7 @@ const ToolCard = React.memo(({
               <span>{tool.review_count || 0}</span>
             </div>
           </div>
-          <span className="text-xs font-medium text-blue-600">
+          <span className={`text-xs font-semibold ${PRICING_BADGE_CLASSES[tool.pricing] || 'text-blue-600'}`}>
             {translatePricing(tool.pricing, lang)}
           </span>
         </div>

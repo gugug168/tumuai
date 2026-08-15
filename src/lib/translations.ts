@@ -465,3 +465,20 @@ export function getToolCardUIText(key: keyof typeof TOOL_CARD_UI_TRANSLATIONS, l
   if (!item) return '';
   return lang === 'en' ? item.en : item.zh;
 }
+
+/**
+ * 相对日期：≤30 天显示「N 天前/N 周前更新」，超过 30 天返回 null（调用方不渲染）。
+ * 首页本周新工具（LatestTools）与工具卡片（ToolCard）共用。
+ */
+export function formatRelativeDate(dateStr: string | undefined | null, lang: string): string | null {
+  if (!dateStr) return null;
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return null;
+  const days = Math.floor((Date.now() - date.getTime()) / 86400000);
+  if (days < 0 || days > 30) return null;
+  if (days < 7) {
+    return lang === 'en' ? (days === 0 ? 'Today' : `${days}d ago`) : (days === 0 ? '今天' : `${days}天前`);
+  }
+  const weeks = Math.floor(days / 7);
+  return lang === 'en' ? `${weeks}w ago` : `${weeks}周前`;
+}
